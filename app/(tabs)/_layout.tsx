@@ -35,6 +35,12 @@ export default function TabsLayout() {
       <Tabs.Screen name="calendar" options={{ title: 'Күнтізбе' }} />
       <Tabs.Screen name="goals" options={{ title: 'Жыл' }} />
       <Tabs.Screen name="profile" options={{ title: 'Профиль' }} />
+      {/*
+        Апта мен Ай — тек бүйір мәзірде. Телефонның төменгі жолағында
+        орын жоқ, сондықтан BottomNav оларды елемейді (өз тізімінен салады).
+      */}
+      <Tabs.Screen name="week" options={{ title: 'Апта' }} />
+      <Tabs.Screen name="month" options={{ title: 'Ай' }} />
     </Tabs>
   );
 
