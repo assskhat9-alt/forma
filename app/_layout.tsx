@@ -1,8 +1,8 @@
 /**
- * Түбірлік layout — шрифт, кэш, қауіпсіз аймақ.
+ * Түбірлік layout — шрифт, кэш, сессия, қауіпсіз аймақ.
  */
 import React, { useEffect } from 'react';
-import { View } from 'react-native';
+import { View, ActivityIndicator } from 'react-native';
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import * as SplashScreen from 'expo-splash-screen';
@@ -22,6 +22,7 @@ import { Montserrat_700Bold, Montserrat_800ExtraBold } from '@expo-google-fonts/
 import { Caveat_600SemiBold, Caveat_700Bold } from '@expo-google-fonts/caveat';
 
 import { queryClient } from '../lib/query';
+import { SessionProvider, useSession, useProtectedRoute } from '../lib/auth';
 import { color as C } from '../theme/tokens';
 
 SplashScreen.preventAutoHideAsync().catch(() => {
@@ -53,14 +54,36 @@ export default function RootLayout() {
     <GestureHandlerRootView style={{ flex: 1, backgroundColor: C.bg }}>
       <SafeAreaProvider>
         <QueryClientProvider client={queryClient}>
-          <StatusBar style="dark" />
-          <View style={{ flex: 1, backgroundColor: C.bg }}>
-            <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: C.bg } }}>
-              <Stack.Screen name="(tabs)" />
-            </Stack>
-          </View>
+          <SessionProvider>
+            <StatusBar style="dark" />
+            <RootNavigator />
+          </SessionProvider>
         </QueryClientProvider>
       </SafeAreaProvider>
     </GestureHandlerRootView>
+  );
+}
+
+function RootNavigator() {
+  const { ready } = useSession();
+
+  // Кірмеген адамды /sign-in-ке, кіргенді қосымшаға жібереді
+  useProtectedRoute();
+
+  if (!ready) {
+    return (
+      <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: C.bg }}>
+        <ActivityIndicator color={C.accent} />
+      </View>
+    );
+  }
+
+  return (
+    <View style={{ flex: 1, backgroundColor: C.bg }}>
+      <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: C.bg } }}>
+        <Stack.Screen name="(auth)" />
+        <Stack.Screen name="(tabs)" />
+      </Stack>
+    </View>
   );
 }

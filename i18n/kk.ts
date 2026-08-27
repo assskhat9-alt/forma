@@ -89,6 +89,26 @@ export const kk = {
     apple: 'Apple ID арқылы кіру',
     email: 'Email арқылы кіру',
     sync: 'Бір аккаунт — iPhone, iPad, Mac',
+
+    emailLabel: 'Email',
+    emailPlaceholder: 'sizdin@email.kz',
+    passwordLabel: 'Құпиясөз',
+    passwordPlaceholder: 'Кемінде 6 таңба',
+    enter: 'Кіру',
+    register: 'Тіркелу',
+    toRegister: 'Аккаунтым жоқ — тіркелемін',
+    toSignIn: 'Аккаунтым бар — кіремін',
+    back: 'Артқа',
+    /** Тіркелген соң пошта расталуы керек болса */
+    checkEmail: 'Поштаңызға растау хаты жіберілді. Сілтемені басып, қайта кіріңіз.',
+    appleSoon: 'Apple ID арқылы кіру нативті жинақта қосылады. Әзірге email арқылы кіріңіз.',
+    errors: {
+      invalid: 'Email немесе құпиясөз дұрыс емес.',
+      short: 'Құпиясөз кемінде 6 таңба болуы керек.',
+      empty: 'Email мен құпиясөзді толтырыңыз.',
+      exists: 'Бұл email тіркелген. «Кіру» дегенді таңдаңыз.',
+      network: 'Желіге қосыла алмадым. Байланысты тексеріңіз.',
+    },
   },
 
   today: {

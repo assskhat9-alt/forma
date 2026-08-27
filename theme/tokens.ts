@@ -53,6 +53,7 @@ export const color = {
   accentDeep: '#6A59EC',
   accentOnDark: '#A79BF8', // қара фондағы акцент (Фокус, Мақсат hero)
   accentSoft: '#C6BEFB', // диаграмманың екінші деңгейі
+  accentGlow: '#C9C0FB', // кіру экранының атмосфералық дағы
   accentLine: '#DCD6FB', // жеңіл күлгін жиек, нүкте
   accentLine2: '#D8D1FB',
   accentLine3: '#E4E0FC',
