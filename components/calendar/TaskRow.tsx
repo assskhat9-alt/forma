@@ -8,7 +8,7 @@ import React from 'react';
 import { View, Text, Pressable, StyleSheet } from 'react-native';
 import { color as C, radius as R, font } from '../../theme/tokens';
 import { Checkbox } from '../ui';
-import type { DayTask } from '../../lib/mock';
+import type { DayTask } from '../../lib/goals';
 
 type Props = {
   task: DayTask;
@@ -49,9 +49,11 @@ export function TaskRow({ task, onToggle, compact = false, last = false }: Props
         >
           {task.title}
         </Text>
-        <View style={[styles.goalChip, { backgroundColor: C.tint }]}>
-          <Text style={styles.goalText}>{task.goal.title}</Text>
-        </View>
+        {task.goal && (
+          <View style={[styles.goalChip, { backgroundColor: C.tint }]}>
+            <Text style={styles.goalText}>{task.goal.title}</Text>
+          </View>
+        )}
       </View>
 
       {task.time && (

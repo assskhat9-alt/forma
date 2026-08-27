@@ -6,60 +6,81 @@
  *   планшет  → CalendarWide   (тор тарылады, күн панелі ығысады)
  *   ПК       → CalendarWide   (үш панель қатар тұрады)
  *
- * ⚠ Дерек `lib/mock.ts`-тен келеді — 1-фазада Supabase сұрауларына ауысады.
+ * Дерек Supabase-тен келеді. Чекбокс optimistic — желі жауабы күтілмейді.
  */
 import React, { useMemo, useState } from 'react';
-import { isSameDay } from 'date-fns';
+import { View, ActivityIndicator, StyleSheet } from 'react-native';
 
 import { kk } from '../../i18n/kk';
+import { color as C } from '../../theme/tokens';
 import { useBreakpoint } from '../../lib/breakpoints';
 import { buildMonthGrid, nextMonth, prevMonth } from '../../lib/calendar';
-import { tasksForDay, loadForDay, MOCK_TODAY } from '../../lib/mock';
+import {
+  useDayTasks,
+  useLoadOf,
+  useToggleTask,
+  useCreateTask,
+  useRootGoals,
+} from '../../lib/goals';
 import { CalendarPhone } from '../../components/calendar/CalendarPhone';
 import { CalendarWide } from '../../components/calendar/CalendarWide';
 import type { TaskDraft } from '../../components/calendar/TaskForm';
 
 const PERIODS = [kk.period.day, kk.period.week, kk.period.month, kk.period.year] as const;
 
+const TIMES = ['06:00', '08:00', '14:00', '21:00', null] as const;
+
 const EMPTY_DRAFT: TaskDraft = { title: '', timeIndex: 1, goalIndex: 0, repeatIndex: 0 };
 
 export default function CalendarScreen() {
   const bp = useBreakpoint();
+  const today = useMemo(() => new Date(), []);
 
-  const [anchor, setAnchor] = useState(MOCK_TODAY);
-  const [selected, setSelected] = useState(MOCK_TODAY);
+  const [anchor, setAnchor] = useState(today);
+  const [selected, setSelected] = useState(today);
   const [adding, setAdding] = useState(false);
   const [draft, setDraft] = useState<TaskDraft>(EMPTY_DRAFT);
   const [period, setPeriod] = useState(2); // «АЙ»
   const [segOpen, setSegOpen] = useState(true);
 
-  // Чекбокстың optimistic күйі — Supabase қосылғанда мутацияға ауысады
-  const [overrides, setOverrides] = useState<Record<string, boolean>>({});
+  const { tasks, isLoading } = useDayTasks(selected);
+  const loadOf = useLoadOf();
+  const toggleTask = useToggleTask();
+  const createTask = useCreateTask();
+  const rootGoals = useRootGoals();
 
-  const cells = useMemo(() => buildMonthGrid(anchor, MOCK_TODAY), [anchor]);
-  const tasks = useMemo(() => tasksForDay(selected, overrides), [selected, overrides]);
-  const loadOf = useMemo(
-    () => (d: Date) => loadForDay(d, overrides),
-    [overrides],
-  );
-
-  const toggleTask = (id: string) => {
-    const current = tasks.find((t) => t.id === id);
-    if (!current) return;
-    setOverrides((prev) => ({ ...prev, [id]: !current.done }));
-  };
+  const cells = useMemo(() => buildMonthGrid(anchor, today), [anchor, today]);
 
   const selectDay = (d: Date) => {
     setSelected(d);
     // Бланка ашық тұрса жабылмайды — тек күні ауысады (§7.1)
-    if (!isSameDay(d, anchor)) setAnchor(d);
+    if (d.getMonth() !== anchor.getMonth() || d.getFullYear() !== anchor.getFullYear()) {
+      setAnchor(d);
+    }
   };
 
   const submit = () => {
-    // TODO(1-фаза): goals кестесіне level='day' жазбасын қосу
+    const title = draft.title.trim();
+    if (!title) return;
+
+    createTask.mutate({
+      title,
+      date: selected,
+      time: TIMES[draft.timeIndex] ?? null,
+      parentId: rootGoals[draft.goalIndex]?.id ?? null,
+    });
+
     setDraft(EMPTY_DRAFT);
     setAdding(false);
   };
+
+  if (isLoading) {
+    return (
+      <View style={styles.center}>
+        <ActivityIndicator color={C.accent} />
+      </View>
+    );
+  }
 
   const shared = {
     anchor,
@@ -73,7 +94,10 @@ export default function CalendarScreen() {
     period,
     segOpen,
     onSelect: selectDay,
-    onToggleTask: toggleTask,
+    onToggleTask: (id: string) => {
+      const t = tasks.find((x) => x.id === id);
+      if (t) toggleTask.mutate({ id, done: !t.done });
+    },
     onPrevMonth: () => setAnchor((a) => prevMonth(a)),
     onNextMonth: () => setAnchor((a) => nextMonth(a)),
     onOpenForm: () => setAdding(true),
@@ -87,3 +111,7 @@ export default function CalendarScreen() {
   if (bp === 'phone') return <CalendarPhone {...shared} />;
   return <CalendarWide bp={bp} {...shared} />;
 }
+
+const styles = StyleSheet.create({
+  center: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: C.bg },
+});

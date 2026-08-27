@@ -17,7 +17,7 @@ import { MonthGridPhone } from './MonthGridPhone';
 import { TaskRow } from './TaskRow';
 import { TaskForm, type TaskDraft } from './TaskForm';
 import type { DayCell } from '../../lib/calendar';
-import type { DayLoad, DayTask } from '../../lib/mock';
+import type { DayLoad, DayTask } from '../../lib/goals';
 
 type Props = {
   anchor: Date;

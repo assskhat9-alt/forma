@@ -14,7 +14,7 @@ import { isSameDay } from 'date-fns';
 import { color as C, radius as R, font } from '../../theme/tokens';
 import { weekdaysFull, weekdaysShort } from '../../i18n/kk';
 import { type DayCell, COLS } from '../../lib/calendar';
-import type { DayLoad } from '../../lib/mock';
+import type { DayLoad } from '../../lib/goals';
 
 type Props = {
   cells: DayCell[];

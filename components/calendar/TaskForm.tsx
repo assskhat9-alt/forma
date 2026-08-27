@@ -13,7 +13,7 @@ import { color as C, radius as R, font } from '../../theme/tokens';
 import { SectionLabel } from '../ui';
 import { CloseIcon } from '../icons';
 import { kk, formatDayMonthWeekday } from '../../i18n/kk';
-import { MOCK_GOALS } from '../../lib/mock';
+import { useRootGoals } from '../../lib/goals';
 
 const TIMES = ['06:00', '08:00', '14:00', '21:00', kk.calendar.noTime];
 const REPEATS = [kk.calendar.repeats.once, kk.calendar.repeats.daily, kk.calendar.repeats.weekly];
@@ -38,6 +38,7 @@ type Props = {
 
 export function TaskForm({ date, draft, onChange, onClose, onSubmit, variant, width }: Props) {
   const panel = variant === 'panel';
+  const goals = useRootGoals();
 
   return (
     <View style={[panel ? styles.panel : styles.sheet, panel && width ? { width } : null]}>
@@ -82,13 +83,20 @@ export function TaskForm({ date, draft, onChange, onClose, onSubmit, variant, wi
         </Field>
 
         <Field label={kk.calendar.whichGoal}>
-          <Options
-            items={MOCK_GOALS.map((g) => g.title)}
-            index={draft.goalIndex}
-            onPick={(goalIndex) => onChange({ ...draft, goalIndex })}
-            wrap
-            pill
-          />
+          {goals.length === 0 ? (
+            <Text style={styles.noGoals}>
+              Әлі мақсат жоқ. Тапсырма мақсатсыз да сақталады, бірақ ол
+              каскадқа қосылмайды — пайызды жылжытпайды.
+            </Text>
+          ) : (
+            <Options
+              items={goals.map((g) => g.title)}
+              index={draft.goalIndex}
+              onPick={(goalIndex) => onChange({ ...draft, goalIndex })}
+              wrap
+              pill
+            />
+          )}
         </Field>
 
         <Field label={kk.calendar.repeat}>
@@ -249,6 +257,7 @@ const styles = StyleSheet.create({
   optionFlex: { flexGrow: 1, flexBasis: 0 },
   optionAuto: { paddingHorizontal: 13 },
   optionText: { fontFamily: font.bold, fontSize: 11.5 },
+  noGoals: { fontFamily: font.prose, fontSize: 11.5, lineHeight: 17, color: C.ink4 },
   submit: {
     alignItems: 'center',
     justifyContent: 'center',

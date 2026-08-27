@@ -28,7 +28,7 @@ import {
   PHONE_GRID_COLLAPSED,
   collapseOffset,
 } from '../../lib/calendar';
-import type { DayLoad } from '../../lib/mock';
+import type { DayLoad } from '../../lib/goals';
 
 const EASE = Easing.bezier(0.4, 0, 0.2, 1);
 const DURATION = 300;

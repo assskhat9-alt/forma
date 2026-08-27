@@ -25,7 +25,7 @@ import { DayPanel } from './DayPanel';
 import { TaskForm, type TaskDraft } from './TaskForm';
 import { calendarLayout, type Breakpoint } from '../../lib/breakpoints';
 import type { DayCell } from '../../lib/calendar';
-import type { DayLoad, DayTask } from '../../lib/mock';
+import type { DayLoad, DayTask } from '../../lib/goals';
 
 const EASE = Easing.bezier(0.4, 0, 0.2, 1);
 const DUR = 320;

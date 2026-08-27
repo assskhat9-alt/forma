@@ -1,96 +1,61 @@
 /**
- * 0-фаза: дизайн жүйесінің тексеру экраны.
+ * БҮГІН — басты экран (design/Main.dc.html).
  *
- * Бұл БҮГІН экраны емес — ол 1-фазада design/Main.dc.html бойынша жазылады.
- * Мұнда токендер, шрифттер және қайталанатын компоненттер нақты құрылғыда
- * дұрыс көрінетінін тексереміз. Ең бастысы — қазақ әріптері.
+ * Екі бөлек блок, шатастыруға болмайды (CLAUDE.md §1):
+ *   ақ карточка  → мақсаттар. Күндік сақина ТЕК осыдан есептеледі.
+ *   үзік сызықты → әдеттер. Пайызға МҮЛДЕ қосылмайды.
  */
 import React, { useState } from 'react';
-import { View, Text, ScrollView, StyleSheet } from 'react-native';
+import { View, Text, ScrollView, StyleSheet, ActivityIndicator } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { router } from 'expo-router';
 
 import { color as C, radius as R, font, gutter } from '../../theme/tokens';
-import { kk, formatTenge, formatDecimal, formatMinutes } from '../../i18n/kk';
+import { kk, formatDayMonthWeekday, monthsUpper, t as tpl } from '../../i18n/kk';
+import { weekNumber } from '../../lib/calendar';
+import { useDayTasks, useToggleTask, useLevelBars } from '../../lib/goals';
+import { useHabitsForDay, useToggleHabit } from '../../lib/habits';
 import {
-  Card,
-  DarkCard,
-  DashedCard,
-  SectionLabel,
-  ProgressRing,
-  ProgressBar,
-  Checkbox,
-  HabitCell,
-  Chip,
-  PaceBadge,
-  CollapsibleSegments,
-  Toggle,
+  Card, DarkCard, DashedCard, SectionLabel,
+  ProgressRing, ProgressBar, Chip, CollapsibleSegments, HabitCell,
 } from '../../components/ui';
-import {
-  MenuIcon, BellIcon, StarIcon, ChatIcon, QuoteIcon, SearchIcon,
-  PlusIcon, CloseIcon, ClockIcon, InfoIcon, PencilIcon, ResetIcon,
-  PlayIcon, MailIcon, CheckIcon, ChevronRightIcon,
-} from '../../components/icons';
+import { MenuIcon, BellIcon, QuoteIcon, StarIcon } from '../../components/icons';
+import { TaskRow } from '../../components/calendar/TaskRow';
 
 const PERIODS = [kk.period.day, kk.period.week, kk.period.month, kk.period.year] as const;
 
-/** Барлық қазақ әрпі — шрифт тексерісі */
-const ALPHABET = 'Ә Ғ Қ Ң Ө Ұ Ү Һ І · ә ғ қ ң ө ұ ү һ і · ₸';
+const MOTTO = '«Мен армандаған адам — бүгін тұрып жасайтын адам.»';
 
-export default function DesignCheck() {
+export default function TodayScreen() {
   const insets = useSafeAreaInsets();
+  const today = new Date();
+
   const [period, setPeriod] = useState(0);
   const [segOpen, setSegOpen] = useState(true);
-  const [done, setDone] = useState([true, true, false, false]);
-  const [hab, setHab] = useState([true, false, true, false, true]);
-  const [rotate, setRotate] = useState(false);
 
-  const doneCount = done.filter(Boolean).length;
-  const pct = Math.round((doneCount / done.length) * 100);
+  const { tasks, isLoading, isError } = useDayTasks(today);
+  const toggleTask = useToggleTask();
+  const { data: bars } = useLevelBars(today);
+  const { items: habits } = useHabitsForDay(today);
+  const toggleHabit = useToggleHabit(today);
 
-  const toggleTask = (i: number) =>
-    setDone((prev) => prev.map((v, k) => (k === i ? !v : v)));
-  const toggleHab = (i: number) =>
-    setHab((prev) => prev.map((v, k) => (k === i ? !v : v)));
+  const doneCount = tasks.filter((t) => t.done).length;
+  const dayPct = tasks.length ? Math.round((doneCount / tasks.length) * 100) : 0;
+  const habitsDone = habits.filter((h) => h.done).length;
 
   return (
     <ScrollView
       style={styles.screen}
-      contentContainerStyle={{ paddingTop: insets.top + 8, paddingBottom: 40 }}
+      contentContainerStyle={{ paddingTop: insets.top + 8, paddingBottom: 32 }}
       showsVerticalScrollIndicator={false}
     >
-      {/* хедер */}
       <View style={styles.header}>
         <MenuIcon size={22} />
         <Text style={styles.wordmark}>{kk.app.name}</Text>
         <BellIcon size={22} />
       </View>
 
-      <View style={styles.body}>
-        {/* ── шрифт тексерісі ── */}
-        <SectionLabel>Шрифт тексерісі</SectionLabel>
-        <Card style={styles.pad}>
-          <Text style={styles.alphabet}>{ALPHABET}</Text>
-          <Text style={styles.alphabetNote}>
-            Жоғарыдағы әріптердің бірде-бірі төртбұрышқа айналмауы керек.
-            Unbounded пен Manrope дәл осы әріптерді көтермегендіктен
-            Onest пен Montserrat-қа ауыстырылды.
-          </Text>
-          <View style={styles.divider} />
-          <Text style={styles.displaySample}>42%</Text>
-          <Text style={styles.titleSample}>Ағылшын тілін C1 деңгейіне жеткізу</Text>
-          <Text style={styles.proseSample}>
-            «Тыңдалым жақсарды, бірақ сөйлеу артта. Келесі аптада күніне
-            20 минут дауыстап сөйлеуді қосу керек.»
-          </Text>
-          <View style={styles.rowWrap}>
-            <Text style={styles.money}>{formatTenge(5_000_000)}</Text>
-            <Text style={styles.money}>{formatDecimal(84.2)} кг</Text>
-            <Text style={styles.money}>{formatMinutes(255)}</Text>
-          </View>
-        </Card>
-
-        {/* ── период ауыстырғышы ── */}
-        <SectionLabel style={styles.gap}>Жиналмалы период ауыстырғышы</SectionLabel>
+      <View style={styles.segWrap}>
         <CollapsibleSegments
           items={PERIODS}
           index={period}
@@ -99,168 +64,159 @@ export default function DesignCheck() {
           onToggleOpen={() => setSegOpen((v) => !v)}
           maxWidth={250}
         />
+      </View>
 
-        {/* ── мотивация: қара карточка ── */}
-        <DarkCard style={[styles.pad, styles.gap]} radius={R.cardXs}>
-          <QuoteIcon size={20} color={C.accent2} />
-          <Text style={styles.mottoLabel}>{kk.today.motto}</Text>
-          <Text style={styles.motto}>
-            «Мен армандаған адам — бүгін тұрып жасайтын адам.»
+      {/* мотивация — мақсат емес нәрсе қара карточкада */}
+      <DarkCard style={styles.motto} radius={R.cardXs}>
+        <QuoteIcon size={18} color={C.accent2} />
+        <Text style={styles.mottoLabel}>{kk.today.motto}</Text>
+        <Text style={styles.mottoText}>{MOTTO}</Text>
+      </DarkCard>
+
+      {/* күн */}
+      <View style={styles.dateRow}>
+        <View>
+          <Text style={styles.date}>{formatDayMonthWeekday(today)}</Text>
+          <Text style={styles.dateSub}>
+            {weekNumber(today)}-апта · {cap(monthsUpper[today.getMonth()]!)} · {today.getFullYear()}
           </Text>
-        </DarkCard>
+        </View>
+        {habitsDone > 0 && (
+          <View style={styles.streak}>
+            <StarIcon size={11} color={C.accentDeep} strokeWidth={2.4} />
+            <Text style={styles.streakText}>{habitsDone}</Text>
+          </View>
+        )}
+      </View>
 
-        {/* ── сақина + жолақтар ── */}
-        <SectionLabel style={styles.gap}>{kk.today.goalsCard}</SectionLabel>
-        <Card style={styles.pad}>
-          <View style={styles.ringRow}>
-            <ProgressRing
-              pct={pct}
-              size={100}
-              strokeWidth={10}
-              label={kk.today.ringLabel}
-              numberSize={22}
-            />
-            <View style={styles.levels}>
-              {[
-                { name: 'Апта', pct: 62, c: C.accent },
-                { name: 'Тамыз', pct: 55, c: C.accent3 },
-                { name: '2026 жыл', pct: 42, c: C.accent5 },
-              ].map((lv) => (
-                <View key={lv.name} style={{ gap: 4 }}>
-                  <View style={styles.levelHead}>
-                    <View style={styles.levelName}>
-                      <View style={[styles.dot, { backgroundColor: lv.c }]} />
-                      <Text style={styles.levelText}>{lv.name}</Text>
+      <View style={styles.body}>
+        {isLoading ? (
+          <View style={styles.center}>
+            <ActivityIndicator color={C.accent} />
+          </View>
+        ) : isError ? (
+          <Card style={styles.pad}>
+            <Text style={styles.errorText}>{kk.common.loadError}</Text>
+          </Card>
+        ) : tasks.length === 0 ? (
+          <EmptyToday />
+        ) : (
+          <Card style={styles.pad}>
+            <SectionLabel style={{ marginBottom: 10 }}>{kk.today.goalsCard}</SectionLabel>
+
+            <View style={styles.ringRow}>
+              <ProgressRing
+                pct={dayPct}
+                size={100}
+                strokeWidth={10}
+                label={kk.today.ringLabel}
+                numberSize={22}
+              />
+              <View style={styles.levels}>
+                {(bars ?? []).length === 0 ? (
+                  <Text style={styles.levelsEmpty}>
+                    Апта, ай және жыл мақсаттарын қосқанда осында пайыз шығады.
+                  </Text>
+                ) : (
+                  (bars ?? []).map((lv) => (
+                    <View key={lv.id} style={{ gap: 4 }}>
+                      <View style={styles.levelHead}>
+                        <View style={styles.levelName}>
+                          <View style={[styles.dot, { backgroundColor: lv.color }]} />
+                          <Text style={styles.levelText} numberOfLines={1}>{lv.name}</Text>
+                        </View>
+                        <Text style={styles.levelPct}>{lv.pct}%</Text>
+                      </View>
+                      <ProgressBar pct={lv.pct} color={lv.color} height={4} />
                     </View>
-                    <Text style={styles.levelPct}>{lv.pct}%</Text>
-                  </View>
-                  <ProgressBar pct={lv.pct} color={lv.c} height={4} />
-                </View>
-              ))}
-            </View>
-          </View>
-
-          {/* «керек еді» маркері бар жолақ */}
-          <View style={styles.divider} />
-          <SectionLabel style={{ marginBottom: 10 }}>Жоспар маркері</SectionLabel>
-          <ProgressBar pct={58} plannedPct={65} height={10} />
-          <View style={styles.rowBetween}>
-            <Text style={styles.legendAccent}>Орындалды 58%</Text>
-            <Text style={styles.legendMuted}>Керек еді 65%</Text>
-          </View>
-
-          {/* тапсырмалар */}
-          <View style={styles.divider} />
-          {[
-            { t: 'Таңғы жаттығу — 5 км', time: '06:30', goal: 'Дене · 78 кг' },
-            { t: 'Ағылшын тыңдалым, 45 мин', time: '08:00', goal: 'Ағылшын C1' },
-            { t: 'Жобаның авторизациясы', time: '14:00', goal: 'Жеке жоба' },
-            { t: '20 бет оқу', time: '21:00', goal: '12 кітап' },
-          ].map((task, i) => (
-            <View key={task.t} style={styles.taskRow}>
-              <Checkbox checked={done[i]!} onToggle={() => toggleTask(i)} size={22} />
-              <View style={{ flexGrow: 1, flexShrink: 1 }}>
-                <Text
-                  style={[
-                    styles.taskTitle,
-                    done[i] && { color: C.inkFaint, textDecorationLine: 'line-through' },
-                  ]}
-                >
-                  {task.t}
-                </Text>
-                <View style={styles.taskMeta}>
-                  <Text style={styles.taskTime}>{task.time}</Text>
-                  <View style={styles.metaDot} />
-                  <Chip label={task.goal} size="sm" />
-                </View>
+                  ))
+                )}
               </View>
-              {done[i] && <ChatIcon size={15} color={C.accent} />}
             </View>
-          ))}
-        </Card>
 
-        {/* ── әдеттер: үзік сызық, пайызға кірмейді ── */}
-        <DashedCard style={[styles.padSm, styles.gap]}>
-          <View style={styles.rowBetween}>
-            <View style={styles.habHead}>
+            <View style={styles.divider} />
+
+            {tasks.map((task, i) => (
+              <TaskRow
+                key={task.id}
+                task={{
+                  id: task.id,
+                  title: task.title,
+                  time: task.time,
+                  done: task.done,
+                  goal: task.goal ?? { id: '', title: '—', color: C.accent },
+                }}
+                onToggle={(id) => toggleTask.mutate({ id, done: !task.done })}
+                last={i === tasks.length - 1}
+              />
+            ))}
+          </Card>
+        )}
+
+        {/* ӘДЕТТЕР — әдейі бөлек, пайызға кірмейді */}
+        <DashedCard style={styles.padSm}>
+          <View style={styles.habHead}>
+            <View style={styles.habTitle}>
               <SectionLabel>{kk.today.habits}</SectionLabel>
               <Chip label={kk.today.habitsExcluded} tone="flat" size="sm" />
             </View>
-            <Text style={styles.habCount}>
-              {hab.filter(Boolean).length}/{hab.length}
+            {habits.length > 0 && (
+              <Text style={styles.habCount}>
+                {habitsDone}/{habits.length}
+              </Text>
+            )}
+          </View>
+
+          {habits.length === 0 ? (
+            <Text style={styles.habEmpty}>
+              Әдет қосылмаған. Әдет — жететін нәтиже емес, күнделікті рефлекс.
             </Text>
-          </View>
-          <View style={styles.habRow}>
-            {['Ерте тұру', 'Су', 'Медитация', 'Экрансыз', 'Күнделік'].map((n, i) => (
-              <View key={n} style={styles.habCol}>
-                <HabitCell done={hab[i]!} onToggle={() => toggleHab(i)} />
-                <Text style={[styles.habLabel, hab[i] && { color: C.accentDeep }]}>{n}</Text>
-              </View>
-            ))}
-          </View>
-        </DashedCard>
-
-        {/* ── қарқын белгілері ── */}
-        <SectionLabel style={styles.gap}>Қарқын белгісі</SectionLabel>
-        <Card level="cardSm" radius={R.cardSm} style={styles.padSm}>
-          <View style={styles.rowWrap}>
-            <PaceBadge gap={10} />
-            <PaceBadge gap={-2} />
-            <PaceBadge gap={-7} />
-            <PaceBadge gap={-38} />
-          </View>
-          <Text style={styles.hint}>
-            −20%-тан өткенде белгі қараяды. Ереже Zhyl.dc.html пен
-            Taimlain.dc.html макеттерінен алынған.
-          </Text>
-        </Card>
-
-        {/* ── чиптер мен ауыстырғыш ── */}
-        <SectionLabel style={styles.gap}>Чиптер</SectionLabel>
-        <Card level="cardSm" radius={R.cardSm} style={styles.padSm}>
-          <View style={styles.rowWrap}>
-            <Chip label="Ағылшын C1" />
-            <Chip label="Дене · 78 кг" tone="flat" />
-            <Chip label="Бәрі" tone="dark" />
-            <Chip label="Өз күнім" tone="outline" />
-          </View>
-          <View style={[styles.rowBetween, { marginTop: 14 }]}>
-            <Text style={styles.toggleLabel}>{kk.motto.rotate}</Text>
-            <Toggle value={rotate} onChange={setRotate} />
-          </View>
-        </Card>
-
-        {/* ── иконкалар ── */}
-        <SectionLabel style={styles.gap}>Иконкалар</SectionLabel>
-        <Card level="cardSm" radius={R.cardSm} style={styles.padSm}>
-          <View style={styles.iconGrid}>
-            {[MenuIcon, BellIcon, SearchIcon, PlusIcon, CloseIcon, CheckIcon,
-              StarIcon, ChatIcon, ClockIcon, InfoIcon, PencilIcon, MailIcon,
-              ResetIcon, ChevronRightIcon].map((Icon, i) => (
-              <View key={i} style={styles.iconCell}>
-                <Icon size={20} color={C.ink2} />
-              </View>
-            ))}
-            <View style={styles.iconCell}>
-              <PlayIcon size={20} color={C.ink2} />
+          ) : (
+            <View style={styles.habRow}>
+              {habits.map((h) => (
+                <View key={h.id} style={styles.habCol}>
+                  <HabitCell
+                    done={h.done}
+                    planned={h.planned}
+                    color={h.color}
+                    onToggle={() => toggleHabit.mutate({ habitId: h.id, done: !h.done })}
+                  />
+                  <Text
+                    style={[styles.habLabel, h.done && { color: C.accentDeep }]}
+                    numberOfLines={1}
+                  >
+                    {h.title}
+                  </Text>
+                </View>
+              ))}
             </View>
-          </View>
-        </Card>
-
-        {/* ── сақина өлшемдері ── */}
-        <SectionLabel style={styles.gap}>Сақина өлшемдері</SectionLabel>
-        <Card level="cardSm" radius={R.cardSm} style={styles.padSm}>
-          <View style={styles.ringSizes}>
-            <ProgressRing pct={40} size={34} strokeWidth={4} numberSize={10} showPercentSign={false} />
-            <ProgressRing pct={58} size={44} strokeWidth={5} numberSize={11} showPercentSign={false} />
-            <ProgressRing pct={75} size={64} strokeWidth={6} numberSize={14} />
-            <ProgressRing pct={62} size={84} strokeWidth={9} numberSize={19} />
-          </View>
-        </Card>
+          )}
+        </DashedCard>
       </View>
     </ScrollView>
   );
 }
+
+/** Дерекқор бос кезде — не істеу керегін айтады, бос экран көрсетпейді */
+function EmptyToday() {
+  return (
+    <Card style={styles.pad}>
+      <SectionLabel>Бүгінге тапсырма жоқ</SectionLabel>
+      <Text style={styles.emptyTitle}>Бірінші мақсатыңызды қосыңыз</Text>
+      <Text style={styles.emptyText}>
+        Жылдық мақсат құрғанда жүйе оны айға, аптаға және күнге өзі бөледі.
+        Сонда бүгінгі бір белгі жылдық санды да жылжытады.
+      </Text>
+      <View style={styles.emptyHint}>
+        <Text style={styles.emptyHintText}>
+          Төмендегі ◆ түймесін басыңыз — «Жаңа мақсат» ашылады.
+        </Text>
+      </View>
+    </Card>
+  );
+}
+
+const cap = (s: string) => s.charAt(0) + s.slice(1).toLowerCase();
 
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: C.bg },
@@ -269,59 +225,68 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: gutter,
-    paddingBottom: 10,
+    paddingBottom: 6,
   },
   wordmark: { fontFamily: font.display, fontSize: 13, letterSpacing: 2.08, color: C.ink },
+  segWrap: { paddingHorizontal: gutter, paddingTop: 4 },
+
+  motto: { marginHorizontal: gutter, marginTop: 10, padding: 16 },
+  mottoLabel: {
+    fontFamily: font.bold, fontSize: 9, letterSpacing: 1.44,
+    color: C.accent2, marginTop: 8,
+  },
+  mottoText: {
+    fontFamily: font.title, fontSize: 14, lineHeight: 20,
+    color: '#FFFFFF', marginTop: 6,
+  },
+
+  dateRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-end',
+    justifyContent: 'space-between',
+    paddingHorizontal: gutter,
+    paddingTop: 14,
+    paddingBottom: 10,
+  },
+  date: { fontFamily: font.bold, fontSize: 18, letterSpacing: -0.36, color: C.ink },
+  dateSub: { fontFamily: font.prose, fontSize: 11, color: C.inkMuted, marginTop: 1 },
+  streak: {
+    flexDirection: 'row', alignItems: 'center', gap: 6,
+    backgroundColor: C.tintChip, borderRadius: R.pill,
+    paddingHorizontal: 10, paddingVertical: 5,
+  },
+  streakText: { fontFamily: font.bold, fontSize: 11.5, color: C.accentDeep },
+
   body: { paddingHorizontal: gutter, gap: 10 },
-  gap: { marginTop: 18 },
   pad: { padding: 17 },
   padSm: { padding: 15 },
-
-  alphabet: { fontFamily: font.title, fontSize: 17, color: C.ink, letterSpacing: 0.5, lineHeight: 28 },
-  alphabetNote: { fontFamily: font.prose, fontSize: 12, color: C.ink3, marginTop: 8, lineHeight: 18 },
-  displaySample: { fontFamily: font.display, fontSize: 40, letterSpacing: -1.6, color: C.ink },
-  titleSample: { fontFamily: font.title, fontSize: 15, color: C.ink, marginTop: 6, letterSpacing: -0.2 },
-  proseSample: { fontFamily: font.prose, fontSize: 12.5, color: C.inkProse, marginTop: 8, lineHeight: 19 },
-  money: { fontFamily: font.display, fontSize: 15, color: C.ink },
-
-  divider: { height: 1, backgroundColor: C.lineSoft, marginVertical: 14 },
-
-  mottoLabel: { fontFamily: font.bold, fontSize: 9, letterSpacing: 1.44, color: C.accent2, marginTop: 10 },
-  motto: { fontFamily: font.title, fontSize: 15, color: '#FFFFFF', marginTop: 6, lineHeight: 21 },
+  center: { paddingVertical: 40, alignItems: 'center' },
+  errorText: { fontFamily: font.prose, fontSize: 13, color: C.inkProse },
 
   ringRow: { flexDirection: 'row', alignItems: 'center', gap: 16 },
   levels: { flexGrow: 1, flexShrink: 1, gap: 9 },
-  levelHead: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  levelName: { flexDirection: 'row', alignItems: 'center', gap: 7 },
-  dot: { width: 6, height: 6, borderRadius: 999 },
-  levelText: { fontFamily: font.body, fontSize: 11.5, color: C.inkBody },
+  levelsEmpty: { fontFamily: font.prose, fontSize: 11.5, lineHeight: 17, color: C.ink4 },
+  levelHead: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8 },
+  levelName: { flexDirection: 'row', alignItems: 'center', gap: 7, flexShrink: 1 },
+  dot: { width: 6, height: 6, borderRadius: 999, flexShrink: 0 },
+  levelText: { fontFamily: font.body, fontSize: 11.5, color: C.inkBody, flexShrink: 1 },
   levelPct: { fontFamily: font.bold, fontSize: 11.5, color: C.ink },
 
-  rowBetween: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 9 },
-  rowWrap: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: 8, marginTop: 10 },
-  legendAccent: { fontFamily: font.title, fontSize: 11, color: C.accent },
-  legendMuted: { fontFamily: font.title, fontSize: 11, color: C.darkInk3 },
+  divider: { height: 1, backgroundColor: C.lineSoft, marginTop: 12, marginBottom: 2 },
 
-  taskRow: { flexDirection: 'row', alignItems: 'center', gap: 11, paddingVertical: 8 },
-  taskTitle: { fontFamily: font.body, fontSize: 12.5, color: C.ink, letterSpacing: -0.12 },
-  taskMeta: { flexDirection: 'row', alignItems: 'center', gap: 5, marginTop: 3 },
-  taskTime: { fontFamily: font.title, fontSize: 9.5, color: C.inkFaint },
-  metaDot: { width: 3, height: 3, borderRadius: 999, backgroundColor: C.lineSwitch },
+  emptyTitle: { fontFamily: font.bold, fontSize: 17, letterSpacing: -0.34, color: C.ink, marginTop: 8 },
+  emptyText: { fontFamily: font.prose, fontSize: 12.5, lineHeight: 19, color: C.inkProse, marginTop: 8 },
+  emptyHint: {
+    backgroundColor: C.tintSoft, borderWidth: 1, borderColor: C.tintLine,
+    borderRadius: R.sm, paddingHorizontal: 13, paddingVertical: 11, marginTop: 14,
+  },
+  emptyHintText: { fontFamily: font.title, fontSize: 12, color: C.accentDeep },
 
-  habHead: { flexDirection: 'row', alignItems: 'center', gap: 7 },
+  habHead: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  habTitle: { flexDirection: 'row', alignItems: 'center', gap: 7, flexShrink: 1 },
   habCount: { fontFamily: font.bold, fontSize: 11, color: C.accent },
+  habEmpty: { fontFamily: font.prose, fontSize: 11.5, lineHeight: 17, color: C.ink4, marginTop: 10 },
   habRow: { flexDirection: 'row', gap: 7, marginTop: 10 },
   habCol: { flexGrow: 1, flexShrink: 1, alignItems: 'center', gap: 5 },
   habLabel: { fontFamily: font.bold, fontSize: 8, color: C.inkFaint },
-
-  hint: { fontFamily: font.prose, fontSize: 11.5, color: C.ink3, marginTop: 12, lineHeight: 17 },
-  toggleLabel: { fontFamily: font.title, fontSize: 13, color: C.ink },
-
-  iconGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
-  iconCell: {
-    width: 44, height: 44, borderRadius: R.sm,
-    alignItems: 'center', justifyContent: 'center', backgroundColor: C.tintSoft,
-  },
-
-  ringSizes: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-around' },
 });

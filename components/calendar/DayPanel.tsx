@@ -9,7 +9,7 @@ import { SectionLabel, ProgressBar } from '../ui';
 import { PlusIcon } from '../icons';
 import { TaskRow } from './TaskRow';
 import { formatDayMonthWeekday } from '../../i18n/kk';
-import type { DayTask } from '../../lib/mock';
+import type { DayTask } from '../../lib/goals';
 
 type Props = {
   date: Date;
