@@ -6,12 +6,19 @@
 --   2. Әдеттер (habits, habit_logs) goals-пен МҮЛДЕ байланыспайды.
 --      Бұл әдейі: әдет — жететін нәтиже емес, күнделікті рефлекс.
 
+-- Файлды қайта іске қосуға болады: бәрі `if not exists` арқылы қорғалған.
+
 create extension if not exists "pgcrypto";
 
-create type goal_level  as enum ('year','stage','month','week','day');
-create type goal_status as enum ('active','done','dropped','paused');
+do $$ begin
+  create type goal_level as enum ('year','stage','month','week','day');
+exception when duplicate_object then null; end $$;
 
-create table profiles (
+do $$ begin
+  create type goal_status as enum ('active','done','dropped','paused');
+exception when duplicate_object then null; end $$;
+
+create table if not exists profiles (
   id           uuid primary key references auth.users on delete cascade,
   display_name text,
   timezone     text default 'Asia/Qyzylorda',
@@ -22,7 +29,7 @@ create table profiles (
   created_at   timestamptz default now()
 );
 
-create table goals (
+create table if not exists goals (
   id            uuid primary key default gen_random_uuid(),
   user_id       uuid not null references auth.users on delete cascade,
   parent_id     uuid references goals(id) on delete cascade,
@@ -44,12 +51,12 @@ create table goals (
   constraint goals_period_order check (period_end >= period_start)
 );
 
-create index on goals(user_id, level, period_start);
-create index on goals(parent_id);
+create index if not exists idx_goals_user_level_start on goals(user_id, level, period_start);
+create index if not exists idx_goals_parent on goals(parent_id);
 -- planned_progress() балаларды period_start бойынша реттеп жүреді
-create index on goals(parent_id, period_start);
+create index if not exists idx_goals_parent_start on goals(parent_id, period_start);
 
-create table reflections (
+create table if not exists reflections (
   id            uuid primary key default gen_random_uuid(),
   user_id       uuid not null references auth.users on delete cascade,
   goal_id       uuid references goals(id) on delete cascade,
@@ -59,13 +66,13 @@ create table reflections (
   created_at    timestamptz default now()
 );
 
-create index on reflections(user_id, created_at desc);
-create index on reflections(goal_id);
+create index if not exists idx_reflections_user_created on reflections(user_id, created_at desc);
+create index if not exists idx_reflections_goal on reflections(goal_id);
 
 -- ── ӘДЕТТЕР ─────────────────────────────────────────────────────────
 -- goals-пен байланыспайды. Пайызға ешқашан қосылмайды.
 
-create table habits (
+create table if not exists habits (
   id          uuid primary key default gen_random_uuid(),
   user_id     uuid not null references auth.users on delete cascade,
   title       text not null,
@@ -76,7 +83,7 @@ create table habits (
   created_at  timestamptz default now()
 );
 
-create table habit_logs (
+create table if not exists habit_logs (
   id       uuid primary key default gen_random_uuid(),
   user_id  uuid not null references auth.users on delete cascade,
   habit_id uuid not null references habits(id) on delete cascade,
@@ -85,11 +92,11 @@ create table habit_logs (
   unique (habit_id, log_date)
 );
 
-create index on habit_logs(user_id, log_date);
+create index if not exists idx_habit_logs_user_date on habit_logs(user_id, log_date);
 
 -- ── ФОКУС ───────────────────────────────────────────────────────────
 
-create table focus_sessions (
+create table if not exists focus_sessions (
   id         uuid primary key default gen_random_uuid(),
   user_id    uuid not null references auth.users on delete cascade,
   goal_id    uuid references goals(id) on delete set null,
@@ -105,12 +112,12 @@ create table focus_sessions (
   constraint focus_target check (num_nonnulls(goal_id, habit_id) <= 1)
 );
 
-create index on focus_sessions(user_id, started_at desc);
-create index on focus_sessions(goal_id);
+create index if not exists idx_focus_user_started on focus_sessions(user_id, started_at desc);
+create index if not exists idx_focus_goal on focus_sessions(goal_id);
 
 -- ── МОТИВАЦИЯ ЖӘНЕ ЖАЗБАЛАР ─────────────────────────────────────────
 
-create table mottos (
+create table if not exists mottos (
   id         uuid primary key default gen_random_uuid(),
   user_id    uuid not null references auth.users on delete cascade,
   text       text not null,
@@ -118,7 +125,7 @@ create table mottos (
   created_at timestamptz default now()
 );
 
-create table notes (
+create table if not exists notes (
   id         uuid primary key default gen_random_uuid(),
   user_id    uuid not null references auth.users on delete cascade,
   title      text,
@@ -133,7 +140,7 @@ create table notes (
   updated_at timestamptz default now()
 );
 
-create index on notes(user_id, updated_at desc);
+create index if not exists idx_notes_user_updated on notes(user_id, updated_at desc);
 
 -- updated_at өзі жаңарсын
 create or replace function touch_updated_at() returns trigger
@@ -143,6 +150,7 @@ begin
   return new;
 end $$;
 
+drop trigger if exists notes_touch on notes;
 create trigger notes_touch before update on notes
   for each row execute function touch_updated_at();
 
@@ -156,5 +164,6 @@ begin
   return new;
 end $$;
 
+drop trigger if exists on_auth_user_created on auth.users;
 create trigger on_auth_user_created after insert on auth.users
   for each row execute function handle_new_user();

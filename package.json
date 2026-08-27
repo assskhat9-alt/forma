@@ -10,6 +10,7 @@
     "web": "expo start --web",
     "typecheck": "tsc --noEmit",
     "test": "node --test lib/*.test.ts",
+    "verify:db": "node scripts/verify-migrations.mjs",
     "check:glyphs": "node scripts/check-glyphs.js"
   },
   "dependencies": {
