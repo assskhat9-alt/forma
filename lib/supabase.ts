@@ -16,16 +16,23 @@ import { Platform } from 'react-native';
 import type { Database, GoalStats } from './database.types';
 
 const url = process.env.EXPO_PUBLIC_SUPABASE_URL;
-const anonKey = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY;
 
-if (!url || !anonKey) {
+// Supabase кілттің екі пішімін қатар ұстайды: ескісі `eyJ…` (anon JWT),
+// жаңасы `sb_publishable_…`. Екеуі де клиент үшін бірдей жұмыс істейді.
+// Expo `process.env.EXPO_PUBLIC_*` өрнегін бандл кезінде мәнге алмастырады,
+// сондықтан екеуі де ашық жазылған — динамикалық оқу жұмыс істемейді.
+const publicKey =
+  process.env.EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY ??
+  process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY;
+
+if (!url || !publicKey) {
   throw new Error(
-    'EXPO_PUBLIC_SUPABASE_URL және EXPO_PUBLIC_SUPABASE_ANON_KEY орнатылмаған. ' +
+    'EXPO_PUBLIC_SUPABASE_URL және EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY орнатылмаған. ' +
       '.env.example файлын .env деп көшіріп, мәндерін толтырыңыз.',
   );
 }
 
-export const supabase = createClient<Database>(url, anonKey, {
+export const supabase = createClient<Database>(url, publicKey, {
   auth: {
     // Вебте AsyncStorage жоқ — localStorage өзі қолданылады
     storage: Platform.OS === 'web' ? undefined : AsyncStorage,
