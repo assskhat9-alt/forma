@@ -1,0 +1,66 @@
+/**
+ * Түбірлік layout — шрифт, кэш, қауіпсіз аймақ.
+ */
+import React, { useEffect } from 'react';
+import { View } from 'react-native';
+import { Stack } from 'expo-router';
+import { StatusBar } from 'expo-status-bar';
+import * as SplashScreen from 'expo-splash-screen';
+import { useFonts } from 'expo-font';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
+import { QueryClientProvider } from '@tanstack/react-query';
+
+import {
+  Onest_400Regular,
+  Onest_500Medium,
+  Onest_600SemiBold,
+  Onest_700Bold,
+  Onest_800ExtraBold,
+} from '@expo-google-fonts/onest';
+import { Montserrat_700Bold, Montserrat_800ExtraBold } from '@expo-google-fonts/montserrat';
+import { Caveat_600SemiBold, Caveat_700Bold } from '@expo-google-fonts/caveat';
+
+import { queryClient } from '../lib/query';
+import { color as C } from '../theme/tokens';
+
+SplashScreen.preventAutoHideAsync().catch(() => {
+  /* splash әлдеқашан жабылған болуы мүмкін — елемейміз */
+});
+
+export default function RootLayout() {
+  const [loaded, error] = useFonts({
+    Onest_400Regular,
+    Onest_500Medium,
+    Onest_600SemiBold,
+    Onest_700Bold,
+    Onest_800ExtraBold,
+    Montserrat_700Bold,
+    Montserrat_800ExtraBold,
+    Caveat_600SemiBold,
+    Caveat_700Bold,
+  });
+
+  useEffect(() => {
+    // Шрифт жүктелмей қалса да қосымшаны бөгеп қоймаймыз —
+    // жүйелік шрифтпен көрсеткен қараңғы экраннан жақсы.
+    if (loaded || error) SplashScreen.hideAsync().catch(() => {});
+  }, [loaded, error]);
+
+  if (!loaded && !error) return null;
+
+  return (
+    <GestureHandlerRootView style={{ flex: 1, backgroundColor: C.bg }}>
+      <SafeAreaProvider>
+        <QueryClientProvider client={queryClient}>
+          <StatusBar style="dark" />
+          <View style={{ flex: 1, backgroundColor: C.bg }}>
+            <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: C.bg } }}>
+              <Stack.Screen name="(tabs)" />
+            </Stack>
+          </View>
+        </QueryClientProvider>
+      </SafeAreaProvider>
+    </GestureHandlerRootView>
+  );
+}
