@@ -43,3 +43,8 @@ yarn-error.*
 # тексеру бандлы
 .expo-export-check/
 
+
+# құпия кілттер
+.env
+.env.local
+

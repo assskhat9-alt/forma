@@ -9,6 +9,7 @@
     "ios": "expo start --ios",
     "web": "expo start --web",
     "typecheck": "tsc --noEmit",
+    "test": "node --test lib/*.test.ts",
     "check:glyphs": "node scripts/check-glyphs.js"
   },
   "dependencies": {
@@ -40,6 +41,7 @@
     "zustand": "^5.0.15"
   },
   "devDependencies": {
+    "@types/node": "^26.4.0",
     "@types/react": "~19.2.2",
     "babel-preset-expo": "^57.0.9",
     "typescript": "~6.0.3"

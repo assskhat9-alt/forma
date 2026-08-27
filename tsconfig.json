@@ -3,6 +3,12 @@
   "compilerOptions": {
     "strict": true,
     "noUncheckedIndexedAccess": false,
+    // node --test типтерді алып тастап тікелей .ts файлын іске қосады,
+    // сондықтан тесттегі импорт нақты кеңейтіммен жазылады.
+    "allowImportingTsExtensions": true,
+    // Expo базасы `customConditions: ["react-native"]` қояды, ол @types/node-ты
+    // автоматты таппай қалады. Тест файлдары `node:test` импорттайды.
+    "types": ["node", "react"],
     "paths": {
       "@/*": ["./*"]
     }
