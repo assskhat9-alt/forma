@@ -14,6 +14,8 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from './supabase';
 import { qk } from './query';
 import { toISODate } from './calendar';
+import { buildPlan, type Curve } from './plan';
+import { monthsUpper } from '../i18n/kk';
 import { color as C } from '../theme/tokens';
 import type { Goal, GoalStats } from './database.types';
 
@@ -191,6 +193,74 @@ export function useToggleTask() {
   });
 }
 
+export type NewGoal = {
+  title: string;
+  start: Date;
+  end: Date;
+  targetAmount: number | null;
+  unit: string | null;
+  curve: Curve;
+};
+
+/**
+ * Жылдық мақсатты ЖӘНЕ оның айлық балаларын құрады.
+ *
+ * ⚠ Айлық балалар — сәндік емес. Дәл солардың `weight` мәні
+ * planned_progress() есебінің негізі болады (CLAUDE.md §5.2).
+ * Баласы жоқ мақсат сызықтық есепке түсіп қалады, ал ол — тыйым
+ * салынған тәртіп.
+ */
+export function useCreateGoal() {
+  const qc = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (g: NewGoal) => {
+      const { data: session } = await supabase.auth.getSession();
+      const userId = session.session?.user.id;
+      if (!userId) throw new Error('Сессия жоқ');
+
+      const { data: parent, error: e1 } = await supabase
+        .from('goals')
+        .insert({
+          user_id: userId,
+          parent_id: null,
+          level: 'year',
+          title: g.title,
+          period_start: toISODate(g.start),
+          period_end: toISODate(g.end),
+          target_amount: g.targetAmount,
+          unit: g.unit,
+        })
+        .select('id')
+        .single();
+      if (e1) throw e1;
+
+      const buckets = buildPlan(g.start, g.end, g.targetAmount ?? 100, g.curve);
+
+      const children = buckets.map((b, i) => ({
+        user_id: userId,
+        parent_id: parent.id,
+        level: 'month' as const,
+        title: `${monthsUpper[b.monthIndex]!.charAt(0)}${monthsUpper[b.monthIndex]!.slice(1).toLowerCase()} ${b.year}`,
+        period_start: toISODate(b.start),
+        period_end: toISODate(b.end),
+        weight: b.weight,
+        target_amount: g.targetAmount == null ? null : b.amount,
+        unit: g.unit,
+        sort_order: i,
+      }));
+
+      if (children.length > 0) {
+        const { error: e2 } = await supabase.from('goals').insert(children);
+        if (e2) throw e2;
+      }
+
+      return parent.id as string;
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: qk.goals.all }),
+  });
+}
+
 export type NewTask = {
   title: string;
   date: Date;
@@ -290,6 +360,78 @@ export function useLevelBars(date: Date) {
       );
       return rows.filter(Boolean) as LevelBar[];
     },
+  });
+}
+
+export type GoalWithStats = {
+  goal: Goal;
+  color: string;
+  actual: number;
+  planned: number;
+  gap: number;
+};
+
+/**
+ * Жылдық мақсаттар және олардың пайызы.
+ *
+ * Пайыз goal_stats() RPC-інен келеді — клиентте есептелмейді (§5.1).
+ * Жеке қосымшада жылдық мақсат саны онға жетпейді, сондықтан
+ * әрқайсысына бір сұрау жіберу қалыпты.
+ */
+export function useYearGoalsWithStats(onDate: Date) {
+  const { data: goals } = useGoals();
+  const iso = toISODate(onDate);
+  const colors = colorMap(goals ?? []);
+
+  const years = (goals ?? []).filter(
+    (g) => g.level === 'year' && g.status !== 'dropped',
+  );
+  const ids = years.map((g) => g.id).join(',');
+
+  return useQuery({
+    queryKey: ['yearGoals', iso, ids],
+    enabled: years.length > 0,
+    queryFn: async (): Promise<GoalWithStats[]> =>
+      Promise.all(
+        years.map(async (g) => {
+          const { data, error } = await supabase.rpc('goal_stats', {
+            p_goal_id: g.id,
+            p_on_date: iso,
+          });
+          if (error) throw error;
+          const s = Array.isArray(data) ? data[0] : (data as GoalStats | null);
+          return {
+            goal: g,
+            color: colors.get(g.id) ?? C.accent,
+            actual: Math.round(s?.actual ?? 0),
+            planned: Math.round(s?.planned ?? 0),
+            gap: Math.round(s?.gap ?? 0),
+          };
+        }),
+      ),
+  });
+}
+
+/** Ашылған мақсаттың айлық балалары мен олардың пайызы */
+export function useChildStats(parentId: string | null, onDate: Date) {
+  const { data: goals } = useGoals();
+  const iso = toISODate(onDate);
+
+  const children = (goals ?? [])
+    .filter((g) => g.parent_id === parentId && g.status !== 'dropped')
+    .sort((a, b) => a.period_start.localeCompare(b.period_start));
+
+  return useQuery({
+    queryKey: ['childStats', parentId ?? 'none', iso],
+    enabled: !!parentId && children.length > 0,
+    queryFn: async () =>
+      Promise.all(
+        children.map(async (g) => {
+          const { data, error } = await supabase.rpc('progress', { p_goal_id: g.id });
+          if (error) throw error;
+          return { goal: g, pct: Math.round(Number(data) || 0) };
+        }),
+      ),
   });
 }
 
