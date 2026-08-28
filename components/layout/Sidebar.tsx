@@ -41,8 +41,6 @@ const ITEM_GAP = 3;
  */
 const PLAN_ITEMS: Item[] = [
   { name: kk.nav.today, href: '/', pct: 40 },
-  { name: kk.nav.week, href: '/week', pct: 62 },
-  { name: kk.nav.month, href: '/month', pct: 55 },
   { name: kk.nav.year, href: '/goals', pct: 42 },
 ];
 
