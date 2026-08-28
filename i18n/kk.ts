@@ -77,6 +77,7 @@ export const kk = {
     month: 'Ай',
     year: 'Жыл',
     archive: 'Архив',
+    focus: 'Фокус',
     time: 'Уақыт есебі',
     notes: 'Менің ойларым',
     deadlines: 'Мерзімдер',

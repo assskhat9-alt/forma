@@ -36,16 +36,18 @@ const ITEM_H = 38;
 const ITEM_GAP = 3;
 
 /**
- * ⚠ Пайыздар уақытша — 1-фазада progress() RPC-тен келеді.
- * Мәндер Planshet.dc.html макетінен алынған.
+ * ⚠ Мұнда пайыз КӨРСЕТІЛМЕЙДІ. Макетте сандар тұрған, бірақ олар
+ * иллюстрация еді. Бүйір мәзір — навигация, есеп тақтасы емес:
+ * жалған сан көрсеткеннен ештеңе көрсетпеген артық.
  */
 const PLAN_ITEMS: Item[] = [
-  { name: kk.nav.today, href: '/', pct: 40 },
-  { name: kk.nav.year, href: '/goals', pct: 42 },
+  { name: kk.nav.today, href: '/' },
+  { name: kk.nav.year, href: '/goals' },
 ];
 
 const TOOL_ITEMS: Item[] = [
   { name: kk.nav.calendar, href: '/calendar' },
+  { name: kk.nav.focus, href: '/focus' },
   { name: kk.nav.profile, href: '/profile' },
 ];
 
