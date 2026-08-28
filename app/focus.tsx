@@ -43,6 +43,14 @@ export default function FocusScreen() {
   const [customOpen, setCustomOpen] = useState(false);
   const [customText, setCustomText] = useState('');
   const [completing, setCompleting] = useState(false);
+  /**
+   * Жабу екі рет басуды талап етеді.
+   *
+   * ⚠ Бұрын карточканың ішінде толық енді «Орындалды» түймесі тұрған да,
+   * тапсырманы ТАҢДАУ мен ЖАБУ шатасатын: бір басқанда тапсырма бітті
+   * болып кететін. Таңдағаннан кейінгі келесі қадам — уақыт қою, жабу емес.
+   */
+  const [confirmDone, setConfirmDone] = useState(false);
 
   // Бүгінгі әрекеттер — таймердің ішінен таңдау үшін
   const { tasks: todayTasks } = useDayTasks(new Date());
@@ -67,6 +75,9 @@ export default function FocusScreen() {
   useEffect(() => {
     if (task) store.attach(task.id, task.title);
   }, [task?.id]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Тапсырма ауысса растау күйі де тазарады
+  useEffect(() => setConfirmDone(false), [store.taskId]);
 
   const totalMs = store.presetMinutes * 60_000;
   const elapsed = store.elapsedMs(Date.now());
@@ -183,18 +194,31 @@ export default function FocusScreen() {
               </View>
             )}
 
+            {/*
+              Таңдалғаннан кейінгі келесі қадам — УАҚЫТ ҚОЮ. Сондықтан
+              мұнда нұсқау тұрады, ал жабу — астындағы кіші сілтеме.
+            */}
+            <Text style={styles.nextStep}>{kk.focus.nextStep}</Text>
+
             <Pressable
-              onPress={complete}
+              onPress={() => (confirmDone ? void complete() : setConfirmDone(true))}
               disabled={completing}
-              style={[styles.doneBtn, completing && { opacity: 0.6 }]}
+              style={styles.closeLink}
+              hitSlop={6}
               accessibilityRole="button"
             >
               {completing ? (
-                <ActivityIndicator color={C.accentOnDark} />
+                <ActivityIndicator color={C.darkInk3} size="small" />
               ) : (
                 <>
-                  <CheckIcon size={14} color={C.accentOnDark} strokeWidth={3} />
-                  <Text style={styles.doneText}>{kk.focus.markDone}</Text>
+                  <CheckIcon
+                    size={12}
+                    color={confirmDone ? C.accentOnDark : C.darkInk3}
+                    strokeWidth={3}
+                  />
+                  <Text style={[styles.closeText, confirmDone && styles.closeTextOn]}>
+                    {confirmDone ? kk.focus.closeConfirm : kk.focus.closeTask}
+                  </Text>
                 </>
               )}
             </Pressable>
@@ -261,7 +285,9 @@ export default function FocusScreen() {
                 ? kk.focus.overtime
                 : store.running
                   ? kk.focus.running
-                  : kk.focus.paused}
+                  : elapsed > 0
+                    ? kk.focus.paused
+                    : kk.focus.ready}
             </Text>
             <View style={styles.pctRow}>
               <View style={styles.pctDot} />
@@ -477,12 +503,22 @@ const styles = StyleSheet.create({
   pickTitle: { fontFamily: font.title, fontSize: 13, color: '#FFFFFF' },
   pickMeta: { fontFamily: font.body, fontSize: 10.5, color: C.darkInk3, marginTop: 2 },
 
-  doneBtn: {
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 7,
-    marginTop: 13, paddingVertical: 11, borderRadius: R.sm,
-    backgroundColor: 'rgba(122,108,240,0.16)',
+  nextStep: {
+    fontFamily: font.body, fontSize: 11.5, lineHeight: 17,
+    color: C.darkInk2, marginTop: 12,
   },
-  doneText: { fontFamily: font.bold, fontSize: 12.5, color: C.accentOnDark },
+  /**
+   * Жабу — сілтеме, түйме емес. Толық енді басылатын түйме болса
+   * тапсырманы таңдаумен шатасады (солай болған да).
+   */
+  closeLink: {
+    flexDirection: 'row', alignItems: 'center', gap: 7,
+    alignSelf: 'flex-start', marginTop: 12,
+    paddingVertical: 6, paddingHorizontal: 10, marginHorizontal: -10,
+    borderRadius: R.chipSm,
+  },
+  closeText: { fontFamily: font.bold, fontSize: 11.5, color: C.darkInk3 },
+  closeTextOn: { color: C.accentOnDark },
 
   ringWrap: { alignItems: 'center', justifyContent: 'center', marginTop: 26 },
   ringCenter: {
