@@ -1,13 +1,17 @@
 /**
- * Мақсаттар мен тапсырмалардың дерек қабаты.
+ * Мақсаттар мен әрекеттердің дерек қабаты.
  *
- * Барлық сұрау react-query арқылы (CLAUDE.md §9). Чекбокс басылғанда
- * optimistic update — желі жауабы күтілмейді.
+ * НЕГІЗГІ ҰСТАНЫМ:
+ *   Автоматты болатыны — УАҚЫТ ҚАҢҚАСЫ (айлар, апталар).
+ *   Қолмен болатыны   — оның ІШІНДЕГІ МАЗМҰН (әрекеттер).
  *
- * ⚠ Пайызды клиентте ҚАЙТА ЕСЕПТЕМЕЙМІЗ (§5.1). Деңгей пайыздары
- * `goal_stats()` RPC-інен келеді. Тек күндік сақина ғана клиентте
- * саналады — ол «бүгінгі тапсырмалардың нешеуі орындалды» дегенді
- * білдіреді, каскадтың бір бөлігі емес.
+ * Жүйе жүктемені ешқашан өзі шешпейді. Айларды `sync_months()`,
+ * апталарды `sync_weeks()` ашады — екеуі де Postgres жағында, сондықтан
+ * қаңқа мен мерзім әрқашан сәйкес тұрады.
+ *
+ * ⚠ Пайызды клиентте ҚАЙТА ЕСЕПТЕМЕЙМІЗ. Ол `progress()` пен
+ * `planned_progress()` RPC-інен келеді. Салмақ жоқ: пайыз әрекет
+ * САНЫМЕН есептеледі, көп әрекет тұрған ай үлесті өзі көп алады.
  */
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
@@ -15,9 +19,9 @@ import { supabase } from './supabase';
 import { qk } from './query';
 import { toISODate } from './calendar';
 import { color as C } from '../theme/tokens';
-import type { Goal, GoalStats, GoalLevel } from './database.types';
+import type { Goal, GoalStats } from './database.types';
 
-/** Тамырдағы жылдық мақсаттарға берілетін түс шкаласы */
+/** Жылдық мақсаттарға берілетін түс шкаласы */
 const SHADES = [C.accent, C.accent2, C.accent3, C.accent4, C.accent5];
 
 export type GoalRef = { id: string; title: string; color: string };
@@ -40,10 +44,6 @@ export type DayLoad = {
 // ─────────────────────────────────────────────────────────────────────
 // Барлық мақсат — бір сұрауда
 // ─────────────────────────────────────────────────────────────────────
-//
-// Жеке қосымшада мақсат саны жүзден аспайды, сондықтан бәрін бір рет
-// алып, ағашты клиентте құру серверге әр карточка үшін сұрау жіберуден
-// әлдеқайда арзан.
 
 async function fetchGoals(): Promise<Goal[]> {
   const { data, error } = await supabase
@@ -59,7 +59,7 @@ export function useGoals() {
   return useQuery({ queryKey: qk.goals.all, queryFn: fetchGoals });
 }
 
-/** Тапсырманың тамырдағы жылдық мақсатын табады */
+/** Әрекеттің тамырдағы жылдық мақсатын табады */
 function rootOf(goal: Goal, byId: Map<string, Goal>): Goal {
   let cur = goal;
   const seen = new Set<string>();
@@ -72,7 +72,6 @@ function rootOf(goal: Goal, byId: Map<string, Goal>): Goal {
   return cur;
 }
 
-/** Тамырдағы мақсаттарға тұрақты түс береді — реті бойынша */
 function colorMap(goals: Goal[]): Map<string, string> {
   const roots = goals
     .filter((g) => !g.parent_id)
@@ -90,10 +89,7 @@ function timeOf(g: Goal): string | null {
   return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
 }
 
-/**
- * Күндік тапсырмаларды дайын түрде қайтарады.
- * Барлық мақсат бір рет жүктелгендіктен қосымша сұрау жіберілмейді.
- */
+/** Бір күнге жоспарланған әрекеттер */
 export function useDayTasks(date: Date) {
   const { data: goals, ...rest } = useGoals();
   const iso = toISODate(date);
@@ -109,7 +105,10 @@ export function useDayTasks(date: Date) {
         id: g.id,
         title: g.title,
         time: timeOf(g),
-        goal: root.id === g.id ? null : { id: root.id, title: root.title, color: colors.get(root.id) ?? C.accent },
+        goal:
+          root.id === g.id
+            ? null
+            : { id: root.id, title: root.title, color: colors.get(root.id) ?? C.accent },
         done: g.status === 'done',
       };
     })
@@ -118,7 +117,7 @@ export function useDayTasks(date: Date) {
   return { tasks, goals: goals ?? [], ...rest };
 }
 
-/** Календарь ұяшығының жүктемесін есептейтін функция қайтарады */
+/** Календарь ұяшығының жүктемесі */
 export function useLoadOf() {
   const { data: goals } = useGoals();
   const byId = new Map((goals ?? []).map((g) => [g.id, g]));
@@ -138,7 +137,7 @@ export function useLoadOf() {
   return (d: Date) => byDate.get(toISODate(d)) ?? null;
 }
 
-/** Тамырдағы жылдық мақсаттар — «Қай мақсатқа жатады» тізімі үшін */
+/** Жылдық мақсаттар — «Қай мақсатқа жатады» тізімі үшін */
 export function useRootGoals(): GoalRef[] {
   const { data: goals } = useGoals();
   const colors = colorMap(goals ?? []);
@@ -148,10 +147,181 @@ export function useRootGoals(): GoalRef[] {
 }
 
 // ─────────────────────────────────────────────────────────────────────
+// УАҚЫТ ҚАҢҚАСЫ — жүйе ашады, адам тимейді
+// ─────────────────────────────────────────────────────────────────────
+
+/** Мақсаттың айлары. Оларды `sync_months()` триггері өзі ашқан. */
+export function useMonths(goalId: string | null): Goal[] {
+  const { data: goals } = useGoals();
+  if (!goalId) return [];
+  return (goals ?? [])
+    .filter((g) => g.parent_id === goalId && g.level === 'month' && g.status !== 'dropped')
+    .sort((a, b) => a.period_start.localeCompare(b.period_start));
+}
+
+/**
+ * Айдың апталары.
+ *
+ * Апталар айға КІРГЕНДЕ ашылады — сондықтан хук `sync_weeks()` RPC-ін
+ * бір рет шақырып, сосын тізімді қайтарады.
+ */
+export function useWeeks(monthId: string | null) {
+  const qc = useQueryClient();
+  const { data: goals } = useGoals();
+
+  const sync = useQuery({
+    queryKey: ['syncWeeks', monthId ?? 'none'],
+    enabled: !!monthId,
+    staleTime: Infinity,
+    queryFn: async () => {
+      const { data, error } = await supabase.rpc('sync_weeks', { p_month_id: monthId! });
+      if (error) throw error;
+      // Жаңа апталар қосылса — тізімді жаңартамыз
+      if (typeof data === 'number' && data > 0) {
+        await qc.invalidateQueries({ queryKey: qk.goals.all });
+      }
+      return data ?? 0;
+    },
+  });
+
+  const weeks = (goals ?? [])
+    .filter((g) => g.parent_id === monthId && g.level === 'week' && g.status !== 'dropped')
+    .sort((a, b) => a.period_start.localeCompare(b.period_start));
+
+  return { weeks, isSyncing: sync.isPending };
+}
+
+/** Бір контейнердің тікелей әрекеттері */
+export function useActions(parentId: string | null): Goal[] {
+  const { data: goals } = useGoals();
+  if (!parentId) return [];
+  return (goals ?? [])
+    .filter((g) => g.parent_id === parentId && g.level === 'day' && g.status !== 'dropped')
+    .sort((a, b) => a.period_start.localeCompare(b.period_start));
+}
+
+// ─────────────────────────────────────────────────────────────────────
+// Пайыз — тек серверден
+// ─────────────────────────────────────────────────────────────────────
+
+export type NodeStats = {
+  goal: Goal;
+  color: string;
+  /** Нақты орындалу, 0–100 */
+  actual: number;
+  /** «Керек еді» — уақыт емес, жоспар бойынша */
+  planned: number;
+  gap: number;
+  /** Әрекет саны */
+  total: number;
+  done: number;
+};
+
+async function statsFor(goal: Goal, iso: string, color: string): Promise<NodeStats> {
+  const [{ data: s, error: e1 }, { data: c, error: e2 }] = await Promise.all([
+    supabase.rpc('goal_stats', { p_goal_id: goal.id, p_on_date: iso }),
+    supabase.rpc('action_counts', { p_goal_id: goal.id }),
+  ]);
+  if (e1) throw e1;
+  if (e2) throw e2;
+
+  const stat = (Array.isArray(s) ? s[0] : (s as GoalStats | null)) ?? {
+    actual: 0,
+    planned: 0,
+    gap: 0,
+  };
+  const cnt = (Array.isArray(c) ? c[0] : c) as { total: number; done: number } | null;
+
+  return {
+    goal,
+    color,
+    actual: Math.round(stat.actual ?? 0),
+    planned: Math.round(stat.planned ?? 0),
+    gap: Math.round(stat.gap ?? 0),
+    total: cnt?.total ?? 0,
+    done: cnt?.done ?? 0,
+  };
+}
+
+/** Жылдық мақсаттар және олардың пайызы */
+export function useYearGoalsWithStats(onDate: Date) {
+  const { data: goals } = useGoals();
+  const iso = toISODate(onDate);
+  const colors = colorMap(goals ?? []);
+
+  const years = (goals ?? []).filter((g) => g.level === 'year' && g.status !== 'dropped');
+  const ids = years.map((g) => g.id).join(',');
+
+  return useQuery({
+    queryKey: ['yearStats', iso, ids],
+    enabled: years.length > 0,
+    queryFn: () =>
+      Promise.all(years.map((g) => statsFor(g, iso, colors.get(g.id) ?? C.accent))),
+  });
+}
+
+/** Бір түйіннің пайызы — мақсат немесе ай беті үшін */
+export function useNodeStats(goalId: string | null, onDate: Date) {
+  const { data: goals } = useGoals();
+  const iso = toISODate(onDate);
+  const goal = (goals ?? []).find((g) => g.id === goalId) ?? null;
+  const colors = colorMap(goals ?? []);
+
+  return useQuery({
+    queryKey: ['nodeStats', goalId ?? 'none', iso],
+    enabled: !!goal,
+    queryFn: () => statsFor(goal!, iso, colors.get(goal!.id) ?? C.accent),
+  });
+}
+
+/**
+ * Бүгінгі күнді қамтитын апта, ай және жыл — Бүгін экранының жолақтары.
+ * Қаңқа жүйе ашқандықтан бұл түйіндер әрқашан табылады.
+ */
+export function useTodayLevels(date: Date) {
+  const { data: goals } = useGoals();
+  const iso = toISODate(date);
+
+  const covering = (level: Goal['level']) =>
+    (goals ?? []).find(
+      (g) =>
+        g.level === level &&
+        g.period_start <= iso &&
+        g.period_end >= iso &&
+        g.status !== 'dropped',
+    ) ?? null;
+
+  const week = covering('week');
+  const month = covering('month');
+  const year = covering('year');
+  const nodes = [week, month, year].filter(Boolean) as Goal[];
+  const shades = [C.accent, C.accent3, C.accent5];
+
+  return useQuery({
+    queryKey: ['todayLevels', iso, nodes.map((n) => n.id).join(',')],
+    enabled: nodes.length > 0,
+    queryFn: () =>
+      Promise.all(nodes.map((g, i) => statsFor(g, iso, shades[i] ?? C.accent))),
+  });
+}
+
+/** Балалардың (ай не апта) пайызы — тізімде көрсету үшін */
+export function useChildrenStats(children: Goal[], onDate: Date) {
+  const iso = toISODate(onDate);
+  const ids = children.map((g) => g.id).join(',');
+
+  return useQuery({
+    queryKey: ['childrenStats', ids, iso],
+    enabled: children.length > 0,
+    queryFn: () => Promise.all(children.map((g) => statsFor(g, iso, C.accent))),
+  });
+}
+
+// ─────────────────────────────────────────────────────────────────────
 // Мутациялар
 // ─────────────────────────────────────────────────────────────────────
 
-/** Чекбокс — optimistic update, желі жауабын күтпейді (§9) */
+/** Чекбокс — optimistic update, желі жауабын күтпейді */
 export function useToggleTask() {
   const qc = useQueryClient();
 
@@ -170,18 +340,13 @@ export function useToggleTask() {
     onMutate: async ({ id, done }) => {
       await qc.cancelQueries({ queryKey: qk.goals.all });
       const prev = qc.getQueryData<Goal[]>(qk.goals.all);
-
       qc.setQueryData<Goal[]>(qk.goals.all, (old) =>
-        (old ?? []).map((g) =>
-          g.id === id ? { ...g, status: done ? 'done' : 'active' } : g,
-        ),
+        (old ?? []).map((g) => (g.id === id ? { ...g, status: done ? 'done' : 'active' } : g)),
       );
-
       return { prev };
     },
 
     onError: (_e, _v, ctx) => {
-      // Желі құласа — бұрынғы күйге қайтарамыз
       if (ctx?.prev) qc.setQueryData(qk.goals.all, ctx.prev);
     },
 
@@ -195,21 +360,18 @@ export type NewGoal = {
   title: string;
   start: Date;
   end: Date;
-  /** НӘТИЖЕ — міндетті емес, пайызға қатыспайды */
+  /** НӘТИЖЕ — міндетті емес, пайызға ҚАТЫСПАЙДЫ */
   resultFrom?: number | null;
   resultTo?: number | null;
   resultUnit?: string | null;
 };
 
 /**
- * Жылдық мақсатты құрады — ТЕК ОНЫ.
+ * Жылдық мақсат құрады.
  *
- * ⚠ CLAUDE.md §5.2a: ЖҮЙЕ ЖОСПАРДЫ ӨЗІ ҚҰРМАЙДЫ. Бұрын мұнда айлық
- * балалар автоматты жасалатын — жүйе мерзім мен көлемнен қарқынды өзі
- * шығаратын. Ол алынып тасталды: кезеңдерді адам өзі қосады.
- *
- * §5.2b: жылдық форма ҚЫСҚА — көлем мен ырғақ өрістері онда мүлде жоқ.
- * «80 сабақ» деген сан кейін, кезеңге бөлген кезде туады.
+ * Айларды бұл жерде ҚҰРМАЙМЫЗ — оны Postgres триггері (`sync_months`)
+ * жазба сақталған сәтте өзі істейді. Сондықтан қаңқа мен мерзім
+ * ешқашан алшақтап кетпейді.
  */
 export function useCreateGoal() {
   const qc = useQueryClient();
@@ -229,7 +391,6 @@ export function useCreateGoal() {
           title: g.title,
           period_start: toISODate(g.start),
           period_end: toISODate(g.end),
-          // Нәтиже тек тамырдағы мақсатта тұрады — ол бөлінбейді
           result_from: g.resultFrom ?? null,
           result_to: g.resultTo ?? null,
           result_unit: g.resultUnit ?? null,
@@ -244,266 +405,73 @@ export function useCreateGoal() {
   });
 }
 
-export type NewStage = {
+export type NewAction = {
+  /** Қай контейнерге — ай не апта */
   parentId: string;
-  /** 'stage' немесе 'month' */
-  level: Extract<GoalLevel, 'stage' | 'month'>;
-  title: string;
-  start: Date;
-  end: Date;
-  /** ӘРЕКЕТ — пайыз ТЕК осыдан есептеледі */
-  targetAmount: number;
-  unit: string | null;
-  /** ЫРҒАҚ — адам қояды, жүйе есептемейді */
-  perWeek: number | null;
-  /** ISO апта күндері 1..7 */
-  weekDays: number[] | null;
-  /** Ата-ана ішіндегі салмағы. Берілмесе 1 — бәрі тең. */
-  weight?: number;
-};
-
-/**
- * Кезең немесе ай қосады.
- *
- * Дәл осы жолдардың `weight` мәні planned_progress() есебінің негізі
- * болады (CLAUDE.md §5.2). Салмақ берілмесе бәрі тең — жүйе өз бетінше
- * «мына кезең маңыздырақ» деп шешпейді.
- */
-export function useCreateStage() {
-  const qc = useQueryClient();
-
-  return useMutation({
-    mutationFn: async (s: NewStage) => {
-      const { data: session } = await supabase.auth.getSession();
-      const userId = session.session?.user.id;
-      if (!userId) throw new Error('Сессия жоқ');
-
-      const { data: created, error } = await supabase
-        .from('goals')
-        .insert({
-          user_id: userId,
-          parent_id: s.parentId,
-          level: s.level,
-          title: s.title,
-          period_start: toISODate(s.start),
-          period_end: toISODate(s.end),
-          target_amount: s.targetAmount,
-          unit: s.unit,
-          per_week: s.perWeek,
-          week_days: s.weekDays && s.weekDays.length > 0 ? s.weekDays : null,
-          weight: s.weight ?? 1,
-        })
-        .select('id')
-        .single();
-      if (error) throw error;
-
-      return created.id as string;
-    },
-    onSuccess: () => qc.invalidateQueries({ queryKey: qk.goals.all }),
-  });
-}
-
-/**
- * Мақсаттың балалары бар ма.
- *
- * ⚠ §5.2b: балалары жоқ жылдық мақсат 0% КӨРСЕТПЕЙДІ — ол қорқытады
- * әрі жалған. Оның орнына «Бөлінбеген» күйі шығады.
- */
-export function useHasChildren(goalId: string | null): boolean {
-  const { data: goals } = useGoals();
-  if (!goalId) return false;
-  return (goals ?? []).some((g) => g.parent_id === goalId && g.status !== 'dropped');
-}
-
-export type NewTask = {
   title: string;
   date: Date;
   /** `HH:MM` немесе null */
   time: string | null;
-  parentId: string | null;
+  /** Неше рет қайталансын: 1 = бір рет */
+  repeatWeeks?: number;
 };
 
-export function useCreateTask() {
+/**
+ * ӘРЕКЕТ қосады — жүйедегі жалғыз қолмен енгізілетін нәрсе.
+ *
+ * «Көлем» деген бөлек өріс жоқ: көлем дегеніміз — осылайша қосылған
+ * әрекеттердің саны.
+ */
+export function useCreateAction() {
   const qc = useQueryClient();
 
   return useMutation({
-    mutationFn: async (t: NewTask) => {
+    mutationFn: async (a: NewAction) => {
       const { data: session } = await supabase.auth.getSession();
       const userId = session.session?.user.id;
       if (!userId) throw new Error('Сессия жоқ');
 
-      const iso = toISODate(t.date);
-      let scheduled: string | null = null;
-      if (t.time) {
-        const [h, m] = t.time.split(':').map(Number);
-        const dt = new Date(t.date);
-        dt.setHours(h ?? 0, m ?? 0, 0, 0);
-        scheduled = dt.toISOString();
+      const repeats = Math.max(a.repeatWeeks ?? 1, 1);
+      const rows = [];
+
+      for (let i = 0; i < repeats; i++) {
+        const d = new Date(a.date);
+        d.setDate(d.getDate() + i * 7);
+        const iso = toISODate(d);
+
+        let scheduled: string | null = null;
+        if (a.time) {
+          const [h, m] = a.time.split(':').map(Number);
+          const dt = new Date(d);
+          dt.setHours(h ?? 0, m ?? 0, 0, 0);
+          scheduled = dt.toISOString();
+        }
+
+        rows.push({
+          user_id: userId,
+          parent_id: a.parentId,
+          level: 'day' as const,
+          title: a.title,
+          period_start: iso,
+          period_end: iso,
+          scheduled_at: scheduled,
+        });
       }
 
-      const { error } = await supabase.from('goals').insert({
-        user_id: userId,
-        parent_id: t.parentId,
-        level: 'day',
-        title: t.title,
-        period_start: iso,
-        period_end: iso,
-        scheduled_at: scheduled,
-      });
+      const { error } = await supabase.from('goals').insert(rows);
       if (error) throw error;
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: qk.goals.all }),
   });
 }
 
-// ─────────────────────────────────────────────────────────────────────
-// Пайыздар — тек серверден
-// ─────────────────────────────────────────────────────────────────────
-
-export type LevelBar = {
-  id: string;
-  /** «Апта» · «Тамыз» · «2026 жыл» */
-  name: string;
-  pct: number;
-  color: string;
-};
-
-/**
- * Бүгінгі күнді қамтитын апта, ай және жыл мақсаттарының пайызы.
- *
- * Үш RPC бір сұрауда — әр карточка үшін бөлек шақыру жіберілмейді.
- * Пайыз серверде есептеледі (§5.1).
- */
-export function useLevelBars(date: Date) {
-  const { data: goals } = useGoals();
-  const iso = toISODate(date);
-
-  // Бүгінді қамтитын әр деңгейден біреуі
-  const covering = (level: Goal['level']) =>
-    (goals ?? []).find(
-      (g) => g.level === level && g.period_start <= iso && g.period_end >= iso && g.status !== 'dropped',
-    ) ?? null;
-
-  const week = covering('week');
-  const month = covering('month');
-  const year = covering('year');
-  const ids = [week, month, year].filter(Boolean).map((g) => g!.id);
-
-  const shades = [C.accent, C.accent3, C.accent5];
-
-  return useQuery({
-    queryKey: ['levelBars', iso, ids.join(',')],
-    enabled: ids.length > 0,
-    queryFn: async (): Promise<LevelBar[]> => {
-      const rows = await Promise.all(
-        [week, month, year].map(async (g, i) => {
-          if (!g) return null;
-          const { data, error } = await supabase.rpc('goal_stats', {
-            p_goal_id: g.id,
-            p_on_date: iso,
-          });
-          if (error) throw error;
-          const stat = Array.isArray(data) ? data[0] : (data as GoalStats | null);
-          return {
-            id: g.id,
-            name: g.title,
-            pct: Math.round(stat?.actual ?? 0),
-            color: shades[i]!,
-          };
-        }),
-      );
-      return rows.filter(Boolean) as LevelBar[];
-    },
-  });
-}
-
-export type GoalWithStats = {
-  goal: Goal;
-  color: string;
-  actual: number;
-  planned: number;
-  gap: number;
-};
-
-/**
- * Жылдық мақсаттар және олардың пайызы.
- *
- * Пайыз goal_stats() RPC-інен келеді — клиентте есептелмейді (§5.1).
- * Жеке қосымшада жылдық мақсат саны онға жетпейді, сондықтан
- * әрқайсысына бір сұрау жіберу қалыпты.
- */
-export function useYearGoalsWithStats(onDate: Date) {
-  const { data: goals } = useGoals();
-  const iso = toISODate(onDate);
-  const colors = colorMap(goals ?? []);
-
-  const years = (goals ?? []).filter(
-    (g) => g.level === 'year' && g.status !== 'dropped',
-  );
-  const ids = years.map((g) => g.id).join(',');
-
-  return useQuery({
-    queryKey: ['yearGoals', iso, ids],
-    enabled: years.length > 0,
-    queryFn: async (): Promise<GoalWithStats[]> =>
-      Promise.all(
-        years.map(async (g) => {
-          const { data, error } = await supabase.rpc('goal_stats', {
-            p_goal_id: g.id,
-            p_on_date: iso,
-          });
-          if (error) throw error;
-          const s = Array.isArray(data) ? data[0] : (data as GoalStats | null);
-          return {
-            goal: g,
-            color: colors.get(g.id) ?? C.accent,
-            actual: Math.round(s?.actual ?? 0),
-            planned: Math.round(s?.planned ?? 0),
-            gap: Math.round(s?.gap ?? 0),
-          };
-        }),
-      ),
-  });
-}
-
-/** Ашылған мақсаттың айлық балалары мен олардың пайызы */
-export function useChildStats(parentId: string | null, onDate: Date) {
-  const { data: goals } = useGoals();
-  const iso = toISODate(onDate);
-
-  const children = (goals ?? [])
-    .filter((g) => g.parent_id === parentId && g.status !== 'dropped')
-    .sort((a, b) => a.period_start.localeCompare(b.period_start));
-
-  return useQuery({
-    queryKey: ['childStats', parentId ?? 'none', iso],
-    enabled: !!parentId && children.length > 0,
-    queryFn: async () =>
-      Promise.all(
-        children.map(async (g) => {
-          const { data, error } = await supabase.rpc('progress', { p_goal_id: g.id });
-          if (error) throw error;
-          return { goal: g, pct: Math.round(Number(data) || 0) };
-        }),
-      ),
-  });
-}
-
-/** goal_stats() RPC: нақты орындалу, «керек еді» және айырма */
-export function useGoalStats(goalId: string | null, onDate?: Date) {
-  const iso = onDate ? toISODate(onDate) : undefined;
-
-  return useQuery({
-    queryKey: qk.goals.progress(goalId ?? 'none'),
-    enabled: !!goalId,
-    queryFn: async (): Promise<GoalStats> => {
-      const { data, error } = await supabase.rpc('goal_stats', {
-        p_goal_id: goalId!,
-        ...(iso ? { p_on_date: iso } : {}),
-      });
+export function useDeleteAction() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase.from('goals').delete().eq('id', id);
       if (error) throw error;
-      const row = Array.isArray(data) ? data[0] : (data as GoalStats | null);
-      return row ?? { actual: 0, planned: 0, gap: 0 };
     },
+    onSuccess: () => qc.invalidateQueries({ queryKey: qk.goals.all }),
   });
 }

@@ -43,11 +43,10 @@ export default function NewGoalScreen() {
 
   // Нәтиже — А нүктесі мен Б нүктесі. Мәтін күйінде сақталады:
   // «84,2» деп үтірмен жазуға да болады.
-  // ⚠ Бірлік өрісі әдейі ЖОҚ: «жүргізуші куәлігін алу» деген мақсаттың
-  // нәтижесі кг да, теңге де емес. Бір өріс бүкіл мақсатты өлшемге
-  // мәжбүрлемеуі керек.
+  // Үшеуі де міндетті емес — бос қалдыруға болады.
   const [resultFrom, setResultFrom] = useState('');
   const [resultTo, setResultTo] = useState('');
+  const [resultUnit, setResultUnit] = useState('');
 
   const [error, setError] = useState<string | null>(null);
   const create = useCreateGoal();
@@ -90,10 +89,11 @@ export default function NewGoalScreen() {
         end,
         resultFrom: parseDecimal(resultFrom),
         resultTo: parseDecimal(resultTo),
+        resultUnit: resultUnit.trim() || null,
       },
       {
-        // Құрылған соң бірден мақсат бетіне — ол жерде «Бөлінбеген»
-        // күйі мен «+ Кезең қосу» батырмасы тұрады
+        // Сақталған сәтте Postgres триггері айларды өзі ашады,
+        // сондықтан мақсат беті бірден толық тізіммен ашылады
         onSuccess: (id) => router.replace(`/goal/${id}` as never),
         onError: (e) => setError(errorText(e)),
       },
@@ -214,6 +214,17 @@ export default function NewGoalScreen() {
                 placeholderTextColor={C.ink4}
                 keyboardType="decimal-pad"
                 inputMode="decimal"
+                style={styles.resultInput}
+              />
+            </View>
+
+            <View style={[styles.resultCell, { flexGrow: 0.7 }]}>
+              <Text style={styles.resultLabel}>{kk.goalNew.resultUnit}</Text>
+              <TextInput
+                value={resultUnit}
+                onChangeText={setResultUnit}
+                placeholder={kk.goalNew.resultUnitPlaceholder}
+                placeholderTextColor={C.ink4}
                 style={styles.resultInput}
               />
             </View>

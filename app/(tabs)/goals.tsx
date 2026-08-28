@@ -1,8 +1,11 @@
 /**
- * ЖЫЛ — жылдық мақсаттар тізімі (design/Zhyl.dc.html).
+ * ЖЫЛ — жылдық мақсаттар тізімі.
  *
- * ⚠ «Керек еді» мәні уақыттан емес, planned_progress() RPC-інен келеді
- * (CLAUDE.md §5.2). Макетте ол сызықтық есептелген — оны үлгі тұтпаңыз.
+ * ⚠ «Керек еді» мәні уақыттан емес, `planned_progress()` RPC-інен келеді:
+ * ол — күні өтіп кеткен әрекеттердің үлесі. Эталон уақыт емес, адамның
+ * өз жоспары.
+ *
+ * Пайыз әрекет САНЫМЕН есептеледі, салмақ жоқ.
  */
 import React, { useMemo, useState } from 'react';
 import { View, Text, Pressable, ScrollView, StyleSheet, ActivityIndicator } from 'react-native';
@@ -12,14 +15,10 @@ import { router } from 'expo-router';
 import { color as C, radius as R, font, gutter, centered } from '../../theme/tokens';
 import { kk, formatDueShort, t as tpl } from '../../i18n/kk';
 import {
-  useYearGoalsWithStats, useChildStats, useHasChildren, type GoalWithStats,
+  useYearGoalsWithStats, useMonths, useChildrenStats, type NodeStats,
 } from '../../lib/goals';
-import {
-  Card, SectionLabel, ProgressRing, ProgressBar, PaceBadge,
-} from '../../components/ui';
-import {
-  MenuIcon, PlusIcon, CalendarChipIcon, ChevronRightIcon,
-} from '../../components/icons';
+import { Card, SectionLabel, ProgressRing, ProgressBar, PaceBadge } from '../../components/ui';
+import { MenuIcon, PlusIcon, CalendarChipIcon, ChevronRightIcon } from '../../components/icons';
 
 export default function GoalsScreen() {
   const insets = useSafeAreaInsets();
@@ -29,14 +28,15 @@ export default function GoalsScreen() {
   const { data: goals, isLoading } = useYearGoalsWithStats(today);
   const list = goals ?? [];
 
-  const avgActual = list.length
-    ? Math.round(list.reduce((a, g) => a + g.actual, 0) / list.length)
+  const withActions = list.filter((g) => g.total > 0);
+  const avgActual = withActions.length
+    ? Math.round(withActions.reduce((a, g) => a + g.actual, 0) / withActions.length)
     : 0;
-  const avgPlanned = list.length
-    ? Math.round(list.reduce((a, g) => a + g.planned, 0) / list.length)
+  const avgPlanned = withActions.length
+    ? Math.round(withActions.reduce((a, g) => a + g.planned, 0) / withActions.length)
     : 0;
-  const ahead = list.filter((g) => g.gap > 0).length;
-  const behind = list.filter((g) => g.gap < 0).length;
+  const ahead = withActions.filter((g) => g.gap > 0).length;
+  const behind = withActions.filter((g) => g.gap < 0).length;
 
   return (
     <ScrollView
@@ -61,16 +61,13 @@ export default function GoalsScreen() {
           <EmptyGoals />
         ) : (
           <>
-            {/* жылдық қорытынды */}
             <Card style={styles.pad}>
               <View style={styles.summaryRow}>
                 <View style={{ flexShrink: 1 }}>
                   <SectionLabel>{kk.year.title}</SectionLabel>
                   <View style={styles.bigRow}>
                     <Text style={styles.big}>{avgActual}%</Text>
-                    <Text style={styles.bigSub}>
-                      {tpl(kk.year.fromGoals, { n: list.length })}
-                    </Text>
+                    <Text style={styles.bigSub}>{tpl(kk.year.fromGoals, { n: list.length })}</Text>
                   </View>
                 </View>
                 <View style={{ alignItems: 'flex-end' }}>
@@ -84,7 +81,7 @@ export default function GoalsScreen() {
 
               <ProgressBar
                 pct={avgActual}
-                plannedPct={avgPlanned}
+                plannedPct={withActions.length > 0 ? avgPlanned : undefined}
                 height={10}
                 style={{ marginTop: 16 }}
               />
@@ -103,9 +100,7 @@ export default function GoalsScreen() {
               </Text>
             </Card>
 
-            <SectionLabel style={{ paddingLeft: 4, marginTop: 8 }}>
-              {kk.year.goals}
-            </SectionLabel>
+            <SectionLabel style={{ paddingLeft: 4, marginTop: 8 }}>{kk.year.goals}</SectionLabel>
 
             {list.map((g) => (
               <GoalCard
@@ -124,43 +119,31 @@ export default function GoalsScreen() {
 }
 
 function GoalCard({
-  item,
-  open,
-  onToggle,
-  today,
+  item, open, onToggle, today,
 }: {
-  item: GoalWithStats;
+  item: NodeStats;
   open: boolean;
   onToggle: () => void;
   today: Date;
 }) {
-  const { goal, color, actual, gap } = item;
-  const { data: months } = useChildStats(open ? goal.id : null, today);
+  const { goal, color, actual, gap, total, done } = item;
+  const months = useMonths(open ? goal.id : null);
+  const { data: monthStats } = useChildrenStats(months, today);
   const due = new Date(goal.period_end + 'T00:00:00');
-
-  // ⚠ §5.2b: балалары жоқ мақсат 0% КӨРСЕТПЕЙДІ — «Бөлінбеген» деп тұрады
-  const divided = useHasChildren(goal.id);
-
-  const maxPct = Math.max(...(months ?? []).map((m) => m.pct), 1);
+  const hasActions = total > 0;
 
   return (
     <Card level="cardSm" radius={R.cardSm} style={styles.goalCard}>
       <Pressable onPress={onToggle} style={styles.goalHead} accessibilityRole="button">
-        {divided ? (
-          <ProgressRing
-            pct={actual}
-            size={44}
-            strokeWidth={5}
-            color={color}
-            trackColor={C.tintRing}
-            numberSize={11}
-            showPercentSign={false}
-          />
-        ) : (
-          <View style={styles.undividedRing}>
-            <Text style={styles.undividedDash}>—</Text>
-          </View>
-        )}
+        <ProgressRing
+          pct={actual}
+          size={44}
+          strokeWidth={5}
+          color={color}
+          trackColor={C.tintRing}
+          numberSize={11}
+          showPercentSign={false}
+        />
 
         <View style={{ flexGrow: 1, flexShrink: 1, minWidth: 0 }}>
           <Text style={styles.goalTitle} numberOfLines={2}>{goal.title}</Text>
@@ -169,17 +152,13 @@ function GoalCard({
               <CalendarChipIcon size={9} color={C.inkMuted} />
               <Text style={styles.dueText}>{formatDueShort(due)}</Text>
             </View>
-            {divided ? (
-              <PaceBadge gap={gap} />
+            {hasActions ? (
+              <>
+                <PaceBadge gap={gap} />
+                <Text style={styles.goalSub}>{tpl(kk.goal.actionCount, { done, total })}</Text>
+              </>
             ) : (
-              <View style={styles.undividedChip}>
-                <Text style={styles.undividedChipText}>{kk.goal.undivided}</Text>
-              </View>
-            )}
-            {goal.target_amount != null && (
-              <Text style={styles.goalSub}>
-                {goal.target_amount} {goal.unit ?? ''}
-              </Text>
+              <Text style={styles.goalSub}>{kk.goal.noActions}</Text>
             )}
           </View>
         </View>
@@ -191,40 +170,33 @@ function GoalCard({
 
       {open && (
         <View style={styles.expanded}>
-          <SectionLabel style={{ marginBottom: 9 }}>{kk.year.byMonth}</SectionLabel>
+          <SectionLabel style={{ marginBottom: 9 }}>{kk.goal.months}</SectionLabel>
 
-          {!months ? (
-            <ActivityIndicator color={C.accent} />
-          ) : months.length === 0 ? (
-            <Pressable
-              onPress={() => router.push(`/goal/${goal.id}/stage/new` as never)}
-              style={styles.addStage}
-              accessibilityRole="button"
-            >
-              <Text style={styles.addStageText}>{kk.goal.addStage}</Text>
-            </Pressable>
-          ) : (
-            <View style={styles.monthBars}>
-              {months.map((m) => (
-                <View key={m.goal.id} style={styles.monthCol}>
-                  <View style={styles.monthTrack}>
-                    <View
-                      style={[
-                        styles.monthFill,
-                        {
-                          height: `${Math.max((m.pct / maxPct) * 100, 6)}%`,
-                          backgroundColor: m.pct === 0 ? C.lineField : color,
-                        },
-                      ]}
-                    />
-                  </View>
-                  <Text style={styles.monthLabel} numberOfLines={1}>
-                    {m.goal.title.slice(0, 3)}
-                  </Text>
+          {months.map((m) => {
+            const st = (monthStats ?? []).find((s) => s.goal.id === m.id);
+            const mTotal = st?.total ?? 0;
+            const mPct = st?.actual ?? 0;
+            return (
+              <Pressable
+                key={m.id}
+                onPress={() => router.push(`/month/${m.id}` as never)}
+                style={styles.monthRow}
+                accessibilityRole="button"
+              >
+                <Text style={styles.monthName}>{m.title}</Text>
+                <View style={{ flexGrow: 1 }}>
+                  <ProgressBar
+                    pct={mPct}
+                    color={mTotal === 0 ? C.lineField : color}
+                    height={4}
+                  />
                 </View>
-              ))}
-            </View>
-          )}
+                <Text style={[styles.monthPct, mTotal === 0 && { color: C.ink4 }]}>
+                  {mTotal === 0 ? '—' : `${mPct}%`}
+                </Text>
+              </Pressable>
+            );
+          })}
 
           <Pressable
             onPress={() => router.push(`/goal/${goal.id}` as never)}
@@ -245,9 +217,8 @@ function EmptyGoals() {
       <SectionLabel>Мақсат жоқ</SectionLabel>
       <Text style={styles.emptyTitle}>Жылдық мақсаттан бастаңыз</Text>
       <Text style={styles.emptyText}>
-        Мақсат құрғанда мерзімін өзіңіз таңдайсыз — жыл соңы болуы міндетті емес.
-        Жүйе жүктемені айларға бөліп береді, ал «керек еді» белгісі сол бөлуден
-        есептеледі.
+        Мерзімін өзіңіз таңдайсыз. Сақтағанда жүйе сол аралыққа түсетін
+        айларды өзі ашады — сіз тек ішіне әрекет қосасыз.
       </Text>
       <Pressable
         onPress={() => router.push('/goal/new')}
@@ -272,7 +243,10 @@ const styles = StyleSheet.create({
   center: { paddingVertical: 40, alignItems: 'center' },
   pad: { padding: 18 },
 
-  summaryRow: { flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12 },
+  summaryRow: {
+    flexDirection: 'row', alignItems: 'flex-start',
+    justifyContent: 'space-between', gap: 12,
+  },
   bigRow: { flexDirection: 'row', alignItems: 'baseline', gap: 8, marginTop: 6 },
   big: { fontFamily: font.display, fontSize: 40, letterSpacing: -1.6, color: C.ink },
   bigSub: { fontFamily: font.title, fontSize: 12, color: C.inkMuted },
@@ -299,35 +273,20 @@ const styles = StyleSheet.create({
   goalSub: { fontFamily: font.title, fontSize: 10, color: C.inkFaint },
 
   expanded: { marginTop: 14, paddingTop: 13, borderTopWidth: 1, borderTopColor: C.trackChip },
-  monthBars: { flexDirection: 'row', gap: 4, height: 46 },
-  monthCol: { flexGrow: 1, flexBasis: 0, alignItems: 'center', gap: 4 },
-  monthTrack: {
-    width: '100%', flexGrow: 1, borderRadius: R.micro,
-    backgroundColor: C.trackChip, justifyContent: 'flex-end', overflow: 'hidden',
-  },
-  monthFill: { width: '100%', borderRadius: R.micro },
-  monthLabel: { fontFamily: font.bold, fontSize: 7, color: C.ink4 },
-  undividedRing: {
-    width: 44, height: 44, borderRadius: R.pill,
-    alignItems: 'center', justifyContent: 'center',
-    backgroundColor: C.trackChip, flexShrink: 0,
-  },
-  undividedDash: { fontFamily: font.bold, fontSize: 16, color: C.ink4 },
-  undividedChip: {
-    backgroundColor: C.trackChip, borderRadius: R.pill,
-    paddingHorizontal: 8, paddingVertical: 3,
-  },
-  undividedChipText: { fontFamily: font.bold, fontSize: 10, color: C.inkMuted },
-  addStage: {
-    alignItems: 'center', justifyContent: 'center', paddingVertical: 12,
-    borderRadius: R.sm, backgroundColor: C.tint,
-  },
-  addStageText: { fontFamily: font.bold, fontSize: 12, color: C.accentDeep },
+  monthRow: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 7 },
+  monthName: { fontFamily: font.body, fontSize: 11.5, color: C.inkBody, width: 96 },
+  monthPct: { fontFamily: font.bold, fontSize: 11, color: C.ink, width: 40, textAlign: 'right' },
   more: { alignSelf: 'flex-end', paddingTop: 11 },
   moreText: { fontFamily: font.bold, fontSize: 11, color: C.accent },
 
-  emptyTitle: { fontFamily: font.bold, fontSize: 17, letterSpacing: -0.34, color: C.ink, marginTop: 8 },
-  emptyText: { fontFamily: font.prose, fontSize: 12.5, lineHeight: 19, color: C.inkProse, marginTop: 8 },
+  emptyTitle: {
+    fontFamily: font.bold, fontSize: 17, letterSpacing: -0.34,
+    color: C.ink, marginTop: 8,
+  },
+  emptyText: {
+    fontFamily: font.prose, fontSize: 12.5, lineHeight: 19,
+    color: C.inkProse, marginTop: 8,
+  },
   emptyBtn: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
     marginTop: 16, paddingVertical: 14, borderRadius: R.cardXs, backgroundColor: C.accent,

@@ -5,7 +5,15 @@
  *   npx supabase gen types typescript --project-id <id> > lib/database.types.ts
  */
 
-export type GoalLevel = 'year' | 'stage' | 'month' | 'week' | 'day';
+/**
+ * Каскад деңгейлері.
+ *
+ * year  — адам құрады
+ * month — ЖҮЙЕ автоматты ашады (мерзімге түсетін әр ай)
+ * week  — ЖҮЙЕ автоматты ашады (айға кіргенде)
+ * day   — ӘРЕКЕТ, тек адам қосады. Пайыз ТЕК осылардан есептеледі.
+ */
+export type GoalLevel = 'year' | 'month' | 'week' | 'day';
 export type GoalStatus = 'active' | 'done' | 'dropped' | 'paused';
 export type FocusSource = 'timer' | 'manual';
 
@@ -34,18 +42,10 @@ export type Goal = {
   period_start: string;
   /** `YYYY-MM-DD`. level='year' болса бұл — мерзім (deadline) */
   period_end: string;
-  weight: number;
-  /** ӘРЕКЕТ: «80 сабақ». Пайыз ТЕК осыдан есептеледі. */
-  target_amount: number | null;
-  unit: string | null;
   /** НӘТИЖЕ: «84,2 → 78 кг». Тек көрсету үшін, пайызға ҚАТЫСПАЙДЫ. */
   result_from: number | null;
   result_to: number | null;
   result_unit: string | null;
-  /** ЫРҒАҚ: пайдаланушы қояды, жүйе есептемейді. Пайызға кірмейді. */
-  per_week: number | null;
-  /** ISO апта күндері 1..7 — {1,3,5} = дс/ср/жм */
-  week_days: number[] | null;
   locked: boolean;
   status: GoalStatus;
   scheduled_at: string | null;
@@ -161,6 +161,14 @@ export type Database = {
       goal_stats: {
         Args: { p_goal_id: string; p_on_date?: string };
         Returns: GoalStats[];
+      };
+      /** Айларды ашады/жаңартады. Аралықтан шыққан бос айлар өшеді. */
+      sync_months: { Args: { p_goal_id: string }; Returns: number };
+      /** Айға кіргенде апталарды ашады */
+      sync_weeks: { Args: { p_month_id: string }; Returns: number };
+      action_counts: {
+        Args: { p_goal_id: string };
+        Returns: { total: number; done: number }[];
       };
       habit_streak: { Args: { p_habit_id: string; p_today?: string }; Returns: number };
       habit_consistency: {

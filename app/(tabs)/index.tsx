@@ -13,7 +13,7 @@ import { router } from 'expo-router';
 import { color as C, radius as R, font, gutter, centered } from '../../theme/tokens';
 import { kk, formatDayMonthWeekday, monthsUpper, t as tpl } from '../../i18n/kk';
 import { weekNumber } from '../../lib/calendar';
-import { useDayTasks, useToggleTask, useLevelBars } from '../../lib/goals';
+import { useDayTasks, useToggleTask, useTodayLevels } from '../../lib/goals';
 import { useHabitsForDay, useToggleHabit } from '../../lib/habits';
 import {
   Card, DarkCard, DashedCard, SectionLabel,
@@ -35,7 +35,7 @@ export default function TodayScreen() {
 
   const { tasks, isLoading, isError } = useDayTasks(today);
   const toggleTask = useToggleTask();
-  const { data: bars } = useLevelBars(today);
+  const { data: bars } = useTodayLevels(today);
   const { items: habits } = useHabitsForDay(today);
   const toggleHabit = useToggleHabit(today);
 
@@ -115,19 +115,21 @@ export default function TodayScreen() {
               <View style={styles.levels}>
                 {(bars ?? []).length === 0 ? (
                   <Text style={styles.levelsEmpty}>
-                    Апта, ай және жыл мақсаттарын қосқанда осында пайыз шығады.
+                    Мақсат қосқанда апта, ай және жыл пайызы осында шығады.
                   </Text>
                 ) : (
                   (bars ?? []).map((lv) => (
-                    <View key={lv.id} style={{ gap: 4 }}>
+                    <View key={lv.goal.id} style={{ gap: 4 }}>
                       <View style={styles.levelHead}>
                         <View style={styles.levelName}>
                           <View style={[styles.dot, { backgroundColor: lv.color }]} />
-                          <Text style={styles.levelText} numberOfLines={1}>{lv.name}</Text>
+                          <Text style={styles.levelText} numberOfLines={1}>
+                            {lv.goal.title}
+                          </Text>
                         </View>
-                        <Text style={styles.levelPct}>{lv.pct}%</Text>
+                        <Text style={styles.levelPct}>{lv.actual}%</Text>
                       </View>
-                      <ProgressBar pct={lv.pct} color={lv.color} height={4} />
+                      <ProgressBar pct={lv.actual} color={lv.color} height={4} />
                     </View>
                   ))
                 )}

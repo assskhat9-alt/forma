@@ -62,7 +62,8 @@ export function rowOf(cells: DayCell[], date: Date): number {
 
 /** §7.1: жиырылғанда тор таңдалған жолға дейін жоғары жылжиды */
 export function collapseOffset(cells: DayCell[], date: Date): number {
-  return -rowOf(cells, date) * PHONE_ROW_HEIGHT;
+  // `|| 0` — бірінші жолда -0 шығып кетпеуі үшін
+  return -rowOf(cells, date) * PHONE_ROW_HEIGHT || 0;
 }
 
 export function nextMonth(anchor: Date): Date {

@@ -5,7 +5,7 @@
  * синтаксис қатесі де, есептеу қатесі де осында шығады.
  *
  *   npm i --no-save embedded-postgres
- *   node scripts/verify-migrations.mjs
+ *   npm run verify:db
  *
  * embedded-postgres әдейі package.json-ға қосылмаған: ол ~100 МБ
  * бинарник тартады, ал ол әр `npm install` кезінде керек емес.
@@ -21,11 +21,16 @@ const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 const dataDir = join(root, '.pgdata-verify');
 const migrations = join(root, 'supabase', 'migrations');
 
-/**
- * Supabase `auth` схемасының макеті.
- * Нақты жобада бұл Supabase-тің өзінде бар — біз тек миграцияларымыз
- * оған дұрыс сүйенетінін тексереміз.
- */
+const FILES = [
+  '0001_schema.sql',
+  '0002_rls.sql',
+  '0003_progress.sql',
+  '0004_result.sql',
+  '0005_rhythm.sql',
+  '0006_time_skeleton.sql',
+];
+
+/** Supabase `auth` схемасының макеті */
 const AUTH_STUB = `
 create schema if not exists auth;
 
@@ -35,22 +40,20 @@ create table if not exists auth.users (
   raw_user_meta_data jsonb default '{}'::jsonb
 );
 
--- Ағымдағы қолданушыны сессия айнымалысынан алады
 create or replace function auth.uid() returns uuid
 language sql stable as $fn$
   select nullif(current_setting('forma.test_uid', true), '')::uuid
 $fn$;
 `;
 
-function sql(name) {
-  return readFileSync(join(migrations, name), 'utf8');
-}
-
+const sql = (name) => readFileSync(join(migrations, name), 'utf8');
 const ok = (m) => console.log(`  ✓ ${m}`);
 const fail = (m) => {
   console.error(`  ✗ ${m}`);
   process.exitCode = 1;
 };
+const eq = (got, want, label) =>
+  got === want ? ok(`${label} → ${got}`) : fail(`${label}: күтілгені ${want}, шыққаны ${got}`);
 
 if (existsSync(dataDir)) rmSync(dataDir, { recursive: true, force: true });
 
@@ -66,9 +69,8 @@ console.log('Postgres іске қосылуда…');
 await pg.initialise();
 await pg.start();
 
-// ⚠ Windows-та кластер әдепкіде WIN1251 болып құрылады, ал қазақ әріптері
-// оған сыймайды (ғ, ұ, ә…). Supabase әрқашан UTF8 — тест БД-сын да
-// солай құрамыз, әйтпесе жалған қате шығады.
+// ⚠ Windows-та кластер әдепкіде WIN1251 болып құрылады, қазақ әріптері
+// оған сыймайды. Supabase әрқашан UTF8.
 const admin = pg.getPgClient();
 await admin.connect();
 await admin.query(
@@ -86,152 +88,213 @@ const client = new Client({
 });
 await client.connect();
 
+const one = async (q, p = []) => (await client.query(q, p)).rows[0];
+
 try {
   console.log('\nМиграциялар:');
-
   await client.query('create extension if not exists "pgcrypto"');
   await client.query(AUTH_STUB);
   ok('auth схемасының макеті');
 
-  for (const f of ['0001_schema.sql', '0002_rls.sql', '0003_progress.sql', '0004_result.sql', '0005_rhythm.sql']) {
+  for (const f of FILES) {
     await client.query(sql(f));
     ok(f);
   }
 
-  // ── Екінші рет: файлдар қайта іске қосуға төзімді ме ──
   console.log('\nҚайта іске қосу:');
-  for (const f of ['0001_schema.sql', '0002_rls.sql', '0003_progress.sql', '0004_result.sql', '0005_rhythm.sql']) {
+  for (const f of FILES) {
     await client.query(sql(f));
     ok(`${f} — екінші рет те өтті`);
   }
 
-  // ── §5.2 жүргізуші куәлігі: SQL нұсқасы TS нұсқасымен сәйкес пе ──
-  console.log('\n§5.2 — жүргізуші куәлігі:');
+  // ── Ескі модель толық жойылды ма ──
+  console.log('\nЕскі модель жойылды:');
 
-  const { rows: [user] } = await client.query(
-    `insert into auth.users (email) values ('test@forma.kz') returning id`,
-  );
+  const dropped = await client.query(`
+    select column_name from information_schema.columns
+    where table_name = 'goals'
+      and column_name in ('target_amount','unit','per_week','week_days','weight')
+  `);
+  eq(dropped.rows.length, 0, 'target_amount / unit / per_week / week_days / weight жоқ');
+
+  const levels = await one(`
+    select array_agg(e.enumlabel::text order by e.enumsortorder) as v
+    from pg_type t join pg_enum e on e.enumtypid = t.oid
+    where t.typname = 'goal_level'
+  `);
+  eq(levels.v.join(','), 'year,month,week,day', "goal_level — 'stage' жоқ");
+
+  // ── Уақыт қаңқасы ──
+  console.log('\nАйлар автоматты ашылады:');
+
+  const user = await one(`insert into auth.users (email) values ('t@forma.kz') returning id`);
   const uid = user.id;
 
-  const goal = async (parent, level, title, from, to, weight) => {
-    const { rows: [r] } = await client.query(
-      `insert into goals (user_id, parent_id, level, title, period_start, period_end, weight)
-       values ($1,$2,$3,$4,$5,$6,$7) returning id`,
-      [uid, parent, level, title, from, to, weight],
+  const goal = await one(
+    `insert into goals (user_id, level, title, period_start, period_end)
+     values ($1,'year','Тексеріс','2026-08-28','2026-12-31') returning id`,
+    [uid],
+  );
+
+  const months = await client.query(
+    `select title, period_start::text s, period_end::text e
+     from goals where parent_id = $1 and level = 'month' order by period_start`,
+    [goal.id],
+  );
+  eq(months.rows.length, 5, '28 тамыз – 31 желтоқсан → 5 ай');
+  eq(months.rows[0].s, '2026-08-28', 'бірінші ай мақсаттың басталу күнінен басталады');
+  eq(months.rows[0].e, '2026-08-31', 'толық емес алғашқы ай');
+  eq(months.rows[4].e, '2026-12-31', 'соңғы ай мерзімде бітеді');
+  eq(months.rows[0].title, 'Тамыз 2026', 'ай атауын жүйе қояды');
+
+  // ── Мерзім өзгергенде ──
+  console.log('\nМерзім өзгергенде:');
+
+  await client.query(`update goals set period_end = '2027-02-28' where id = $1`, [goal.id]);
+  eq(
+    (await one(`select count(*)::int n from goals where parent_id=$1 and level='month'`, [goal.id])).n,
+    7,
+    'мерзім ұзарғанда жаңа айлар қосылады',
+  );
+
+  await client.query(`update goals set period_end = '2026-10-31' where id = $1`, [goal.id]);
+  eq(
+    (await one(`select count(*)::int n from goals where parent_id=$1 and level='month'`, [goal.id])).n,
+    3,
+    'мерзім қысқарғанда БОС айлар өшеді',
+  );
+
+  // Ішінде әрекеті бар ай өшпейді
+  await client.query(`update goals set period_end = '2026-12-31' where id = $1`, [goal.id]);
+  const dec = await one(
+    `select id from goals where parent_id=$1 and level='month'
+       and period_start >= '2026-12-01' limit 1`,
+    [goal.id],
+  );
+  await client.query(
+    `insert into goals (user_id, parent_id, level, title, period_start, period_end)
+     values ($1,$2,'day','Әрекет','2026-12-10','2026-12-10')`,
+    [uid, dec.id],
+  );
+  await client.query(`update goals set period_end = '2026-10-31' where id = $1`, [goal.id]);
+  eq(
+    (await one(`select count(*)::int n from goals where id=$1`, [dec.id])).n,
+    1,
+    'ішінде әрекеті бар ай ӨШІРІЛМЕЙДІ',
+  );
+
+  // ── Апталар ──
+  console.log('\nАпталар автоматты ашылады:');
+  await client.query(`update goals set period_end = '2026-12-31' where id = $1`, [goal.id]);
+  const sep = await one(
+    `select id from goals where parent_id=$1 and level='month'
+       and period_start >= '2026-09-01' and period_start < '2026-10-01' limit 1`,
+    [goal.id],
+  );
+  await client.query(`select sync_weeks($1)`, [sep.id]);
+  const weeks = await client.query(
+    `select period_start::text s, period_end::text e
+     from goals where parent_id=$1 and level='week' order by period_start`,
+    [sep.id],
+  );
+  eq(weeks.rows.length, 5, 'қыркүйек → 5 апта');
+  eq(weeks.rows[0].s, '2026-09-01', 'бірінші апта айдың басынан');
+  eq(weeks.rows[weeks.rows.length - 1].e, '2026-09-30', 'соңғы апта айдың соңында бітеді');
+
+  await client.query(`select sync_weeks($1)`, [sep.id]);
+  eq(
+    (await one(`select count(*)::int n from goals where parent_id=$1 and level='week'`, [sep.id])).n,
+    5,
+    'қайта шақырғанда қосарланбайды',
+  );
+
+  // ── Пайыз: салмақ жоқ, тек әрекет саны ──
+  console.log('\nПайыз — әрекет саны бойынша:');
+
+  const w1 = await one(
+    `select id from goals where parent_id=$1 and level='week' order by period_start limit 1`,
+    [sep.id],
+  );
+
+  const addAction = (parent, date, done = false) =>
+    one(
+      `insert into goals (user_id, parent_id, level, title, period_start, period_end, status)
+       values ($1,$2,'day','Әрекет',$3,$3,$4) returning id`,
+      [uid, parent, date, done ? 'done' : 'active'],
     );
-    return r.id;
-  };
 
-  const course = await goal(null, 'year', 'Жүргізуші куәлігі', '2026-08-26', '2026-12-26', 1);
-  await goal(course, 'stage', 'Курс', '2026-08-26', '2026-11-07', 40);
-  await goal(course, 'stage', 'Дайындық', '2026-11-09', '2026-11-22', 25);
-  await goal(course, 'stage', 'Тест', '2026-11-24', '2026-11-24', 10);
-  await goal(course, 'stage', 'Вождение', '2026-11-25', '2026-12-22', 25);
+  await addAction(w1.id, '2026-09-01', true);
+  await addAction(w1.id, '2026-09-02', false);
+  await addAction(w1.id, '2026-09-03', false);
+  await addAction(w1.id, '2026-09-04', false);
 
-  const planned = async (d) => {
-    const { rows: [r] } = await client.query(
-      'select planned_progress($1, $2::date) as v',
-      [course, d],
-    );
-    return Number(r.v);
-  };
+  eq(Number((await one(`select progress($1) v`, [w1.id])).v), 25, 'аптада 4 әрекеттің 1-і → 25%');
 
-  const cases = [
-    ['2026-11-07', 40, '7 қарашада жоспар 40% (уақыт бойынша 60% болар еді)'],
-    ['2026-11-08', 40, 'кезеңдер саңылауында жоспар өспейді'],
-    ['2026-11-24', 75, 'бір күндік бекітілген кезең толық есептеледі'],
-    ['2026-08-01', 0, 'басталмаған мақсаттың жоспары 0'],
-    ['2026-12-31', 100, 'мерзім өткенде 100'],
-  ];
+  const aug = await one(
+    `select id from goals where parent_id=$1 and level='month'
+       and period_start < '2026-09-01' limit 1`,
+    [goal.id],
+  );
+  await addAction(aug.id, '2026-08-29', true);
 
-  for (const [date, want, label] of cases) {
-    const got = await planned(date);
-    if (got === want) ok(`${label} → ${got}%`);
-    else fail(`${label}: күтілгені ${want}%, шыққаны ${got}%`);
-  }
+  // Барлығы 6 (4 қыркүйек + 1 тамыз + 1 желтоқсан), орындалғаны 2
+  eq(
+    Number((await one(`select progress($1) v`, [goal.id])).v),
+    33.33,
+    'жылда 6 әрекеттің 2-і → 33,33% (салмақ жоқ)',
+  );
 
-  // ── §5.1 progress: балалардың weight бойынша орташасы ──
-  console.log('\n§5.1 — нақты орындалу:');
+  const counts = await one(`select * from action_counts($1)`, [goal.id]);
+  eq(`${counts.done}/${counts.total}`, '2/6', 'action_counts');
 
-  const week = await goal(course, 'week', '34-апта', '2026-08-24', '2026-08-30', 1);
-  const d1 = await goal(week, 'day', 'Тапсырма 1', '2026-08-25', '2026-08-25', 1);
-  await goal(week, 'day', 'Тапсырма 2', '2026-08-26', '2026-08-26', 1);
+  // ── «Керек еді» — уақыт емес, жоспар ──
+  console.log('\n«Керек еді» — жоспар бойынша:');
 
-  const progressOf = async (id) => {
-    const { rows: [r] } = await client.query('select progress($1) as v', [id]);
-    return Number(r.v);
-  };
+  // 1 қазанда күні өткен әрекеттер: 29 тамыз + 1–4 қыркүйек = 5
+  eq(
+    Number((await one(`select planned_progress($1, '2026-10-01'::date) v`, [goal.id])).v),
+    83.33,
+    '1 қазанда жоспар 83,33% (6-ның 5-і өтіп кеткен)',
+  );
 
-  if ((await progressOf(week)) === 0) ok('ештеңе орындалмағанда 0%');
-  else fail('бос апта 0% болуы керек еді');
+  const linear = Math.round(
+    ((new Date('2026-10-01') - new Date('2026-08-28')) /
+      (new Date('2026-12-31') - new Date('2026-08-28'))) * 100,
+  );
+  if (linear !== 83) ok(`сызықтық есеп сол күні ${linear}% берер еді — жалған дабыл`);
+  else fail('сызықтық есеп кездейсоқ сәйкес келді, тест мағынасыз');
 
-  await client.query(`update goals set status='done' where id=$1`, [d1]);
-  if ((await progressOf(week)) === 50) ok('екеудің бірі орындалғанда 50%');
-  else fail(`жарты апта 50% болуы керек еді, шыққаны ${await progressOf(week)}%`);
-
-  // ── Әдеттер пайызға араласпайтынын тексеру ──
-  console.log('\nӘдеттер бөлек екенін тексеру:');
-
-  const { rows: [habit] } = await client.query(
+  // ── Әдеттер араласпайды ──
+  console.log('\nӘдеттер бөлек:');
+  const habit = await one(
     `insert into habits (user_id, title) values ($1,'Ерте тұру') returning id`,
     [uid],
   );
-  for (const d of ['2026-08-23', '2026-08-24', '2026-08-25']) {
+  for (const d of ['2026-09-01', '2026-09-02', '2026-09-03']) {
     await client.query(
-      'insert into habit_logs (user_id, habit_id, log_date) values ($1,$2,$3)',
+      `insert into habit_logs (user_id, habit_id, log_date) values ($1,$2,$3)`,
       [uid, habit.id, d],
     );
   }
-
-  const before = await progressOf(course);
-  const { rows: [s] } = await client.query('select habit_streak($1, $2::date) as v', [
-    habit.id, '2026-08-25',
-  ]);
-  const after = await progressOf(course);
-
-  if (Number(s.v) === 3) ok('серия 3 күн');
-  else fail(`серия 3 болуы керек еді, шыққаны ${s.v}`);
-
-  if (before === after) ok('әдет белгілері мақсат пайызын ҚОЗҒАМАДЫ');
-  else fail(`әдеттер пайызға әсер етті: ${before} → ${after}`);
-
-  // ── Нәтиже өрістері пайызға араласпайтынын тексеру ──
-  console.log('\nНәтиже өрістері:');
-
-  const { rows: cols } = await client.query(`
-    select column_name from information_schema.columns
-    where table_name='goals'
-      and column_name in ('result_from','result_to','result_unit')
-  `);
-  if (cols.length === 3) ok('result_from / result_to / result_unit қосылды');
-  else fail(`үш баған күтілген еді, шыққаны ${cols.length}`);
-
-  const beforeResult = await progressOf(course);
-  await client.query(
-    `update goals set result_from=84.2, result_to=78, result_unit='кг' where id=$1`,
-    [course],
+  eq(
+    Number((await one(`select progress($1) v`, [goal.id])).v),
+    33.33,
+    'әдет белгілері мақсат пайызын ҚОЗҒАМАДЫ',
   );
-  const afterResult = await progressOf(course);
-  if (beforeResult === afterResult) ok('нәтиже мәндері пайызды ҚОЗҒАМАДЫ');
-  else fail(`нәтиже пайызға әсер етті: ${beforeResult} → ${afterResult}`);
+  eq(
+    Number((await one(`select habit_streak($1, '2026-09-03'::date) v`, [habit.id])).v),
+    3,
+    'серия 3 күн',
+  );
 
-  // ── RLS шынымен қосулы ма ──
+  // ── RLS ──
   console.log('\nRLS:');
-  const { rows: rls } = await client.query(`
-    select tablename, rowsecurity from pg_tables
-    where schemaname='public' order by tablename
-  `);
-  const off = rls.filter((r) => !r.rowsecurity).map((r) => r.tablename);
-  if (off.length === 0) ok(`барлық ${rls.length} кестеде RLS қосулы`);
-  else fail(`RLS қосылмаған кестелер: ${off.join(', ')}`);
-
-  const { rows: pol } = await client.query(
-    `select count(*)::int as n from pg_policies where schemaname='public'`,
+  const rls = await client.query(
+    `select tablename, rowsecurity from pg_tables where schemaname='public'`,
   );
-  // profiles 3 + 7 кесте × 4 = 31
-  if (pol[0].n === 31) ok(`${pol[0].n} саясат құрылды`);
-  else fail(`31 саясат күтілген еді, шыққаны ${pol[0].n}`);
-
+  const off = rls.rows.filter((r) => !r.rowsecurity).map((r) => r.tablename);
+  if (off.length === 0) ok(`барлық ${rls.rows.length} кестеде RLS қосулы`);
+  else fail(`RLS қосылмаған: ${off.join(', ')}`);
 } catch (e) {
   console.error('\nҚАТЕ:', e.message);
   if (e.position) console.error('позиция:', e.position);

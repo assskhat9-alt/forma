@@ -19,7 +19,7 @@ import {
   useDayTasks,
   useLoadOf,
   useToggleTask,
-  useCreateTask,
+  useCreateAction,
   useRootGoals,
 } from '../../lib/goals';
 import { CalendarPhone } from '../../components/calendar/CalendarPhone';
@@ -46,7 +46,7 @@ export default function CalendarScreen() {
   const { tasks, isLoading } = useDayTasks(selected);
   const loadOf = useLoadOf();
   const toggleTask = useToggleTask();
-  const createTask = useCreateTask();
+  const createAction = useCreateAction();
   const rootGoals = useRootGoals();
 
   const cells = useMemo(() => buildMonthGrid(anchor, today), [anchor, today]);
@@ -63,11 +63,14 @@ export default function CalendarScreen() {
     const title = draft.title.trim();
     if (!title) return;
 
-    createTask.mutate({
+    const parentId = rootGoals[draft.goalIndex]?.id;
+    if (!parentId) return;
+
+    createAction.mutate({
+      parentId,
       title,
       date: selected,
       time: TIMES[draft.timeIndex] ?? null,
-      parentId: rootGoals[draft.goalIndex]?.id ?? null,
     });
 
     setDraft(EMPTY_DRAFT);

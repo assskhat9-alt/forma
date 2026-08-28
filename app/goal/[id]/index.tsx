@@ -1,11 +1,14 @@
 /**
- * МАҚСАТ ДЕТАЛЬІ — design/Maqsat.dc.html.
+ * МАҚСАТ — айлар тізімі.
  *
- * Қара hero — мақсат ЕМЕС нәрсе емес, керісінше: бұл мақсаттың өзі,
- * сондықтан ол ең қою карточка. «Керек еді» маркері planned_progress()
- * RPC-інен келеді, уақыттан есептелмейді (CLAUDE.md §5.2).
+ * Айларды ЖҮЙЕ ашқан (`sync_months()` триггері). Пайдаланушы оларды
+ * құрмайды, ат қоймайды, күн таңдамайды. Бос ай да тізімде тұрады —
+ * ішіне кіріп әрекет қосуға болады.
+ *
+ * ⚠ Пайыз әрекет САНЫМЕН есептеледі, салмақ жоқ. Көп әрекет тұрған ай
+ * үлесті өзі көп алады.
  */
-import React, { useMemo, useState } from 'react';
+import React, { useMemo } from 'react';
 import { View, Text, Pressable, ScrollView, StyleSheet, ActivityIndicator } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useLocalSearchParams, router } from 'expo-router';
@@ -13,23 +16,21 @@ import { differenceInCalendarDays } from 'date-fns';
 
 import { color as C, radius as R, font, gutter, centered } from '../../../theme/tokens';
 import { kk, formatDayMonth, t as tpl } from '../../../i18n/kk';
-import { useGoals, useGoalStats, useChildStats } from '../../../lib/goals';
+import { useGoals, useMonths, useNodeStats, useChildrenStats } from '../../../lib/goals';
 import { Card, DarkCard, SectionLabel, ProgressBar } from '../../../components/ui';
-import {
-  ChevronLeftIcon, DotsIcon, CalendarChipIcon, ChatIcon,
-} from '../../../components/icons';
+import { ChevronLeftIcon, DotsIcon, CalendarChipIcon, ChevronRightIcon } from '../../../components/icons';
 
 export default function GoalDetail() {
   const insets = useSafeAreaInsets();
   const { id } = useLocalSearchParams<{ id: string }>();
   const today = useMemo(() => new Date(), []);
-  const [openMonth, setOpenMonth] = useState<string | null>(null);
 
   const { data: goals, isLoading } = useGoals();
   const goal = (goals ?? []).find((g) => g.id === id) ?? null;
 
-  const { data: stats } = useGoalStats(goal?.id ?? null, today);
-  const { data: months } = useChildStats(goal?.id ?? null, today);
+  const months = useMonths(goal?.id ?? null);
+  const { data: stats } = useNodeStats(goal?.id ?? null, today);
+  const { data: monthStats } = useChildrenStats(months, today);
 
   if (isLoading) {
     return (
@@ -52,20 +53,26 @@ export default function GoalDetail() {
 
   const due = new Date(goal.period_end + 'T00:00:00');
   const daysLeft = Math.max(differenceInCalendarDays(due, today), 0);
-  const actual = Math.round(stats?.actual ?? 0);
-  const planned = Math.round(stats?.planned ?? 0);
-  const gap = Math.round(stats?.gap ?? 0);
+  const actual = stats?.actual ?? 0;
+  const planned = stats?.planned ?? 0;
+  const gap = stats?.gap ?? 0;
+  const hasActions = (stats?.total ?? 0) > 0;
 
-  const stages = (months ?? []).filter((m) => m.goal.level === 'stage');
-  const monthList = (months ?? []).filter((m) => m.goal.level === 'month');
+  /** Мерзімнен тыс қалып қойған айлар — әрекеттері бар болғандықтан сақталған */
+  const orphans = months.filter(
+    (m) => m.period_end < goal.period_start || m.period_start > goal.period_end,
+  );
 
-  // ⚠ §5.2b: балалары жоқ мақсат 0% КӨРСЕТПЕЙДІ — ол қорқытады әрі жалған
-  const divided = stages.length > 0 || monthList.length > 0;
+  const statOf = (mid: string) => (monthStats ?? []).find((s) => s.goal.id === mid);
 
   return (
     <ScrollView
       style={styles.screen}
-      contentContainerStyle={{ ...centered, paddingTop: insets.top + 18, paddingBottom: insets.bottom + 32 }}
+      contentContainerStyle={{
+        ...centered,
+        paddingTop: insets.top + 18,
+        paddingBottom: insets.bottom + 32,
+      }}
       showsVerticalScrollIndicator={false}
     >
       <View style={styles.header}>
@@ -79,17 +86,13 @@ export default function GoalDetail() {
       <View style={styles.body}>
         {/* hero */}
         <DarkCard style={styles.hero}>
-          <Text style={styles.heroLabel}>
-            {goal.level === 'year' ? kk.period.year : goal.level.toUpperCase()}
-          </Text>
+          <Text style={styles.heroLabel}>{kk.period.year}</Text>
           <Text style={styles.heroTitle}>{goal.title}</Text>
 
           <View style={styles.heroRow}>
             <View style={styles.heroPctRow}>
-              <Text style={styles.heroPct}>{divided ? `${actual}%` : '—'}</Text>
-              <Text style={styles.heroPctSub}>
-                {divided ? kk.goal.completed : kk.goal.undivided}
-              </Text>
+              <Text style={styles.heroPct}>{hasActions ? `${actual}%` : '0%'}</Text>
+              <Text style={styles.heroPctSub}>{kk.goal.completed}</Text>
             </View>
 
             <View style={styles.dueBox}>
@@ -101,193 +104,123 @@ export default function GoalDetail() {
             </View>
           </View>
 
-          {divided && (
-            <ProgressBar
-              pct={actual}
-              plannedPct={planned}
-              height={8}
-              color={C.accentOnDark}
-              trackColor={C.darkTrack}
-              markerColor="#FFFFFF"
-              style={{ marginTop: 14 }}
-            />
-          )}
+          <ProgressBar
+            pct={actual}
+            plannedPct={hasActions ? planned : undefined}
+            height={8}
+            color={C.accentOnDark}
+            trackColor={C.darkTrack}
+            markerColor="#FFFFFF"
+            style={{ marginTop: 14 }}
+          />
 
-          {divided && <View style={styles.heroLegend}>
+          <View style={styles.heroLegend}>
             <Text style={styles.heroLegendText}>
-              {tpl(kk.goal.needed, { planned })} ·{' '}
-              <Text style={{ color: '#FFFFFF' }}>
-                {gap === 0
-                  ? kk.goal.onTrack
-                  : gap > 0
-                    ? tpl(kk.goal.ahead, { n: gap })
-                    : tpl(kk.goal.behind, { n: Math.abs(gap) })}
-              </Text>
+              {hasActions ? (
+                <>
+                  {tpl(kk.goal.needed, { planned })} ·{' '}
+                  <Text style={{ color: '#FFFFFF' }}>
+                    {gap === 0
+                      ? kk.goal.onTrack
+                      : gap > 0
+                        ? tpl(kk.goal.ahead, { n: gap })
+                        : tpl(kk.goal.behind, { n: Math.abs(gap) })}
+                  </Text>
+                </>
+              ) : (
+                kk.goal.noActions
+              )}
             </Text>
-          </View>}
+          </View>
+
+          {/* Нәтиже — пайызға қатыспайды */}
+          {goal.result_to != null && (
+            <View style={styles.resultRow}>
+              <Text style={styles.resultLabel}>{kk.goalNew.result}</Text>
+              <Text style={styles.resultValue}>
+                {goal.result_from != null ? `${fmt(goal.result_from)} → ` : ''}
+                {fmt(goal.result_to)} {goal.result_unit ?? ''}
+              </Text>
+            </View>
+          )}
         </DarkCard>
 
-        {/* ӘРЕКЕТ пен НӘТИЖЕ — екеуі бөлек, шатастыруға болмайды */}
-        {(goal.target_amount != null || goal.result_to != null) && (
-          <Card level="cardSm" radius={R.cardSm} style={styles.padTight}>
-            {goal.target_amount != null && (
-              <View style={styles.metricRow}>
-                <SectionLabel>{kk.goal.action}</SectionLabel>
-                <Text style={styles.metricValue}>
-                  {goal.target_amount} {goal.unit ?? ''}
-                </Text>
-              </View>
-            )}
-
-            {goal.result_to != null && (
-              <View
-                style={[
-                  styles.metricRow,
-                  goal.target_amount != null && styles.metricDivider,
-                ]}
-              >
-                <View style={styles.metricLabelRow}>
-                  <SectionLabel>{kk.goal.result}</SectionLabel>
-                  <View style={styles.excludedChip}>
-                    <Text style={styles.excludedText}>{kk.goal.resultExcluded}</Text>
-                  </View>
-                </View>
-                <Text style={styles.metricValue}>
-                  {goal.result_from != null ? `${fmt(goal.result_from)} → ` : ''}
-                  {fmt(goal.result_to)} {goal.result_unit ?? ''}
-                </Text>
-              </View>
-            )}
-          </Card>
+        {/* мерзімнен тыс қалған айлар */}
+        {orphans.length > 0 && (
+          <View style={styles.warning}>
+            <Text style={styles.warningText}>
+              {tpl(kk.goal.orphanWarning, { n: orphans.length })}
+            </Text>
+          </View>
         )}
 
-        {/* кезеңдер — болса ғана */}
-        {stages.length > 0 && (
-          <Card style={styles.pad}>
-            <SectionLabel style={{ marginBottom: 13 }}>{kk.goal.stages}</SectionLabel>
-            <View style={styles.stageRow}>
-              {stages.map((s, i) => {
-                const done = s.pct >= 100;
-                const now =
-                  !done &&
-                  s.goal.period_start <= toIso(today) &&
-                  s.goal.period_end >= toIso(today);
-                return (
-                  <View key={s.goal.id} style={styles.stageItem}>
-                    <View style={styles.stageCol}>
-                      <View
-                        style={[
-                          styles.stageDot,
-                          done && { backgroundColor: C.accent, borderColor: C.accent },
-                          now && { borderColor: C.accent },
-                        ]}
-                      >
-                        <Text
-                          style={[
-                            styles.stageNum,
-                            done && { color: '#FFFFFF' },
-                            now && { color: C.accentDeep },
-                          ]}
-                        >
-                          {i + 1}
-                        </Text>
-                      </View>
-                      <Text style={styles.stageName} numberOfLines={2}>{s.goal.title}</Text>
-                    </View>
-                    {i < stages.length - 1 && (
-                      <View style={[styles.stageLine, done && { backgroundColor: C.accent }]} />
-                    )}
-                  </View>
-                );
-              })}
-            </View>
-          </Card>
-        )}
+        {/* АЙЛАР — жүйе ашқан қаңқа */}
+        <SectionLabel style={{ paddingLeft: 4, marginTop: 4 }}>{kk.goal.months}</SectionLabel>
 
-        {/* айлық бөлу */}
-        {monthList.length > 0 && (
-          <Card style={styles.padTight}>
-            <SectionLabel style={{ marginBottom: 4, paddingHorizontal: 2 }}>
-              {kk.goal.byMonth}
-            </SectionLabel>
+        {months.map((m) => {
+          const st = statOf(m.id);
+          const total = st?.total ?? 0;
+          const done = st?.done ?? 0;
+          const pct = st?.actual ?? 0;
+          const current = m.period_start <= toIso(today) && m.period_end >= toIso(today);
 
-            {monthList.map((m, i) => {
-              const isOpen = openMonth === m.goal.id;
-              const current =
-                m.goal.period_start <= toIso(today) && m.goal.period_end >= toIso(today);
-              return (
-                <Pressable
-                  key={m.goal.id}
-                  onPress={() => setOpenMonth((cur) => (cur === m.goal.id ? null : m.goal.id))}
-                  style={[styles.monthRow, i < monthList.length - 1 && styles.monthDivider]}
-                  accessibilityRole="button"
-                >
-                  <View style={styles.monthLeft}>
-                    <View style={[styles.monthBadge, current && { backgroundColor: C.accent }]}>
-                      <Text style={[styles.monthBadgeText, current && { color: '#FFFFFF' }]}>
-                        {m.pct}
-                      </Text>
-                    </View>
-                    <View style={{ flexGrow: 1, flexShrink: 1 }}>
-                      <View style={styles.monthTitleRow}>
-                        <Text style={styles.monthTitle}>{m.goal.title}</Text>
-                        {current && (
-                          <View style={styles.currentChip}>
-                            <Text style={styles.currentText}>{kk.goal.current}</Text>
-                          </View>
-                        )}
-                      </View>
-                      <ProgressBar
-                        pct={m.pct}
-                        color={current ? C.accent : C.accent5}
-                        height={4}
-                        style={{ marginTop: 7 }}
-                      />
-                    </View>
-                  </View>
-
-                  {isOpen && m.goal.target_amount != null && (
-                    <Text style={styles.monthAmount}>
-                      {m.goal.target_amount} {m.goal.unit ?? ''} · {formatDayMonth(new Date(m.goal.period_start + 'T00:00:00'))} — {formatDayMonth(new Date(m.goal.period_end + 'T00:00:00'))}
-                    </Text>
-                  )}
-                </Pressable>
-              );
-            })}
-          </Card>
-        )}
-
-        {/* ⚠ §5.2b: 0% емес — «Бөлінбеген» күйі мен келесі қадам */}
-        {!divided && (
-          <Card style={styles.pad}>
-            <SectionLabel>{kk.goal.undivided}</SectionLabel>
-            <Text style={styles.undividedNote}>{kk.goal.undividedNote}</Text>
+          return (
             <Pressable
-              onPress={() => router.push(`/goal/${goal.id}/stage/new` as never)}
-              style={styles.addStage}
+              key={m.id}
+              onPress={() => router.push(`/month/${m.id}` as never)}
               accessibilityRole="button"
             >
-              <Text style={styles.addStageText}>{kk.goal.addStage}</Text>
-            </Pressable>
-          </Card>
-        )}
+              <Card level="cardSm" radius={R.cardSm} style={styles.monthCard}>
+                <View style={styles.monthHead}>
+                  <View style={[styles.monthBadge, current && { backgroundColor: C.accent }]}>
+                    <Text style={[styles.monthBadgeText, current && { color: '#FFFFFF' }]}>
+                      {total > 0 ? pct : '—'}
+                    </Text>
+                  </View>
 
-        {/* Бөлінген мақсатқа да кезең қосуға болады */}
-        {divided && (
-          <Pressable
-            onPress={() => router.push(`/goal/${goal.id}/stage/new` as never)}
-            style={styles.addStageGhost}
-            accessibilityRole="button"
-          >
-            <Text style={styles.addStageGhostText}>{kk.goal.addStage}</Text>
-          </Pressable>
-        )}
+                  <View style={{ flexGrow: 1, flexShrink: 1, minWidth: 0 }}>
+                    <View style={styles.monthTitleRow}>
+                      <Text style={styles.monthTitle}>{m.title}</Text>
+                      {current && (
+                        <View style={styles.currentChip}>
+                          <Text style={styles.currentText}>{kk.goal.current}</Text>
+                        </View>
+                      )}
+                    </View>
+                    <Text style={styles.monthRange}>
+                      {formatDayMonth(new Date(m.period_start + 'T00:00:00'))} —{' '}
+                      {formatDayMonth(new Date(m.period_end + 'T00:00:00'))}
+                    </Text>
+                  </View>
+
+                  <View style={styles.monthRight}>
+                    <Text style={[styles.monthCount, total === 0 && { color: C.ink4 }]}>
+                      {total === 0
+                        ? kk.goal.addAction
+                        : tpl(kk.goal.actionCount, { done, total })}
+                    </Text>
+                    <ChevronRightIcon size={15} color={C.inkIcon} />
+                  </View>
+                </View>
+
+                {total > 0 && (
+                  <ProgressBar
+                    pct={pct}
+                    color={current ? C.accent : C.accent5}
+                    height={4}
+                    style={{ marginTop: 10 }}
+                  />
+                )}
+              </Card>
+            </Pressable>
+          );
+        })}
       </View>
     </ScrollView>
   );
 }
 
-/** Ондық бөлшек үтірмен жазылады: 84.2 → «84,2» (CLAUDE.md §9) */
+/** Ондық бөлшек үтірмен жазылады (CLAUDE.md §9) */
 const fmt = (n: number) => String(n).replace('.', ',');
 
 const toIso = (d: Date) =>
@@ -308,11 +241,11 @@ const styles = StyleSheet.create({
     paddingHorizontal: gutter, paddingBottom: 10,
   },
   headerTitle: { fontFamily: font.display, fontSize: 12, letterSpacing: 1.92, color: C.ink },
-  body: { paddingHorizontal: gutter, gap: 12 },
+  body: { paddingHorizontal: gutter, gap: 10 },
 
   hero: { padding: 20 },
   heroLabel: {
-    fontFamily: font.bold, fontSize: 10, letterSpacing: 1.3,
+    fontFamily: font.bold, fontSize: 10, letterSpacing: 1.2,
     textTransform: 'uppercase', color: C.accent2,
   },
   heroTitle: {
@@ -336,68 +269,38 @@ const styles = StyleSheet.create({
   heroLegend: { marginTop: 10 },
   heroLegendText: { fontFamily: font.title, fontSize: 10.5, color: C.darkInk2 },
 
-  pad: { padding: 18 },
-  padTight: { paddingHorizontal: 16, paddingVertical: 14 },
-
-  stageRow: { flexDirection: 'row', alignItems: 'flex-start' },
-  stageItem: { flexDirection: 'row', alignItems: 'flex-start', flexGrow: 1 },
-  stageCol: { alignItems: 'center', gap: 7, width: 62, flexShrink: 0 },
-  stageDot: {
-    width: 26, height: 26, borderRadius: R.pill,
-    alignItems: 'center', justifyContent: 'center',
-    backgroundColor: C.lineSoft, borderWidth: 2, borderColor: C.line,
+  resultRow: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    marginTop: 14, paddingTop: 12, borderTopWidth: 1, borderTopColor: C.darkLine,
   },
-  stageNum: { fontFamily: font.bold, fontSize: 11, color: C.ink4 },
-  stageName: { fontFamily: font.bold, fontSize: 9, textAlign: 'center', color: C.inkBody },
-  stageLine: { flexGrow: 1, height: 2, backgroundColor: C.line, marginTop: 12 },
+  resultLabel: {
+    fontFamily: font.bold, fontSize: 9.5, letterSpacing: 1.14,
+    textTransform: 'uppercase', color: C.darkInk3,
+  },
+  resultValue: { fontFamily: font.bold, fontSize: 13, color: '#FFFFFF' },
 
-  monthRow: { paddingVertical: 11 },
-  monthDivider: { borderBottomWidth: 1, borderBottomColor: C.lineSoft },
-  monthLeft: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  warning: {
+    backgroundColor: C.trackChip, borderRadius: R.sm,
+    paddingHorizontal: 13, paddingVertical: 11,
+  },
+  warningText: { fontFamily: font.title, fontSize: 12, lineHeight: 18, color: C.ink2 },
+
+  monthCard: { paddingHorizontal: 15, paddingVertical: 13 },
+  monthHead: { flexDirection: 'row', alignItems: 'center', gap: 12 },
   monthBadge: {
-    width: 34, height: 34, borderRadius: R.box,
+    width: 36, height: 36, borderRadius: R.box,
     alignItems: 'center', justifyContent: 'center',
     backgroundColor: C.tintRing2, flexShrink: 0,
   },
   monthBadgeText: { fontFamily: font.bold, fontSize: 11, color: C.accentDeep },
   monthTitleRow: { flexDirection: 'row', alignItems: 'center', gap: 7, flexWrap: 'wrap' },
   monthTitle: { fontFamily: font.title, fontSize: 13.5, color: C.ink },
+  monthRange: { fontFamily: font.body, fontSize: 10.5, color: C.inkMuted, marginTop: 3 },
   currentChip: {
     backgroundColor: C.tint, borderRadius: R.pill,
     paddingHorizontal: 7, paddingVertical: 2,
   },
   currentText: { fontFamily: font.bold, fontSize: 9, letterSpacing: 0.54, color: C.accentDeep },
-  monthAmount: {
-    fontFamily: font.body, fontSize: 11, color: C.inkMuted,
-    marginTop: 9, marginLeft: 46,
-  },
-
-  metricRow: {
-    flexDirection: 'row', alignItems: 'center',
-    justifyContent: 'space-between', gap: 12, paddingVertical: 11,
-  },
-  metricDivider: { borderTopWidth: 1, borderTopColor: C.lineSoft },
-  metricLabelRow: { flexDirection: 'row', alignItems: 'center', gap: 7, flexShrink: 1 },
-  metricValue: { fontFamily: font.bold, fontSize: 14, color: C.ink, flexShrink: 0 },
-  excludedChip: {
-    backgroundColor: C.trackChip, borderRadius: R.pill,
-    paddingHorizontal: 7, paddingVertical: 2,
-  },
-  excludedText: { fontFamily: font.bold, fontSize: 8.5, letterSpacing: 0.43, color: C.inkMuted },
-
-  undividedNote: {
-    fontFamily: font.prose, fontSize: 12.5, lineHeight: 19,
-    color: C.inkProse, marginTop: 8,
-  },
-  addStage: {
-    alignItems: 'center', justifyContent: 'center', paddingVertical: 14,
-    borderRadius: R.cardXs, backgroundColor: C.accent, marginTop: 16,
-  },
-  addStageText: { fontFamily: font.bold, fontSize: 13, color: '#FFFFFF' },
-  addStageGhost: {
-    alignItems: 'center', justifyContent: 'center', paddingVertical: 14,
-    borderRadius: R.cardXs, backgroundColor: C.card,
-    borderWidth: 1.5, borderStyle: 'dashed', borderColor: C.lineDash,
-  },
-  addStageGhostText: { fontFamily: font.bold, fontSize: 12.5, color: C.accentDeep },
+  monthRight: { flexDirection: 'row', alignItems: 'center', gap: 6, flexShrink: 0 },
+  monthCount: { fontFamily: font.bold, fontSize: 11, color: C.accent },
 });
