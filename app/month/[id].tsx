@@ -21,7 +21,7 @@ import {
 } from '../../lib/goals';
 import { errorText } from '../../lib/errors';
 import { goBack } from '../../lib/nav';
-import { Card, SectionLabel, ProgressBar, Checkbox, Fab } from '../../components/ui';
+import { Card, SectionLabel, ProgressBar, Checkbox, AddButton } from '../../components/ui';
 import { ChevronLeftIcon, CloseIcon, ClockIcon } from '../../components/icons';
 import { ActionForm, REPEATS, type ActionDraft } from '../../components/month/ActionForm';
 
@@ -105,7 +105,7 @@ export default function MonthScreen() {
         contentContainerStyle={{
           ...centered,
           paddingTop: insets.top + 18,
-          paddingBottom: insets.bottom + 96,
+          paddingBottom: insets.bottom + 32,
         }}
         showsVerticalScrollIndicator={false}
       >
@@ -194,6 +194,9 @@ export default function MonthScreen() {
             )}
           </Card>
 
+          {/* Қосу — әрекеттер тізімінің дәл астында */}
+          <AddButton label={kk.goal.addAction} onPress={openForm} />
+
           {/* АПТАЛАР — тек статистикалық фон */}
           {(weeks ?? []).length > 0 && (
             <>
@@ -237,9 +240,6 @@ export default function MonthScreen() {
           )}
         </View>
       </ScrollView>
-
-      {/* Қосу — тізімнің үстінде, саусақ жететін жерде */}
-      {!draft && <Fab label={kk.goal.addAction} onPress={openForm} />}
 
       {draft && goal && (
         <ActionForm

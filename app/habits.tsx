@@ -22,7 +22,7 @@ import { useBreakpoint } from '../lib/breakpoints';
 import {
   useHabitStats, useToggleHabit, useCreateHabit, useArchiveHabit,
 } from '../lib/habits';
-import { Card, DarkCard, SectionLabel, Fab } from '../components/ui';
+import { Card, DarkCard, SectionLabel, AddButton } from '../components/ui';
 import {
   ChevronLeftIcon, CloseIcon, CheckIcon, StarIcon,
 } from '../components/icons';
@@ -79,212 +79,210 @@ export default function HabitsScreen() {
   const monthName = monthsUpper[today.getMonth()]!;
 
   return (
-    <View style={styles.root}>
-      <ScrollView
-        style={styles.screen}
-        contentContainerStyle={{
-          ...centered,
-          paddingTop: insets.top + (wide ? 18 : 12),
-          paddingBottom: insets.bottom + 96,
-        }}
-        showsVerticalScrollIndicator={false}
-      >
-        <View style={styles.header}>
-          <Pressable onPress={() => goBack('/')} hitSlop={10} accessibilityRole="button">
-            <ChevronLeftIcon size={20} color={C.ink} strokeWidth={2.2} />
-          </Pressable>
-          <Text style={styles.headerTitle}>{kk.habits.title}</Text>
-          {/* ⚠ Қосу түймесі мұнда емес — төменде, саусақ жететін жерде */}
-          <View style={{ width: 20 }} />
-        </View>
+    <ScrollView
+      style={styles.screen}
+      contentContainerStyle={{
+        ...centered,
+        paddingTop: insets.top + (wide ? 18 : 12),
+        paddingBottom: insets.bottom + 28,
+      }}
+      showsVerticalScrollIndicator={false}
+    >
+      <View style={styles.header}>
+        <Pressable onPress={() => goBack('/')} hitSlop={10} accessibilityRole="button">
+          <ChevronLeftIcon size={20} color={C.ink} strokeWidth={2.2} />
+        </Pressable>
+        <Text style={styles.headerTitle}>{kk.habits.title}</Text>
+        {/* ⚠ Қосу түймесі мұнда емес — төменде, саусақ жететін жерде */}
+        <View style={{ width: 20 }} />
+      </View>
 
-        <View style={styles.body}>
-          {/*
-            Серия бірінші тұрады: әдеттің мәні — үзілмеу.
-            Қара карточка — «мұнда пайызға қатысты ештеңе жоқ» деген белгі.
-          */}
-          <DarkCard style={styles.hero}>
-            <Text style={styles.heroLabel}>{kk.habits.longestStreak}</Text>
-            <View style={styles.heroRow}>
-              <Text style={styles.heroValue}>{stats.bestStreak}</Text>
-              <Text style={styles.heroUnit}>{kk.habits.daysInRow}</Text>
-            </View>
+      <View style={styles.body}>
+        {/*
+          Серия бірінші тұрады: әдеттің мәні — үзілмеу.
+          Қара карточка — «мұнда пайызға қатысты ештеңе жоқ» деген белгі.
+        */}
+        <DarkCard style={styles.hero}>
+          <Text style={styles.heroLabel}>{kk.habits.longestStreak}</Text>
+          <View style={styles.heroRow}>
+            <Text style={styles.heroValue}>{stats.bestStreak}</Text>
+            <Text style={styles.heroUnit}>{kk.habits.daysInRow}</Text>
+          </View>
 
-            <View style={styles.heroFoot}>
-              <View>
-                <Text style={styles.heroSmall}>{kk.habits.today}</Text>
-                <Text style={styles.heroFig}>
-                  {tpl(kk.habits.doneToday, {
-                    done: stats.doneToday,
-                    total: stats.plannedToday,
-                  })}
-                </Text>
-              </View>
-              <View style={{ alignItems: 'flex-end' }}>
-                <Text style={styles.heroSmall}>
-                  {tpl(kk.habits.consistency, { month: monthName })}
-                </Text>
-                <Text style={styles.heroFig}>{stats.monthPct}%</Text>
-              </View>
-            </View>
-
-            <Text style={styles.heroNote}>{kk.habits.explainer}</Text>
-          </DarkCard>
-
-          {/* ── Қосу бланкасы ── */}
-          {adding && (
-            <Card style={styles.pad}>
-              <SectionLabel>{kk.habits.newHabit}</SectionLabel>
-
-              <TextInput
-                value={title}
-                onChangeText={setTitle}
-                placeholder={kk.habits.placeholder}
-                placeholderTextColor={C.ink4}
-                style={styles.input}
-                autoFocus
-              />
-
-              <SectionLabel style={{ marginTop: 15 }}>{kk.habits.when}</SectionLabel>
-              <Text style={styles.whenHint}>{kk.habits.whenHint}</Text>
-
-              <View style={styles.dowRow}>
-                {DOW.map((d) => {
-                  const on = days.includes(d.iso);
-                  return (
-                    <Pressable
-                      key={d.iso}
-                      onPress={() =>
-                        setDays((v) =>
-                          on ? v.filter((x) => x !== d.iso) : [...v, d.iso],
-                        )
-                      }
-                      style={[styles.dow, on && styles.dowOn]}
-                      accessibilityRole="button"
-                      accessibilityState={{ selected: on }}
-                    >
-                      <Text style={[styles.dowText, on && { color: '#FFFFFF' }]}>
-                        {d.short}
-                      </Text>
-                    </Pressable>
-                  );
+          <View style={styles.heroFoot}>
+            <View>
+              <Text style={styles.heroSmall}>{kk.habits.today}</Text>
+              <Text style={styles.heroFig}>
+                {tpl(kk.habits.doneToday, {
+                  done: stats.doneToday,
+                  total: stats.plannedToday,
                 })}
-              </View>
+              </Text>
+            </View>
+            <View style={{ alignItems: 'flex-end' }}>
+              <Text style={styles.heroSmall}>
+                {tpl(kk.habits.consistency, { month: monthName })}
+              </Text>
+              <Text style={styles.heroFig}>{stats.monthPct}%</Text>
+            </View>
+          </View>
 
-              <Pressable
-                onPress={submit}
-                disabled={!title.trim() || create.isPending}
-                style={[styles.submit, (!title.trim() || create.isPending) && { opacity: 0.45 }]}
-                accessibilityRole="button"
-              >
-                {create.isPending ? (
-                  <ActivityIndicator color="#FFFFFF" size="small" />
-                ) : (
-                  <Text style={styles.submitText}>{kk.common.add}</Text>
-                )}
-              </Pressable>
+          <Text style={styles.heroNote}>{kk.habits.explainer}</Text>
+        </DarkCard>
 
-              {note && <Text style={styles.error}>{note}</Text>}
-            </Card>
-          )}
+        {/* ── Қосу бланкасы ── */}
+        {adding && (
+          <Card style={styles.pad}>
+            <SectionLabel>{kk.habits.newHabit}</SectionLabel>
 
-          <SectionLabel style={{ paddingLeft: 4 }}>{kk.habits.mine}</SectionLabel>
+            <TextInput
+              value={title}
+              onChangeText={setTitle}
+              placeholder={kk.habits.placeholder}
+              placeholderTextColor={C.ink4}
+              style={styles.input}
+              autoFocus
+            />
 
-          {stats.isLoading ? (
-            <Card style={styles.pad}>
-              <View style={styles.center}>
-                <ActivityIndicator color={C.accent} />
-              </View>
-            </Card>
-          ) : stats.items.length === 0 ? (
-            <Card style={styles.pad}>
-              <Text style={styles.emptyTitle}>{kk.habits.emptyTitle}</Text>
-              <Text style={styles.emptyText}>{kk.habits.emptyText}</Text>
-            </Card>
-          ) : (
-            stats.items.map((h) => (
-              <Card key={h.id} level="cardSm" radius={R.cardSm} style={styles.habit}>
-                <View style={styles.habitHead}>
-                  <View style={[styles.dot, { backgroundColor: h.color }]} />
-                  <Text style={styles.habitName} numberOfLines={1}>
-                    {h.title}
-                  </Text>
+            <SectionLabel style={{ marginTop: 15 }}>{kk.habits.when}</SectionLabel>
+            <Text style={styles.whenHint}>{kk.habits.whenHint}</Text>
 
-                  {h.streak > 0 && (
-                    <View style={styles.streak}>
-                      <StarIcon size={11} color={C.accentDeep} strokeWidth={2.4} />
-                      <Text style={styles.streakText}>{h.streak}</Text>
-                    </View>
-                  )}
-
+            <View style={styles.dowRow}>
+              {DOW.map((d) => {
+                const on = days.includes(d.iso);
+                return (
                   <Pressable
-                    onPress={() => archive.mutate(h.id)}
-                    hitSlop={8}
+                    key={d.iso}
+                    onPress={() =>
+                      setDays((v) =>
+                        on ? v.filter((x) => x !== d.iso) : [...v, d.iso],
+                      )
+                    }
+                    style={[styles.dow, on && styles.dowOn]}
                     accessibilityRole="button"
-                    accessibilityLabel={kk.habits.archive}
+                    accessibilityState={{ selected: on }}
                   >
-                    <CloseIcon size={12} color={C.ink4} />
+                    <Text style={[styles.dowText, on && { color: '#FFFFFF' }]}>
+                      {d.short}
+                    </Text>
                   </Pressable>
-                </View>
+                );
+              })}
+            </View>
 
-                <View style={styles.weekRow}>
-                  <View style={styles.week}>
-                    {h.week.map((d, i) => {
-                      const last = i === h.week.length - 1;
-                      return (
-                        <Pressable
-                          key={d.date.toISOString()}
-                          // ⚠ Тек бүгінгі күнді ауыстыруға болады: өткенді
-                          // қайта жазу әдет тарихын жалғанға айналдырады
-                          onPress={
-                            last
-                              ? () => toggle.mutate({ habitId: h.id, done: !d.done })
-                              : undefined
-                          }
-                          style={styles.day}
-                          accessibilityRole={last ? 'button' : undefined}
-                          accessibilityLabel={`${d.short}${d.done ? ' — орындалды' : ''}`}
+            <Pressable
+              onPress={submit}
+              disabled={!title.trim() || create.isPending}
+              style={[styles.submit, (!title.trim() || create.isPending) && { opacity: 0.45 }]}
+              accessibilityRole="button"
+            >
+              {create.isPending ? (
+                <ActivityIndicator color="#FFFFFF" size="small" />
+              ) : (
+                <Text style={styles.submitText}>{kk.common.add}</Text>
+              )}
+            </Pressable>
+
+            {note && <Text style={styles.error}>{note}</Text>}
+          </Card>
+        )}
+
+        <SectionLabel style={{ paddingLeft: 4 }}>{kk.habits.mine}</SectionLabel>
+
+        {stats.isLoading ? (
+          <Card style={styles.pad}>
+            <View style={styles.center}>
+              <ActivityIndicator color={C.accent} />
+            </View>
+          </Card>
+        ) : stats.items.length === 0 ? (
+          <Card style={styles.pad}>
+            <Text style={styles.emptyTitle}>{kk.habits.emptyTitle}</Text>
+            <Text style={styles.emptyText}>{kk.habits.emptyText}</Text>
+          </Card>
+        ) : (
+          stats.items.map((h) => (
+            <Card key={h.id} level="cardSm" radius={R.cardSm} style={styles.habit}>
+              <View style={styles.habitHead}>
+                <View style={[styles.dot, { backgroundColor: h.color }]} />
+                <Text style={styles.habitName} numberOfLines={1}>
+                  {h.title}
+                </Text>
+
+                {h.streak > 0 && (
+                  <View style={styles.streak}>
+                    <StarIcon size={11} color={C.accentDeep} strokeWidth={2.4} />
+                    <Text style={styles.streakText}>{h.streak}</Text>
+                  </View>
+                )}
+
+                <Pressable
+                  onPress={() => archive.mutate(h.id)}
+                  hitSlop={8}
+                  accessibilityRole="button"
+                  accessibilityLabel={kk.habits.archive}
+                >
+                  <CloseIcon size={12} color={C.ink4} />
+                </Pressable>
+              </View>
+
+              <View style={styles.weekRow}>
+                <View style={styles.week}>
+                  {h.week.map((d, i) => {
+                    const last = i === h.week.length - 1;
+                    return (
+                      <Pressable
+                        key={d.date.toISOString()}
+                        // ⚠ Тек бүгінгі күнді ауыстыруға болады: өткенді
+                        // қайта жазу әдет тарихын жалғанға айналдырады
+                        onPress={
+                          last
+                            ? () => toggle.mutate({ habitId: h.id, done: !d.done })
+                            : undefined
+                        }
+                        style={styles.day}
+                        accessibilityRole={last ? 'button' : undefined}
+                        accessibilityLabel={`${d.short}${d.done ? ' — орындалды' : ''}`}
+                      >
+                        <Text style={[styles.dayLabel, last && { color: C.accentDeep }]}>
+                          {d.short}
+                        </Text>
+                        <View
+                          style={[
+                            styles.cell,
+                            d.done && { backgroundColor: h.color, borderColor: h.color },
+                            !d.done && d.planned && styles.cellPlanned,
+                            !d.planned && styles.cellOff,
+                          ]}
                         >
-                          <Text style={[styles.dayLabel, last && { color: C.accentDeep }]}>
-                            {d.short}
-                          </Text>
-                          <View
-                            style={[
-                              styles.cell,
-                              d.done && { backgroundColor: h.color, borderColor: h.color },
-                              !d.done && d.planned && styles.cellPlanned,
-                              !d.planned && styles.cellOff,
-                            ]}
-                          >
-                            {d.done && <CheckIcon size={10} color="#FFFFFF" strokeWidth={4} />}
-                          </View>
-                        </Pressable>
-                      );
-                    })}
-                  </View>
-
-                  <View style={styles.pctBox}>
-                    <Text style={styles.pct}>{h.pct}%</Text>
-                    <Text style={styles.pctLabel}>{kk.habits.days30}</Text>
-                  </View>
+                          {d.done && <CheckIcon size={10} color="#FFFFFF" strokeWidth={4} />}
+                        </View>
+                      </Pressable>
+                    );
+                  })}
                 </View>
-              </Card>
-            ))
-          )}
-        </View>
-      </ScrollView>
 
-      <Fab
-        label={adding ? kk.common.cancel : kk.habits.newHabit}
-        active={adding}
-        onPress={() => setAdding((v) => !v)}
-      />
-    </View>
+                <View style={styles.pctBox}>
+                  <Text style={styles.pct}>{h.pct}%</Text>
+                  <Text style={styles.pctLabel}>{kk.habits.days30}</Text>
+                </View>
+              </View>
+            </Card>
+          ))
+        )}
+
+        {/* Қосу — тізімнің жалғасы, сондықтан дәл астында тұр */}
+        <AddButton
+          label={adding ? kk.common.cancel : kk.habits.newHabit}
+          active={adding}
+          onPress={() => setAdding((v) => !v)}
+        />
+      </View>
+    </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: C.bg },
   screen: { flex: 1, backgroundColor: C.bg },
   header: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
