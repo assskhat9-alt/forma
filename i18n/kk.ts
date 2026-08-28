@@ -70,6 +70,7 @@ export const kk = {
 
   nav: {
     /** Каскад деңгейлерін біріктіретін топ: Бүгін · Апта · Ай · Жыл */
+    home: 'Басты бет',
     plans: 'Жоспарлар',
     today: 'Бүгін',
     calendar: 'Күнтізбе',
@@ -113,6 +114,33 @@ export const kk = {
     },
   },
 
+  /** Басты бет — панель. Барлық сан НАҚТЫ дерек, болжам жоқ. */
+  home: {
+    statDay: 'Бүгінгі орындалу',
+    statActions: 'Әрекеттер',
+    statHabits: 'Әдеттер',
+    statGoals: 'Мақсаттар',
+    doneOfTotal: '{done} / {total} орындалды',
+    leftN: 'тағы {n} қалды',
+    allDone: 'бәрі бітті',
+    nothingPlanned: 'жоспар қойылмаған',
+    goalsActive: 'белсенді жылдық мақсат',
+    weekTrend: 'Апта серпіні',
+    levels: 'Каскад деңгейлері',
+    levelsEmpty: 'Мақсат қосқанда ай мен жыл пайызы осында шығады.',
+    yearRing: 'Жылдық орындалу',
+    yearRingCaption: '{n} мақсаттың орташасы',
+    yearRingEmpty: 'Мақсат жоқ',
+    table: 'Күннің әрекеттері',
+    colAction: 'Әрекет',
+    colGoal: 'Мақсат',
+    colTime: 'Уақыт',
+    colState: 'Күй',
+    stateDone: 'Орындалды',
+    stateOpen: 'Ашық',
+    noTime: '—',
+    tableEmpty: 'Бұл күнге әрекет қойылмаған.',
+  },
   today: {
     motto: 'МЕНІҢ СӨЗІМ',
     goalsCard: 'Мақсат бойынша орындалу',

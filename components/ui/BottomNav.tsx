@@ -40,7 +40,7 @@ type Slot = {
 
 /** Таб реті — маршрут атаулары app/(tabs)/ ішіндегі файл аттарымен сәйкес */
 const SLOTS: Slot[] = [
-  { route: 'index', Icon: HomeIcon, label: 'Бүгін' },
+  { route: 'index', Icon: HomeIcon, label: 'Басты бет' },
   { route: 'calendar', Icon: CalendarIcon, label: 'Күнтізбе' },
   { route: 'goals', Icon: BarChartIcon, label: 'Жыл' },
   { route: 'profile', Icon: UserIcon, label: 'Профиль' },

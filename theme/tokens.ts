@@ -233,6 +233,20 @@ export const gutter = 20;
  */
 export const contentMaxWidth = 560;
 
+/**
+ * Панель ені. Басты бет — оқу бағаны емес, есеп тақтасы: 560-қа сыйғызсақ
+ * төрт сан бір қатарға түспейді, диаграмма мен кесте қысылады. Сондықтан
+ * ол күнтізбенің кең нұсқасы сияқты бөлек енмен жүреді.
+ */
+export const dashboardMaxWidth = 1120;
+
+/** Кең экранда панельді ортаға қоятын дайын стиль */
+export const dashboardCentered = {
+  width: '100%' as const,
+  maxWidth: dashboardMaxWidth,
+  alignSelf: 'center' as const,
+};
+
 /** Кең экранда контентті ортаға қоятын дайын стиль */
 export const centered = {
   width: '100%' as const,

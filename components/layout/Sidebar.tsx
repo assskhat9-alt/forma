@@ -5,8 +5,9 @@
  * бөлек топ — Профиль мен Шығу. Екеуінің ортасында мотивация карточкасы:
  * қара, панельдегі жалғыз түсті нәрсе.
  *
- * Каскад деңгейлері (Бүгін · Жыл) «ЖОСПАРЛАР» тобына жиналған: бұлар
- * бөлек бөлімдер емес, бір ғана нәрсенің екі масштабы.
+ * «Басты бет» — топтан тыс, ең жоғарғы жол: ол жоспардың бір деңгейі
+ * емес, бүкіл жүйенің кіреберісі. «ЖОСПАРЛАР» тобында каскад
+ * деңгейлері ғана тұрады.
  *
  * Телефонда бұның орнына төменгі жолақ тұрады (BottomNav).
  */
@@ -46,13 +47,15 @@ type Item = {
 const ITEM_H = 40;
 const ITEM_GAP = 2;
 
+/** Топтан тыс, ең жоғарғы жол — панельдің кіреберісі */
+const HOME: Item = { name: kk.nav.home, href: '/', Icon: HomeIcon };
+
 /**
  * ⚠ Мұнда пайыз КӨРСЕТІЛМЕЙДІ. Макетте сандар тұрған, бірақ олар
  * иллюстрация еді. Бүйір мәзір — навигация, есеп тақтасы емес:
  * жалған сан көрсеткеннен ештеңе көрсетпеген артық.
  */
 const PLAN_ITEMS: Item[] = [
-  { name: kk.nav.today, href: '/', Icon: HomeIcon },
   { name: kk.nav.year, href: '/goals', Icon: DiamondIcon },
 ];
 
@@ -107,6 +110,10 @@ export function Sidebar({ width = 232, motto }: { width?: number; motto?: string
       <View style={styles.brand}>
         <DiamondIcon size={24} color={C.accent} />
         <Text style={styles.wordmark}>{kk.app.name}</Text>
+      </View>
+
+      <View style={styles.home}>
+        <NavRow item={HOME} active={isOn(HOME.href)} />
       </View>
 
       {/* ── ЖОСПАРЛАР тобы ── */}
@@ -215,7 +222,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
-    marginTop: 26,
+    marginTop: 10,
     marginBottom: 6,
     paddingHorizontal: 12,
     minHeight: 24,
@@ -231,6 +238,7 @@ const styles = StyleSheet.create({
   groupClip: { overflow: 'hidden' },
   groupBody: { gap: ITEM_GAP },
 
+  home: { marginTop: 22 },
   tools: { gap: ITEM_GAP, marginTop: ITEM_GAP },
   foot: { gap: ITEM_GAP },
   divider: { height: 1, backgroundColor: C.lineSoft, marginVertical: 12, marginHorizontal: 6 },

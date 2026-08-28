@@ -1,56 +1,158 @@
 /**
- * БҮГІН — басты экран (design/Main.dc.html).
+ * БАСТЫ БЕТ — панель.
+ *
+ * Бұл экран каскадтың бір деңгейі емес, бүкіл жүйенің кіреберісі:
+ * жоғарыда сандар қатары, ортасында апта серпіні мен деңгейлер,
+ * төменде таңдалған күннің әрекеттері.
  *
  * Екі бөлек блок, шатастыруға болмайды (CLAUDE.md §1):
- *   ақ карточка  → мақсаттар. Күндік сақина ТЕК осыдан есептеледі.
+ *   ақ карточка  → мақсаттар. Пайыз ТЕК осыдан есептеледі.
  *   үзік сызықты → әдеттер. Пайызға МҮЛДЕ қосылмайды.
+ *
+ * ⚠ Панельдегі бірде-бір сан болжам емес. «Өткен аптадан +4%» деген
+ * көрсеткіш әдейі ЖОҚ: ол үшін тарихи дерек керек, ал ол әлі жиналмаған.
+ *
+ * Блоктар `components/home/*` ішінде жеке тұрады да, бұл файл тек
+ * деректі солардың пропына айналдырады — блокты ауыстыру, орнын
+ * алмастыру немесе алып тастау осында бір жерден істеледі.
  */
-import React, { useState } from 'react';
-import { View, Text, ScrollView, StyleSheet, ActivityIndicator } from 'react-native';
+import React, { useMemo, useState } from 'react';
+import { View, Text, ScrollView, Pressable, StyleSheet, ActivityIndicator } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
+import { startOfWeek, addDays, isSameDay } from 'date-fns';
 
-import { color as C, radius as R, font, gutter, centered } from '../../theme/tokens';
-import { kk, formatDayMonthWeekday, monthsUpper, t as tpl } from '../../i18n/kk';
+import {
+  color as C, radius as R, font, gutter, centered, dashboardCentered,
+} from '../../theme/tokens';
+import {
+  kk, formatDayMonthWeekday, monthsUpper, weekdaysShort, t as tpl,
+} from '../../i18n/kk';
 import { weekNumber } from '../../lib/calendar';
-import { useDayTasks, useToggleTask, useTodayLevels } from '../../lib/goals';
+import { useBreakpoint } from '../../lib/breakpoints';
+import {
+  useDayTasks, useToggleTask, useTodayLevels, useLoadOf, useYearGoalsWithStats,
+} from '../../lib/goals';
 import { useHabitsForDay, useToggleHabit } from '../../lib/habits';
 import { useDueAction } from '../../lib/focus';
 import { DueBanner } from '../../components/focus/DueBanner';
 import {
-  Card, DarkCard, DashedCard, SectionLabel,
-  ProgressRing, ProgressBar, Chip, CollapsibleSegments, HabitCell,
+  Card, DarkCard, DashedCard, SectionLabel, Chip, CollapsibleSegments, HabitCell,
 } from '../../components/ui';
-import { MenuIcon, BellIcon, QuoteIcon, StarIcon } from '../../components/icons';
+import {
+  StatCard, WeekBars, WeekStrip, RingCard, TaskTable, LevelsCard,
+  type Stat, type DayBar, type StripDay, type TableRow, type Level,
+} from '../../components/home';
+import { MenuIcon, BellIcon, QuoteIcon, StarIcon, ChevronRightIcon } from '../../components/icons';
 import { TopBar } from '../../components/layout/TopBar';
-import { useBreakpoint } from '../../lib/breakpoints';
 import { TaskRow } from '../../components/calendar/TaskRow';
 
 const PERIODS = [kk.period.day, kk.period.week, kk.period.month, kk.period.year] as const;
 
 const MOTTO = '«Мен армандаған адам — бүгін тұрып жасайтын адам.»';
 
-export default function TodayScreen() {
+export default function HomeScreen() {
   const insets = useSafeAreaInsets();
-  const today = new Date();
-  // Кең экранда жоғарғы жолақ басқаша: сөзбелгі бүйір мәзірде тұр
   const wide = useBreakpoint() !== 'phone';
+
+  const today = useMemo(() => new Date(), []);
+  /** Панель қай күнді көрсетіп тұр — апта жолағы мен кесте осыған қарайды */
+  const [selected, setSelected] = useState(today);
 
   const [period, setPeriod] = useState(0);
   const [segOpen, setSegOpen] = useState(true);
 
-  const { tasks, isLoading, isError } = useDayTasks(today);
+  const { tasks, isLoading, isError } = useDayTasks(selected);
   const toggleTask = useToggleTask();
-  const { data: bars } = useTodayLevels(today);
-  const { items: habits } = useHabitsForDay(today);
-  const toggleHabit = useToggleHabit(today);
+  const { data: bars } = useTodayLevels(selected);
+  const { data: yearGoals } = useYearGoalsWithStats(today);
+  const loadOf = useLoadOf();
+  const { items: habits } = useHabitsForDay(selected);
+  const toggleHabit = useToggleHabit(selected);
 
   // ⚠ Тек ҰСЫНЫС: таймер өзі қосылмайды, шешімді адам қабылдайды
   const dueAction = useDueAction(today);
 
-  const doneCount = tasks.filter((t) => t.done).length;
-  const dayPct = tasks.length ? Math.round((doneCount / tasks.length) * 100) : 0;
+  const done = tasks.filter((t) => t.done).length;
+  const dayPct = tasks.length ? Math.round((done / tasks.length) * 100) : 0;
   const habitsDone = habits.filter((h) => h.done).length;
+
+  // ── Апта: дүйсенбіден басталады ──────────────────────────────────
+  const weekStart = startOfWeek(selected, { weekStartsOn: 1 });
+
+  const weekDays: DayBar[] = Array.from({ length: 7 }, (_, i) => {
+    const date = addDays(weekStart, i);
+    const load = loadOf(date);
+    return {
+      date,
+      short: weekdaysShort[i]!,
+      total: load?.total ?? 0,
+      done: load?.done ?? 0,
+      today: isSameDay(date, today),
+    };
+  });
+
+  const stripDays: StripDay[] = weekDays.map((d) => ({ date: d.date, short: d.short }));
+
+  // ── Жоғарғы сандар ───────────────────────────────────────────────
+  const left = tasks.length - done;
+  const activeGoals = (yearGoals ?? []).length;
+  const scored = (yearGoals ?? []).filter((g) => g.total > 0);
+  const yearPct = scored.length
+    ? Math.round(scored.reduce((a, g) => a + g.actual, 0) / scored.length)
+    : 0;
+
+  const stats: Stat[] = [
+    {
+      label: kk.home.statDay,
+      value: `${dayPct}%`,
+      note: tasks.length
+        ? tpl(kk.home.doneOfTotal, { done, total: tasks.length })
+        : kk.home.nothingPlanned,
+    },
+    {
+      label: kk.home.statActions,
+      value: tasks.length ? `${done} / ${tasks.length}` : '—',
+      note: !tasks.length
+        ? kk.home.nothingPlanned
+        : left > 0
+          ? tpl(kk.home.leftN, { n: left })
+          : kk.home.allDone,
+    },
+    {
+      label: kk.home.statHabits,
+      value: habits.length ? `${habitsDone} / ${habits.length}` : '—',
+      note: kk.today.habitsExcluded,
+    },
+    {
+      label: kk.home.statGoals,
+      value: String(activeGoals),
+      note: kk.home.goalsActive,
+      href: '/goals',
+    },
+  ];
+
+  const levels: Level[] = (bars ?? []).map((lv) => ({
+    id: lv.goal.id,
+    title: lv.goal.title,
+    pct: lv.actual,
+    color: lv.color,
+  }));
+
+  const rows: TableRow[] = tasks.map((t) => ({
+    id: t.id,
+    title: t.title,
+    time: t.time,
+    done: t.done,
+    goal: t.goal ?? { title: '—', color: C.accent },
+  }));
+
+  /** §7.4: рефлексия белгі ҚОЙЫЛҒАНДА ашылады, алынғанда емес */
+  const toggle = (id: string, wasDone: boolean) => {
+    const next = !wasDone;
+    toggleTask.mutate({ id, done: next });
+    if (next) router.push(`/reflection?taskId=${id}` as never);
+  };
 
   const segments = (
     <CollapsibleSegments
@@ -63,14 +165,20 @@ export default function TodayScreen() {
     />
   );
 
+  const stripTitle = `${cap(monthsUpper[selected.getMonth()]!)} ${selected.getFullYear()}`;
+
   return (
     <ScrollView
       style={styles.screen}
-      contentContainerStyle={{ ...centered, paddingTop: insets.top + 8, paddingBottom: 32 }}
+      contentContainerStyle={{
+        ...(wide ? dashboardCentered : centered),
+        paddingTop: insets.top + 8,
+        paddingBottom: 32,
+      }}
       showsVerticalScrollIndicator={false}
     >
       {wide ? (
-        <TopBar title={kk.nav.today} right={segments} />
+        <TopBar title={kk.nav.home} right={segments} />
       ) : (
         <>
           <View style={styles.header}>
@@ -82,85 +190,115 @@ export default function TodayScreen() {
         </>
       )}
 
-      {/* мотивация — мақсат емес нәрсе қара карточкада */}
-      <DarkCard style={styles.motto} radius={R.cardXs}>
-        <QuoteIcon size={18} color={C.accent2} />
-        <Text style={styles.mottoLabel}>{kk.today.motto}</Text>
-        <Text style={styles.mottoText}>{MOTTO}</Text>
-      </DarkCard>
-
-      {/* Уақыты келген әрекет — ұсыныс, автоматты қосылу емес */}
-      {dueAction && (
-        <View style={styles.dueWrap}>
-          <DueBanner action={dueAction} />
+      <View style={[styles.body, wide && styles.bodyWide]}>
+        {/* ── 1. Сандар қатары ── */}
+        <View style={styles.statRow}>
+          {stats.map((s, i) => (
+            <StatCard
+              key={s.label}
+              stat={s}
+              hero={i === 0}
+              onPress={s.href ? () => router.navigate(s.href as never) : undefined}
+            />
+          ))}
         </View>
-      )}
 
-      {/* күн */}
-      <View style={styles.dateRow}>
-        <View>
-          <Text style={styles.date}>{formatDayMonthWeekday(today)}</Text>
-          <Text style={styles.dateSub}>
-            {weekNumber(today)}-апта · {cap(monthsUpper[today.getMonth()]!)} · {today.getFullYear()}
-          </Text>
-        </View>
-        {habitsDone > 0 && (
-          <View style={styles.streak}>
-            <StarIcon size={11} color={C.accentDeep} strokeWidth={2.4} />
-            <Text style={styles.streakText}>{habitsDone}</Text>
+        {/* ── 2. Апта серпіні + оң баған ── */}
+        <View style={[styles.mid, wide && styles.midWide]}>
+          <WeekBars title={kk.home.weekTrend} days={weekDays} onPickDay={setSelected} />
+
+          <View style={[styles.side, wide && styles.sideWide]}>
+            <WeekStrip
+              title={stripTitle}
+              days={stripDays}
+              selected={selected}
+              onSelect={setSelected}
+              onPrev={() => setSelected((d) => addDays(d, -7))}
+              onNext={() => setSelected((d) => addDays(d, 7))}
+            />
+
+            <RingCard
+              title={kk.home.yearRing}
+              caption={
+                scored.length
+                  ? tpl(kk.home.yearRingCaption, { n: scored.length })
+                  : kk.home.yearRingEmpty
+              }
+              pct={yearPct}
+              onPress={() => router.navigate('/goals' as never)}
+            />
+
+            <LevelsCard
+              title={kk.home.levels}
+              levels={levels}
+              emptyText={kk.home.levelsEmpty}
+            />
           </View>
-        )}
-      </View>
+        </View>
 
-      <View style={styles.body}>
+        {/* мотивация — мақсат емес нәрсе қара карточкада */}
+        <DarkCard style={styles.motto} radius={R.cardXs}>
+          <QuoteIcon size={18} color={C.accent2} />
+          <Text style={styles.mottoLabel}>{kk.today.motto}</Text>
+          <Text style={styles.mottoText}>{MOTTO}</Text>
+        </DarkCard>
+
+        {/* Уақыты келген әрекет — ұсыныс, автоматты қосылу емес */}
+        {dueAction && <DueBanner action={dueAction} />}
+
+        {/* ── 3. Таңдалған күннің әрекеттері ── */}
+        <View style={styles.dateRow}>
+          <View style={{ flexShrink: 1 }}>
+            <Text style={styles.date}>{formatDayMonthWeekday(selected)}</Text>
+            <Text style={styles.dateSub}>
+              {weekNumber(selected)}-апта · {cap(monthsUpper[selected.getMonth()]!)} ·{' '}
+              {selected.getFullYear()}
+            </Text>
+          </View>
+          {habitsDone > 0 && (
+            <View style={styles.streak}>
+              <StarIcon size={11} color={C.accentDeep} strokeWidth={2.4} />
+              <Text style={styles.streakText}>{habitsDone}</Text>
+            </View>
+          )}
+        </View>
+
         {isLoading ? (
-          <View style={styles.center}>
-            <ActivityIndicator color={C.accent} />
-          </View>
+          <Card style={styles.pad}>
+            <View style={styles.center}>
+              <ActivityIndicator color={C.accent} />
+            </View>
+          </Card>
         ) : isError ? (
           <Card style={styles.pad}>
             <Text style={styles.errorText}>{kk.common.loadError}</Text>
           </Card>
+        ) : wide ? (
+          <TaskTable
+            title={kk.home.table}
+            rows={rows}
+            columns={[kk.home.colAction, kk.home.colGoal, kk.home.colTime, kk.home.colState]}
+            emptyText={kk.home.tableEmpty}
+            noTimeText={kk.home.noTime}
+            doneText={kk.home.stateDone}
+            openText={kk.home.stateOpen}
+            onToggle={(r) => toggle(r.id, r.done)}
+            right={
+              <Pressable
+                onPress={() => router.navigate('/calendar' as never)}
+                style={styles.round}
+                accessibilityRole="link"
+                accessibilityLabel={kk.nav.calendar}
+              >
+                <ChevronRightIcon size={14} color={C.ink2} strokeWidth={2.4} />
+              </Pressable>
+            }
+          />
         ) : tasks.length === 0 ? (
           <EmptyToday />
         ) : (
           <Card style={styles.pad}>
-            <SectionLabel style={{ marginBottom: 10 }}>{kk.today.goalsCard}</SectionLabel>
-
-            <View style={styles.ringRow}>
-              <ProgressRing
-                pct={dayPct}
-                size={100}
-                strokeWidth={10}
-                label={kk.today.ringLabel}
-                numberSize={22}
-              />
-              <View style={styles.levels}>
-                {(bars ?? []).length === 0 ? (
-                  <Text style={styles.levelsEmpty}>
-                    Мақсат қосқанда апта, ай және жыл пайызы осында шығады.
-                  </Text>
-                ) : (
-                  (bars ?? []).map((lv) => (
-                    <View key={lv.goal.id} style={{ gap: 4 }}>
-                      <View style={styles.levelHead}>
-                        <View style={styles.levelName}>
-                          <View style={[styles.dot, { backgroundColor: lv.color }]} />
-                          <Text style={styles.levelText} numberOfLines={1}>
-                            {lv.goal.title}
-                          </Text>
-                        </View>
-                        <Text style={styles.levelPct}>{lv.actual}%</Text>
-                      </View>
-                      <ProgressBar pct={lv.actual} color={lv.color} height={4} />
-                    </View>
-                  ))
-                )}
-              </View>
-            </View>
-
-            <View style={styles.divider} />
-
+            <SectionLabel style={{ marginBottom: 6 }}>{kk.today.goalsCard}</SectionLabel>
             {tasks.map((task, i) => (
               <TaskRow
                 key={task.id}
@@ -171,19 +309,14 @@ export default function TodayScreen() {
                   done: task.done,
                   goal: task.goal ?? { id: '', title: '—', color: C.accent },
                 }}
-                onToggle={(id) => {
-                  const next = !task.done;
-                  toggleTask.mutate({ id, done: next });
-                  // §7.4: орындалғанда ғана — белгіні алғанда емес
-                  if (next) router.push(`/reflection?taskId=${id}` as never);
-                }}
+                onToggle={(id) => toggle(id, task.done)}
                 last={i === tasks.length - 1}
               />
             ))}
           </Card>
         )}
 
-        {/* ӘДЕТТЕР — әдейі бөлек, пайызға кірмейді */}
+        {/* ── 4. ӘДЕТТЕР — әдейі бөлек, пайызға кірмейді ── */}
         <DashedCard style={styles.padSm}>
           <View style={styles.habHead}>
             <View style={styles.habTitle}>
@@ -234,8 +367,8 @@ function EmptyToday() {
       <SectionLabel>Бүгінге тапсырма жоқ</SectionLabel>
       <Text style={styles.emptyTitle}>Бірінші мақсатыңызды қосыңыз</Text>
       <Text style={styles.emptyText}>
-        Жылдық мақсат құрғанда жүйе оны айға, аптаға және күнге өзі бөледі.
-        Сонда бүгінгі бір белгі жылдық санды да жылжытады.
+        Жылдық мақсат құрғанда жүйе айларды өзі ашады. Ішіндегі әрекетті
+        сіз қоясыз — сонда бүгінгі бір белгі жылдық санды да жылжытады.
       </Text>
       <View style={styles.emptyHint}>
         <Text style={styles.emptyHintText}>
@@ -260,8 +393,17 @@ const styles = StyleSheet.create({
   wordmark: { fontFamily: font.display, fontSize: 13, letterSpacing: 2.08, color: C.ink },
   segWrap: { paddingHorizontal: gutter, paddingTop: 4 },
 
-  motto: { marginHorizontal: gutter, marginTop: 10, padding: 16 },
-  dueWrap: { paddingHorizontal: gutter, marginTop: 10 },
+  body: { paddingHorizontal: gutter, gap: 10, marginTop: 10 },
+  bodyWide: { paddingHorizontal: 26, gap: 14, marginTop: 0 },
+
+  statRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
+
+  mid: { gap: 10 },
+  midWide: { flexDirection: 'row', gap: 14, alignItems: 'flex-start' },
+  side: { gap: 10 },
+  sideWide: { width: 320, flexShrink: 0, gap: 14 },
+
+  motto: { padding: 16 },
   mottoLabel: {
     fontFamily: font.bold, fontSize: 9, letterSpacing: 1.44,
     color: C.accent2, marginTop: 8,
@@ -275,9 +417,8 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'flex-end',
     justifyContent: 'space-between',
-    paddingHorizontal: gutter,
-    paddingTop: 14,
-    paddingBottom: 10,
+    gap: 12,
+    paddingTop: 4,
   },
   date: { fontFamily: font.bold, fontSize: 18, letterSpacing: -0.36, color: C.ink },
   dateSub: { fontFamily: font.prose, fontSize: 11, color: C.inkMuted, marginTop: 1 },
@@ -288,22 +429,15 @@ const styles = StyleSheet.create({
   },
   streakText: { fontFamily: font.bold, fontSize: 11.5, color: C.accentDeep },
 
-  body: { paddingHorizontal: gutter, gap: 10 },
   pad: { padding: 17 },
   padSm: { padding: 15 },
-  center: { paddingVertical: 40, alignItems: 'center' },
+  center: { paddingVertical: 30, alignItems: 'center' },
   errorText: { fontFamily: font.prose, fontSize: 13, color: C.inkProse },
 
-  ringRow: { flexDirection: 'row', alignItems: 'center', gap: 16 },
-  levels: { flexGrow: 1, flexShrink: 1, gap: 9 },
-  levelsEmpty: { fontFamily: font.prose, fontSize: 11.5, lineHeight: 17, color: C.ink4 },
-  levelHead: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8 },
-  levelName: { flexDirection: 'row', alignItems: 'center', gap: 7, flexShrink: 1 },
-  dot: { width: 6, height: 6, borderRadius: 999, flexShrink: 0 },
-  levelText: { fontFamily: font.body, fontSize: 11.5, color: C.inkBody, flexShrink: 1 },
-  levelPct: { fontFamily: font.bold, fontSize: 11.5, color: C.ink },
-
-  divider: { height: 1, backgroundColor: C.lineSoft, marginTop: 12, marginBottom: 2 },
+  round: {
+    width: 32, height: 32, borderRadius: R.pill,
+    backgroundColor: C.bg, alignItems: 'center', justifyContent: 'center',
+  },
 
   emptyTitle: { fontFamily: font.bold, fontSize: 17, letterSpacing: -0.34, color: C.ink, marginTop: 8 },
   emptyText: { fontFamily: font.prose, fontSize: 12.5, lineHeight: 19, color: C.inkProse, marginTop: 8 },

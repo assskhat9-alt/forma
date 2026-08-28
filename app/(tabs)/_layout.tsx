@@ -31,7 +31,7 @@ export default function TabsLayout() {
             )
       }
     >
-      <Tabs.Screen name="index" options={{ title: 'Бүгін' }} />
+      <Tabs.Screen name="index" options={{ title: 'Басты бет' }} />
       <Tabs.Screen name="calendar" options={{ title: 'Күнтізбе' }} />
       <Tabs.Screen name="goals" options={{ title: 'Жыл' }} />
       <Tabs.Screen name="profile" options={{ title: 'Профиль' }} />
