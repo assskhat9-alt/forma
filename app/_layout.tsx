@@ -86,6 +86,8 @@ function RootNavigator() {
           Рефлексия — мөлдір модаль: артында тұрған экран көрініп тұрады
           (Refleksiya.dc.html-де солай, көмескіленген фон).
         */}
+        {/* Фокус — толық экран, қара тақырып */}
+        <Stack.Screen name="focus" options={{ animation: "slide_from_bottom" }} />
         <Stack.Screen
           name="reflection"
           options={{ presentation: 'transparentModal', animation: 'fade' }}

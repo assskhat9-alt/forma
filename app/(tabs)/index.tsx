@@ -15,6 +15,8 @@ import { kk, formatDayMonthWeekday, monthsUpper, t as tpl } from '../../i18n/kk'
 import { weekNumber } from '../../lib/calendar';
 import { useDayTasks, useToggleTask, useTodayLevels } from '../../lib/goals';
 import { useHabitsForDay, useToggleHabit } from '../../lib/habits';
+import { useDueAction } from '../../lib/focus';
+import { DueBanner } from '../../components/focus/DueBanner';
 import {
   Card, DarkCard, DashedCard, SectionLabel,
   ProgressRing, ProgressBar, Chip, CollapsibleSegments, HabitCell,
@@ -38,6 +40,9 @@ export default function TodayScreen() {
   const { data: bars } = useTodayLevels(today);
   const { items: habits } = useHabitsForDay(today);
   const toggleHabit = useToggleHabit(today);
+
+  // ⚠ Тек ҰСЫНЫС: таймер өзі қосылмайды, шешімді адам қабылдайды
+  const dueAction = useDueAction(today);
 
   const doneCount = tasks.filter((t) => t.done).length;
   const dayPct = tasks.length ? Math.round((doneCount / tasks.length) * 100) : 0;
@@ -72,6 +77,13 @@ export default function TodayScreen() {
         <Text style={styles.mottoLabel}>{kk.today.motto}</Text>
         <Text style={styles.mottoText}>{MOTTO}</Text>
       </DarkCard>
+
+      {/* Уақыты келген әрекет — ұсыныс, автоматты қосылу емес */}
+      {dueAction && (
+        <View style={styles.dueWrap}>
+          <DueBanner action={dueAction} />
+        </View>
+      )}
 
       {/* күн */}
       <View style={styles.dateRow}>
@@ -238,6 +250,7 @@ const styles = StyleSheet.create({
   segWrap: { paddingHorizontal: gutter, paddingTop: 4 },
 
   motto: { marginHorizontal: gutter, marginTop: 10, padding: 16 },
+  dueWrap: { paddingHorizontal: gutter, marginTop: 10 },
   mottoLabel: {
     fontFamily: font.bold, fontSize: 9, letterSpacing: 1.44,
     color: C.accent2, marginTop: 8,
