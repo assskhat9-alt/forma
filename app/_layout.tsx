@@ -3,7 +3,7 @@
  */
 import React, { useEffect } from 'react';
 import { View, ActivityIndicator } from 'react-native';
-import { Stack } from 'expo-router';
+import { Stack, useSegments } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import * as SplashScreen from 'expo-splash-screen';
 import { useFonts } from 'expo-font';
@@ -24,6 +24,10 @@ import { Caveat_600SemiBold, Caveat_700Bold } from '@expo-google-fonts/caveat';
 import { queryClient } from '../lib/query';
 import { SessionProvider, useSession, useProtectedRoute } from '../lib/auth';
 import { color as C } from '../theme/tokens';
+import { useBreakpoint } from '../lib/breakpoints';
+import { Sidebar } from '../components/layout/Sidebar';
+
+const MOTTO = '«Мен армандаған адам — бүгін тұрып жасайтын адам.»';
 
 SplashScreen.preventAutoHideAsync().catch(() => {
   /* splash әлдеқашан жабылған болуы мүмкін — елемейміз */
@@ -64,7 +68,20 @@ export default function RootLayout() {
 }
 
 function RootNavigator() {
-  const { ready } = useSession();
+  const { ready, session } = useSession();
+  const bp = useBreakpoint();
+  const segments = useSegments();
+
+  /**
+   * Панель — қосымшаның тұрақты бөлігі.
+   *
+   * ⚠ Ол (tabs) ішінде емес, ТҮБІРДЕ тұрады: әйтпесе Фокус, Әдеттер,
+   * Уақыт есебі сияқты жеке экрандар ашылғанда панель жоғалып кетеді
+   * де, адам қайда тұрғанын білмей қалады.
+   *
+   * Кіру экранында панель жоқ: онда навигация да жоқ.
+   */
+  const showSidebar = bp !== 'phone' && !!session && segments[0] !== '(auth)';
 
   // Кірмеген адамды /sign-in-ке, кіргенді қосымшаға жібереді
   useProtectedRoute();
@@ -78,21 +95,27 @@ function RootNavigator() {
   }
 
   return (
-    <View style={{ flex: 1, backgroundColor: C.bg }}>
-      <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: C.bg } }}>
-        <Stack.Screen name="(auth)" />
-        <Stack.Screen name="(tabs)" />
-        {/*
-          Рефлексия — мөлдір модаль: артында тұрған экран көрініп тұрады
-          (Refleksiya.dc.html-де солай, көмескіленген фон).
-        */}
-        {/* Фокус — толық экран, қара тақырып */}
-        <Stack.Screen name="focus" options={{ animation: "slide_from_bottom" }} />
-        <Stack.Screen
-          name="reflection"
-          options={{ presentation: 'transparentModal', animation: 'fade' }}
-        />
-      </Stack>
+    <View style={{ flex: 1, flexDirection: 'row', backgroundColor: C.bg }}>
+      {showSidebar && (
+        <Sidebar width={bp === 'desktop' ? 260 : 232} motto={MOTTO} />
+      )}
+
+      <View style={{ flex: 1, minWidth: 0 }}>
+        <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: C.bg } }}>
+          <Stack.Screen name="(auth)" />
+          <Stack.Screen name="(tabs)" />
+          {/* Фокус — толық экран, қара тақырып */}
+          <Stack.Screen name="focus" options={{ animation: 'slide_from_bottom' }} />
+          {/*
+            Рефлексия — мөлдір модаль: артында тұрған экран көрініп тұрады
+            (Refleksiya.dc.html-де солай, көмескіленген фон).
+          */}
+          <Stack.Screen
+            name="reflection"
+            options={{ presentation: 'transparentModal', animation: 'fade' }}
+          />
+        </Stack>
+      </View>
     </View>
   );
 }
