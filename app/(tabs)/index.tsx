@@ -227,7 +227,12 @@ export default function HomeScreen() {
 
         {/* ── 2. Апта серпіні + оң баған ── */}
         <View style={[styles.mid, wide && styles.midWide, tablet && styles.midTablet]}>
-          <WeekBars title={kk.home.weekTrend} days={weekDays} onPickDay={setSelected} />
+          <WeekBars
+            title={kk.home.weekTrend}
+            days={weekDays}
+            onPickDay={setSelected}
+            onOpen={() => router.navigate('/week' as never)}
+          />
 
           <View style={[styles.side, wide && styles.sideWide, tablet && styles.sideTablet]}>
             <WeekStrip

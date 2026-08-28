@@ -113,8 +113,11 @@ function makeRow(label: string, done: number, total: number): ImpactRow {
 // ─────────────────────────────────────────────────────────────────────
 
 export type NewReflection = {
-  /** Қай әрекетке жазылды */
-  goalId: string;
+  /**
+   * Қай әрекетке жазылды. null — апта қорытындысы сияқты, бір
+   * әрекетке емес, кезеңге жазылған ой.
+   */
+  goalId: string | null;
   body: string | null;
   /** 1=Қиын 2=Орташа 3=Жақсы 4=Керемет */
   rating: number | null;
@@ -144,7 +147,7 @@ export function useCreateReflection() {
       if (error) throw error;
     },
     onSuccess: (_d, r) => {
-      qc.invalidateQueries({ queryKey: qk.reflections.byGoal(r.goalId) });
+      if (r.goalId) qc.invalidateQueries({ queryKey: qk.reflections.byGoal(r.goalId) });
     },
   });
 }

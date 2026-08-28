@@ -13,6 +13,7 @@ import { View, Text, Pressable, StyleSheet } from 'react-native';
 
 import { color as C, radius as R, font } from '../../theme/tokens';
 import { Card, SectionLabel } from '../ui';
+import { ChevronRightIcon } from '../icons';
 
 export type DayBar = {
   date: Date;
@@ -29,16 +30,27 @@ export function WeekBars({
   title,
   days,
   onPickDay,
+  onOpen,
 }: {
   title: string;
   days: DayBar[];
   onPickDay?: (d: Date) => void;
+  /** Берілсе — тақырыпта апта қорытындысына сілтеме шығады */
+  onOpen?: () => void;
 }) {
   const peak = Math.max(1, ...days.map((d) => d.total));
 
   return (
     <Card style={styles.root}>
-      <SectionLabel>{title}</SectionLabel>
+      <View style={styles.head}>
+        <SectionLabel>{title}</SectionLabel>
+        <View style={{ flexGrow: 1 }} />
+        {onOpen && (
+          <Pressable onPress={onOpen} hitSlop={8} accessibilityRole="link">
+            <ChevronRightIcon size={13} color={C.accent} strokeWidth={2.6} />
+          </Pressable>
+        )}
+      </View>
 
       <View style={styles.row}>
         {days.map((d) => {
@@ -80,6 +92,7 @@ export function WeekBars({
 
 const styles = StyleSheet.create({
   root: { padding: 17, flexGrow: 1, flexShrink: 1, minWidth: 0 },
+  head: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   row: {
     flexDirection: 'row',
     alignItems: 'flex-end',

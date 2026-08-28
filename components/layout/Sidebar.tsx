@@ -34,6 +34,7 @@ import {
   ClockIcon,
   BarChartIcon,
   CheckIcon,
+  FilterIcon,
   UserIcon,
   LogOutIcon,
   type IconProps,
@@ -65,6 +66,7 @@ const TOOL_ITEMS: Item[] = [
   { name: kk.nav.calendar, href: '/calendar', Icon: CalendarIcon },
   { name: kk.nav.focus, href: '/focus', Icon: ClockIcon },
   { name: kk.nav.habits, href: '/habits', Icon: CheckIcon },
+  { name: kk.nav.weekly, href: '/week', Icon: FilterIcon },
   { name: kk.nav.time, href: '/time', Icon: BarChartIcon },
 ];
 
