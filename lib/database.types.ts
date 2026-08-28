@@ -35,8 +35,13 @@ export type Goal = {
   /** `YYYY-MM-DD`. level='year' болса бұл — мерзім (deadline) */
   period_end: string;
   weight: number;
+  /** ӘРЕКЕТ: «80 сабақ». Пайыз ТЕК осыдан есептеледі. */
   target_amount: number | null;
   unit: string | null;
+  /** НӘТИЖЕ: «84,2 → 78 кг». Тек көрсету үшін, пайызға ҚАТЫСПАЙДЫ. */
+  result_from: number | null;
+  result_to: number | null;
+  result_unit: string | null;
   locked: boolean;
   status: GoalStatus;
   scheduled_at: string | null;

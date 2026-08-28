@@ -197,9 +197,14 @@ export type NewGoal = {
   title: string;
   start: Date;
   end: Date;
+  /** ӘРЕКЕТ — пайыз тек осыдан есептеледі */
   targetAmount: number | null;
   unit: string | null;
   curve: Curve;
+  /** НӘТИЖЕ — міндетті емес, пайызға қатыспайды */
+  resultFrom?: number | null;
+  resultTo?: number | null;
+  resultUnit?: string | null;
 };
 
 /**
@@ -230,6 +235,11 @@ export function useCreateGoal() {
           period_end: toISODate(g.end),
           target_amount: g.targetAmount,
           unit: g.unit,
+          // Нәтиже тек тамырдағы мақсатта тұрады — айлық балаларға
+          // көшірілмейді, себебі ол бөлінбейді.
+          result_from: g.resultFrom ?? null,
+          result_to: g.resultTo ?? null,
+          result_unit: g.resultUnit ?? null,
         })
         .select('id')
         .single();

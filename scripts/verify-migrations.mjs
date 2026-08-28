@@ -93,14 +93,14 @@ try {
   await client.query(AUTH_STUB);
   ok('auth схемасының макеті');
 
-  for (const f of ['0001_schema.sql', '0002_rls.sql', '0003_progress.sql']) {
+  for (const f of ['0001_schema.sql', '0002_rls.sql', '0003_progress.sql', '0004_result.sql']) {
     await client.query(sql(f));
     ok(f);
   }
 
   // ── Екінші рет: файлдар қайта іске қосуға төзімді ме ──
   console.log('\nҚайта іске қосу:');
-  for (const f of ['0001_schema.sql', '0002_rls.sql', '0003_progress.sql']) {
+  for (const f of ['0001_schema.sql', '0002_rls.sql', '0003_progress.sql', '0004_result.sql']) {
     await client.query(sql(f));
     ok(`${f} — екінші рет те өтті`);
   }
@@ -194,6 +194,26 @@ try {
 
   if (before === after) ok('әдет белгілері мақсат пайызын ҚОЗҒАМАДЫ');
   else fail(`әдеттер пайызға әсер етті: ${before} → ${after}`);
+
+  // ── Нәтиже өрістері пайызға араласпайтынын тексеру ──
+  console.log('\nНәтиже өрістері:');
+
+  const { rows: cols } = await client.query(`
+    select column_name from information_schema.columns
+    where table_name='goals'
+      and column_name in ('result_from','result_to','result_unit')
+  `);
+  if (cols.length === 3) ok('result_from / result_to / result_unit қосылды');
+  else fail(`үш баған күтілген еді, шыққаны ${cols.length}`);
+
+  const beforeResult = await progressOf(course);
+  await client.query(
+    `update goals set result_from=84.2, result_to=78, result_unit='кг' where id=$1`,
+    [course],
+  );
+  const afterResult = await progressOf(course);
+  if (beforeResult === afterResult) ok('нәтиже мәндері пайызды ҚОЗҒАМАДЫ');
+  else fail(`нәтиже пайызға әсер етті: ${beforeResult} → ${afterResult}`);
 
   // ── RLS шынымен қосулы ма ──
   console.log('\nRLS:');

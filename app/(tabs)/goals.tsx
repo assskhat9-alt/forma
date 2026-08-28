@@ -9,7 +9,7 @@ import { View, Text, Pressable, ScrollView, StyleSheet, ActivityIndicator } from
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 
-import { color as C, radius as R, font, gutter } from '../../theme/tokens';
+import { color as C, radius as R, font, gutter, centered } from '../../theme/tokens';
 import { kk, formatDueShort, t as tpl } from '../../i18n/kk';
 import { useYearGoalsWithStats, useChildStats, type GoalWithStats } from '../../lib/goals';
 import {
@@ -39,7 +39,7 @@ export default function GoalsScreen() {
   return (
     <ScrollView
       style={styles.screen}
-      contentContainerStyle={{ paddingTop: insets.top + 18, paddingBottom: 32 }}
+      contentContainerStyle={{ ...centered, paddingTop: insets.top + 18, paddingBottom: 32 }}
       showsVerticalScrollIndicator={false}
     >
       <View style={styles.header}>

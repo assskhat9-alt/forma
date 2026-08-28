@@ -20,7 +20,7 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { color as C, radius as R, font } from '../../theme/tokens';
+import { color as C, radius as R, font, centered } from '../../theme/tokens';
 import { kk } from '../../i18n/kk';
 import { supabase } from '../../lib/supabase';
 import { Atmosphere } from '../../components/auth/Atmosphere';
@@ -233,7 +233,7 @@ function readableError(e: unknown): string {
 
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: C.bg },
-  scroll: { paddingHorizontal: 26, minHeight: '100%' },
+  scroll: { ...centered, paddingHorizontal: 26, minHeight: '100%' },
 
   hero: { alignItems: 'center', justifyContent: 'center', paddingVertical: 12 },
   wordmark: {

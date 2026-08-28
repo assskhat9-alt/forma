@@ -11,7 +11,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useLocalSearchParams, router } from 'expo-router';
 import { differenceInCalendarDays } from 'date-fns';
 
-import { color as C, radius as R, font, gutter } from '../../theme/tokens';
+import { color as C, radius as R, font, gutter, centered } from '../../theme/tokens';
 import { kk, formatDayMonth, t as tpl } from '../../i18n/kk';
 import { useGoals, useGoalStats, useChildStats } from '../../lib/goals';
 import { Card, DarkCard, SectionLabel, ProgressBar } from '../../components/ui';
@@ -62,7 +62,7 @@ export default function GoalDetail() {
   return (
     <ScrollView
       style={styles.screen}
-      contentContainerStyle={{ paddingTop: insets.top + 18, paddingBottom: insets.bottom + 32 }}
+      contentContainerStyle={{ ...centered, paddingTop: insets.top + 18, paddingBottom: insets.bottom + 32 }}
       showsVerticalScrollIndicator={false}
     >
       <View style={styles.header}>
@@ -119,6 +119,40 @@ export default function GoalDetail() {
             </Text>
           </View>
         </DarkCard>
+
+        {/* ӘРЕКЕТ пен НӘТИЖЕ — екеуі бөлек, шатастыруға болмайды */}
+        {(goal.target_amount != null || goal.result_to != null) && (
+          <Card level="cardSm" radius={R.cardSm} style={styles.padTight}>
+            {goal.target_amount != null && (
+              <View style={styles.metricRow}>
+                <SectionLabel>{kk.goal.action}</SectionLabel>
+                <Text style={styles.metricValue}>
+                  {goal.target_amount} {goal.unit ?? ''}
+                </Text>
+              </View>
+            )}
+
+            {goal.result_to != null && (
+              <View
+                style={[
+                  styles.metricRow,
+                  goal.target_amount != null && styles.metricDivider,
+                ]}
+              >
+                <View style={styles.metricLabelRow}>
+                  <SectionLabel>{kk.goal.result}</SectionLabel>
+                  <View style={styles.excludedChip}>
+                    <Text style={styles.excludedText}>{kk.goal.resultExcluded}</Text>
+                  </View>
+                </View>
+                <Text style={styles.metricValue}>
+                  {goal.result_from != null ? `${fmt(goal.result_from)} → ` : ''}
+                  {fmt(goal.result_to)} {goal.result_unit ?? ''}
+                </Text>
+              </View>
+            )}
+          </Card>
+        )}
 
         {/* кезеңдер — болса ғана */}
         {stages.length > 0 && (
@@ -229,6 +263,9 @@ export default function GoalDetail() {
   );
 }
 
+/** Ондық бөлшек үтірмен жазылады: 84.2 → «84,2» (CLAUDE.md §9) */
+const fmt = (n: number) => String(n).replace('.', ',');
+
 const toIso = (d: Date) =>
   `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 
@@ -310,6 +347,19 @@ const styles = StyleSheet.create({
     fontFamily: font.body, fontSize: 11, color: C.inkMuted,
     marginTop: 9, marginLeft: 46,
   },
+
+  metricRow: {
+    flexDirection: 'row', alignItems: 'center',
+    justifyContent: 'space-between', gap: 12, paddingVertical: 11,
+  },
+  metricDivider: { borderTopWidth: 1, borderTopColor: C.lineSoft },
+  metricLabelRow: { flexDirection: 'row', alignItems: 'center', gap: 7, flexShrink: 1 },
+  metricValue: { fontFamily: font.bold, fontSize: 14, color: C.ink, flexShrink: 0 },
+  excludedChip: {
+    backgroundColor: C.trackChip, borderRadius: R.pill,
+    paddingHorizontal: 7, paddingVertical: 2,
+  },
+  excludedText: { fontFamily: font.bold, fontSize: 8.5, letterSpacing: 0.43, color: C.inkMuted },
 
   noChildren: { fontFamily: font.prose, fontSize: 12.5, lineHeight: 19, color: C.inkProse },
 });

@@ -6,7 +6,7 @@ import React, { useState } from 'react';
 import { View, Text, Pressable, StyleSheet, ActivityIndicator } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { color as C, radius as R, font, gutter } from '../../theme/tokens';
+import { color as C, radius as R, font, gutter, centered } from '../../theme/tokens';
 import { kk } from '../../i18n/kk';
 import { Card, SectionLabel } from '../../components/ui';
 import { UserIcon } from '../../components/icons';
@@ -65,7 +65,7 @@ export default function ProfileScreen() {
 }
 
 const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: C.bg, paddingHorizontal: gutter, gap: 10 },
+  root: { ...centered, flex: 1, backgroundColor: C.bg, paddingHorizontal: gutter, gap: 10 },
   card: { padding: 16 },
   row: { flexDirection: 'row', alignItems: 'center', gap: 13 },
   avatar: {

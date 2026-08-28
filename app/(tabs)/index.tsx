@@ -10,7 +10,7 @@ import { View, Text, ScrollView, StyleSheet, ActivityIndicator } from 'react-nat
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 
-import { color as C, radius as R, font, gutter } from '../../theme/tokens';
+import { color as C, radius as R, font, gutter, centered } from '../../theme/tokens';
 import { kk, formatDayMonthWeekday, monthsUpper, t as tpl } from '../../i18n/kk';
 import { weekNumber } from '../../lib/calendar';
 import { useDayTasks, useToggleTask, useLevelBars } from '../../lib/goals';
@@ -46,7 +46,7 @@ export default function TodayScreen() {
   return (
     <ScrollView
       style={styles.screen}
-      contentContainerStyle={{ paddingTop: insets.top + 8, paddingBottom: 32 }}
+      contentContainerStyle={{ ...centered, paddingTop: insets.top + 8, paddingBottom: 32 }}
       showsVerticalScrollIndicator={false}
     >
       <View style={styles.header}>

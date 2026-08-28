@@ -14,7 +14,7 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 
-import { color as C, radius as R, font, gutter } from '../../theme/tokens';
+import { color as C, radius as R, font, gutter, centered } from '../../theme/tokens';
 import { kk, monthsShort, t as tpl } from '../../i18n/kk';
 import { buildPlan, summarize, termEndDate, type Curve, type TermKey } from '../../lib/plan';
 import { useCreateGoal } from '../../lib/goals';
@@ -35,6 +35,12 @@ const TERMS: { key: TermKey; label: string }[] = [
   { key: 'yearEnd', label: kk.goalNew.terms.yearEnd },
 ];
 
+/**
+ * Жиі кездесетін бірліктер. Тізім жабық емес — өрісті қолмен де
+ * толтыруға болады, чиптер тек жылдам таңдау.
+ */
+const UNITS = ['сабақ', 'кітап', 'жаттығу', 'рет', 'бет'] as const;
+
 const CURVES: { key: Curve; label: string; note: string }[] = [
   { key: 'even', label: kk.goalNew.curves.even, note: kk.goalNew.curveNotes.even },
   { key: 'front', label: kk.goalNew.curves.front, note: kk.goalNew.curveNotes.front },
@@ -50,7 +56,11 @@ export default function NewGoalScreen() {
   const [start, setStart] = useState(today);
   const [end, setEnd] = useState(() => termEndDate('yearEnd', today));
   const [amountText, setAmountText] = useState('80');
-  const [unit, setUnit] = useState('сабақ');
+  const [unit, setUnit] = useState<string>(UNITS[0]);
+  // Нәтиже мәтін күйінде сақталады: «84,2» деп үтірмен жазуға да болады
+  const [resultFrom, setResultFrom] = useState('');
+  const [resultTo, setResultTo] = useState('');
+  const [resultUnit, setResultUnit] = useState('');
   const [curve, setCurve] = useState<Curve>('even');
   const [error, setError] = useState<string | null>(null);
 
@@ -78,6 +88,8 @@ export default function NewGoalScreen() {
   };
 
   const amount = Math.max(parseInt(amountText, 10) || 0, 0);
+  const rFrom = parseDecimal(resultFrom);
+  const rTo = parseDecimal(resultTo);
   const sum = summarize(start, end, amount || 1, MINUTES_PER_UNIT);
   const plan = buildPlan(start, end, amount || 1, curve);
 
@@ -95,7 +107,18 @@ export default function NewGoalScreen() {
     }
 
     create.mutate(
-      { title: name, start, end, targetAmount: amount, unit: unit.trim() || null, curve },
+      {
+        title: name,
+        start,
+        end,
+        targetAmount: amount,
+        unit: unit.trim() || null,
+        curve,
+        // Нәтиже пайызға қатыспайды — тек көрсету үшін сақталады
+        resultFrom: rFrom,
+        resultTo: rTo,
+        resultUnit: resultUnit.trim() || null,
+      },
       {
         onSuccess: () => router.back(),
         onError: (e) => setError(e instanceof Error ? e.message : kk.common.loadError),
@@ -114,7 +137,7 @@ export default function NewGoalScreen() {
       </View>
 
       <ScrollView
-        contentContainerStyle={{ paddingHorizontal: gutter, paddingBottom: insets.bottom + 30, gap: 14 }}
+        contentContainerStyle={{ ...centered, paddingHorizontal: gutter, paddingBottom: insets.bottom + 30, gap: 14 }}
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
       >
@@ -172,9 +195,13 @@ export default function NewGoalScreen() {
           </View>
         </View>
 
-        {/* көлемі */}
+        {/* ӘРЕКЕТ — пайыз ТЕК осыдан есептеледі */}
         <View>
-          <SectionLabel style={styles.fieldLabel}>{kk.goalNew.amount}</SectionLabel>
+          <View style={styles.labelRow}>
+            <SectionLabel>{kk.goalNew.action}</SectionLabel>
+            <Text style={styles.hint}>{kk.goalNew.actionHint}</Text>
+          </View>
+
           <View style={styles.amountRow}>
             <TextInput
               value={amountText}
@@ -186,7 +213,7 @@ export default function NewGoalScreen() {
             <TextInput
               value={unit}
               onChangeText={setUnit}
-              placeholder="сабақ"
+              placeholder={UNITS[0]}
               placeholderTextColor={C.ink4}
               style={styles.unitInput}
             />
@@ -194,6 +221,74 @@ export default function NewGoalScreen() {
               ≈ {Math.round((amount * MINUTES_PER_UNIT) / 60)} сағат
             </Text>
           </View>
+
+          <View style={styles.unitChips}>
+            {UNITS.map((u) => {
+              const on = u === unit.trim();
+              return (
+                <Pressable
+                  key={u}
+                  onPress={() => setUnit(u)}
+                  style={[styles.unitChip, on && styles.unitChipOn]}
+                  accessibilityRole="button"
+                  accessibilityState={{ selected: on }}
+                >
+                  <Text style={[styles.unitChipText, on && { color: '#FFFFFF' }]}>{u}</Text>
+                </Pressable>
+              );
+            })}
+          </View>
+        </View>
+
+        {/* НӘТИЖЕ — міндетті емес, пайызға ҚАТЫСПАЙДЫ */}
+        <View>
+          <View style={styles.labelRow}>
+            <SectionLabel>{kk.goalNew.result}</SectionLabel>
+            <Text style={styles.hint}>{kk.goalNew.resultOptional}</Text>
+          </View>
+
+          <View style={styles.resultRow}>
+            <View style={styles.resultCell}>
+              <Text style={styles.resultLabel}>{kk.goalNew.resultFrom}</Text>
+              <TextInput
+                value={resultFrom}
+                onChangeText={setResultFrom}
+                placeholder="84,2"
+                placeholderTextColor={C.ink4}
+                keyboardType="decimal-pad"
+                inputMode="decimal"
+                style={styles.resultInput}
+              />
+            </View>
+
+            <Text style={styles.resultArrow}>→</Text>
+
+            <View style={styles.resultCell}>
+              <Text style={styles.resultLabel}>{kk.goalNew.resultTo}</Text>
+              <TextInput
+                value={resultTo}
+                onChangeText={setResultTo}
+                placeholder="78"
+                placeholderTextColor={C.ink4}
+                keyboardType="decimal-pad"
+                inputMode="decimal"
+                style={styles.resultInput}
+              />
+            </View>
+
+            <View style={[styles.resultCell, { flexGrow: 0.7 }]}>
+              <Text style={styles.resultLabel}>{kk.goalNew.resultUnit}</Text>
+              <TextInput
+                value={resultUnit}
+                onChangeText={setResultUnit}
+                placeholder="кг"
+                placeholderTextColor={C.ink4}
+                style={styles.resultInput}
+              />
+            </View>
+          </View>
+
+          <Text style={styles.resultNote}>{kk.goalNew.resultNote}</Text>
         </View>
 
         {/* автоматты тарату */}
@@ -281,6 +376,14 @@ export default function NewGoalScreen() {
   );
 }
 
+/** «84,2» да, «84.2» де қабылданады. Бос болса null. */
+function parseDecimal(v: string): number | null {
+  const t = v.trim().replace(',', '.');
+  if (!t) return null;
+  const n = Number.parseFloat(t);
+  return Number.isFinite(n) ? n : null;
+}
+
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: C.bg },
   header: {
@@ -339,6 +442,32 @@ const styles = StyleSheet.create({
     flexGrow: 1, flexShrink: 1, paddingVertical: 2,
   },
   amountHint: { fontFamily: font.title, fontSize: 10.5, color: C.inkFaint, flexShrink: 0 },
+
+  unitChips: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 8 },
+  unitChip: {
+    paddingHorizontal: 12, paddingVertical: 7, borderRadius: R.pill,
+    backgroundColor: C.card, borderWidth: 1.5, borderColor: C.lineField,
+  },
+  unitChipOn: { backgroundColor: C.accent, borderColor: C.accent },
+  unitChipText: { fontFamily: font.bold, fontSize: 11, color: C.darkInk3 },
+
+  resultRow: { flexDirection: 'row', alignItems: 'flex-end', gap: 8 },
+  resultCell: { flexGrow: 1, flexBasis: 0 },
+  resultLabel: {
+    fontFamily: font.bold, fontSize: 9, letterSpacing: 1.17,
+    textTransform: 'uppercase', color: C.ink4, marginBottom: 6, paddingLeft: 2,
+  },
+  resultInput: {
+    backgroundColor: C.card, borderRadius: R.field,
+    borderWidth: 1.5, borderColor: C.line,
+    paddingHorizontal: 13, paddingVertical: 12,
+    fontFamily: font.bold, fontSize: 14, color: C.ink,
+  },
+  resultArrow: { fontFamily: font.bold, fontSize: 15, color: C.ink4, paddingBottom: 13 },
+  resultNote: {
+    fontFamily: font.prose, fontSize: 11, lineHeight: 17,
+    color: C.ink4, marginTop: 9, paddingLeft: 4,
+  },
 
   planCard: { padding: 17 },
   curveChips: { flexDirection: 'row', gap: 4 },
