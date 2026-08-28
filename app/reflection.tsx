@@ -21,6 +21,7 @@ import { kk, t as tpl } from '../i18n/kk';
 import { useGoals } from '../lib/goals';
 import { useImpact, useCreateReflection, DURATION_MINUTES, nowTime } from '../lib/reflections';
 import { errorText } from '../lib/errors';
+import { goBack } from '../lib/nav';
 import { SectionLabel } from '../components/ui';
 import { CheckIcon } from '../components/icons';
 
@@ -39,7 +40,7 @@ export default function ReflectionScreen() {
   const [body, setBody] = useState('');
   const [error, setError] = useState<string | null>(null);
 
-  const close = () => router.back();
+  const close = () => goBack('/');
 
   const save = () => {
     if (!task) return close();

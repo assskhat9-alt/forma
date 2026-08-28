@@ -17,6 +17,7 @@ import { differenceInCalendarDays } from 'date-fns';
 import { color as C, radius as R, font, gutter, centered } from '../../../theme/tokens';
 import { kk, formatDayMonth, t as tpl } from '../../../i18n/kk';
 import { useGoals, useMonths, useNodeStats, useChildrenStats } from '../../../lib/goals';
+import { goBack } from '../../../lib/nav';
 import { Card, DarkCard, SectionLabel, ProgressBar } from '../../../components/ui';
 import { ChevronLeftIcon, DotsIcon, CalendarChipIcon, ChevronRightIcon } from '../../../components/icons';
 
@@ -44,7 +45,7 @@ export default function GoalDetail() {
     return (
       <View style={styles.center}>
         <Text style={styles.missing}>Мақсат табылмады.</Text>
-        <Pressable onPress={() => router.back()} style={styles.backBtn}>
+        <Pressable onPress={() => goBack('/goals')} style={styles.backBtn}>
           <Text style={styles.backBtnText}>{kk.signIn.back}</Text>
         </Pressable>
       </View>
@@ -76,7 +77,7 @@ export default function GoalDetail() {
       showsVerticalScrollIndicator={false}
     >
       <View style={styles.header}>
-        <Pressable onPress={() => router.back()} hitSlop={10} accessibilityRole="button">
+        <Pressable onPress={() => goBack('/goals')} hitSlop={10} accessibilityRole="button">
           <ChevronLeftIcon size={22} />
         </Pressable>
         <Text style={styles.headerTitle}>{kk.goal.title}</Text>

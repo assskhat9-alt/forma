@@ -20,6 +20,7 @@ import {
   useCreateAction, useToggleTask, useDeleteAction,
 } from '../../lib/goals';
 import { errorText } from '../../lib/errors';
+import { goBack } from '../../lib/nav';
 import { Card, SectionLabel, ProgressBar, Checkbox } from '../../components/ui';
 import { ChevronLeftIcon, PlusIcon, CloseIcon, ClockIcon } from '../../components/icons';
 import { ActionForm, REPEATS, type ActionDraft } from '../../components/month/ActionForm';
@@ -56,7 +57,7 @@ export default function MonthScreen() {
     return (
       <View style={styles.center}>
         <Text style={styles.missing}>Ай табылмады.</Text>
-        <Pressable onPress={() => router.back()} style={styles.backBtn}>
+        <Pressable onPress={() => goBack(goal ? `/goal/${goal.id}` : '/goals')} style={styles.backBtn}>
           <Text style={styles.backBtnText}>{kk.signIn.back}</Text>
         </Pressable>
       </View>
@@ -109,7 +110,7 @@ export default function MonthScreen() {
         showsVerticalScrollIndicator={false}
       >
         <View style={styles.header}>
-          <Pressable onPress={() => router.back()} hitSlop={10} accessibilityRole="button">
+          <Pressable onPress={() => goBack(goal ? `/goal/${goal.id}` : '/goals')} hitSlop={10} accessibilityRole="button">
             <ChevronLeftIcon size={22} />
           </Pressable>
           <Text style={styles.headerTitle}>{month.title.toUpperCase()}</Text>
@@ -209,16 +210,23 @@ export default function MonthScreen() {
               <Card level="cardSm" radius={R.cardSm} style={styles.statsCard}>
                 <View style={styles.bars}>
                   {(weeks ?? []).map((w) => {
+                    // Трек әрқашан бір биіктікте — бос апта да орнында тұрады.
+                    // Ішінде: ашық бөлік = барлық әрекет, қанық = орындалғаны.
                     const max = Math.max(...(weeks ?? []).map((x) => x.total), 1);
-                    const h = w.total === 0 ? 4 : Math.max((w.total / max) * 48, 6);
-                    const doneH = w.total === 0 ? 0 : (w.done / w.total) * h;
+                    const totalH = (w.total / max) * BAR_H;
+                    const doneH = w.total === 0 ? 0 : (w.done / w.total) * totalH;
+                    const from = new Date(w.start + 'T00:00:00').getDate();
+                    const to = new Date(w.end + 'T00:00:00').getDate();
+
                     return (
                       <View key={w.start} style={styles.barCol}>
-                        <View style={[styles.barTrack, { height: h }]}>
-                          <View style={[styles.barFill, { height: doneH }]} />
+                        <View style={styles.barTrack}>
+                          <View style={[styles.barTotal, { height: totalH }]}>
+                            <View style={[styles.barDone, { height: doneH }]} />
+                          </View>
                         </View>
                         <Text style={styles.barLabel}>
-                          {new Date(w.start + 'T00:00:00').getDate()}
+                          {from === to ? from : `${from}–${to}`}
                         </Text>
                         <Text style={[styles.barCount, w.total === 0 && { color: C.ink4 }]}>
                           {w.total === 0 ? '—' : `${w.done}/${w.total}`}
@@ -252,6 +260,9 @@ export default function MonthScreen() {
     </>
   );
 }
+
+/** Апталық бағанның биіктігі */
+const BAR_H = 52;
 
 /** `2026-09-01T08:00:00+05` → `08:00` */
 function timeOf(iso: string): string {
@@ -308,13 +319,17 @@ const styles = StyleSheet.create({
   actionTime: { fontFamily: font.bold, fontSize: 10, color: C.ink4 },
 
   statsCard: { paddingHorizontal: 15, paddingVertical: 14 },
-  bars: { flexDirection: 'row', alignItems: 'flex-end', gap: 8, height: 78 },
-  barCol: { flexGrow: 1, flexBasis: 0, alignItems: 'center', gap: 5, justifyContent: 'flex-end' },
+  bars: { flexDirection: 'row', alignItems: 'flex-end', gap: 8 },
+  barCol: { flexGrow: 1, flexBasis: 0, alignItems: 'center', gap: 5 },
   barTrack: {
-    width: '100%', borderRadius: R.micro,
+    width: '100%', height: BAR_H, borderRadius: R.micro,
     backgroundColor: C.trackChip, justifyContent: 'flex-end', overflow: 'hidden',
   },
-  barFill: { width: '100%', borderRadius: R.micro, backgroundColor: C.accent },
+  barTotal: {
+    width: '100%', borderRadius: R.micro,
+    backgroundColor: C.accentLine, justifyContent: 'flex-end', overflow: 'hidden',
+  },
+  barDone: { width: '100%', borderRadius: R.micro, backgroundColor: C.accent },
   barLabel: { fontFamily: font.bold, fontSize: 9, color: C.ink4 },
   barCount: { fontFamily: font.bold, fontSize: 9, color: C.inkMuted },
   statsNote: {

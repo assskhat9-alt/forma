@@ -22,6 +22,7 @@ import { color as C, radius as R, font, gutter, centered } from '../../theme/tok
 import { kk, t as tpl } from '../../i18n/kk';
 import { termEndDate, type TermKey } from '../../lib/calendar';
 import { useCreateGoal } from '../../lib/goals';
+import { goBack } from '../../lib/nav';
 import { errorText } from '../../lib/errors';
 import { SectionLabel, DateField } from '../../components/ui';
 import { CloseIcon, InfoIcon } from '../../components/icons';
@@ -103,7 +104,7 @@ export default function NewGoalScreen() {
   return (
     <View style={styles.root}>
       <View style={[styles.header, { paddingTop: insets.top + 18 }]}>
-        <Pressable onPress={() => router.back()} style={styles.close} accessibilityRole="button">
+        <Pressable onPress={() => goBack('/goals')} style={styles.close} accessibilityRole="button">
           <CloseIcon size={12} color={C.darkInk3} />
         </Pressable>
         <Text style={styles.headerTitle}>{kk.goalNew.title}</Text>
