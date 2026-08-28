@@ -4,8 +4,8 @@
  * Екі деңгей:
  *   1. Жалпы  — барлық мақсатқа кеткен уақыт, мақсат бойынша бөлінісі.
  *              Кезең таңдау мұнда ЖОҚ: сұрақ «бәрі қанша» дегенде ғана.
- *   2. Мақсат — сол мақсаттың апталары: күндік бағаналар, қай әрекетке
- *      қанша кеткені, өткен аптамен салыстыру. Кезеңмен жұмыс осында.
+ *   2. Мақсат — сол мақсаттың апталары мен айлары: күндік бағаналар,
+ *      қай әрекетке қанша кеткені, өткен кезеңмен салыстыру.
  *
  * ⚠ Мұндағы бірде-бір сан ойдан шықпайды. Салыстыру да нақты: өткен
  * аптаның дәл сол ұзындықтағы сессиялары есептеледі. Дерек болмаса
@@ -173,23 +173,50 @@ export function useTimeOverview(now: Date) {
 }
 
 // ─────────────────────────────────────────────────────────────────────
-// 2-деңгей: бір мақсаттың бір аптасы
+// 2-деңгей: бір мақсаттың бір кезеңі
 // ─────────────────────────────────────────────────────────────────────
 
-export type DayTime = { date: Date; short: string; minutes: number; today: boolean };
+export type PeriodMode = 'week' | 'month';
+
+export type Bar = {
+  key: string;
+  /** Бағананың астындағы жазу. Бос болса — жазу шықпайды */
+  label: string;
+  minutes: number;
+  today: boolean;
+};
+
 export type ActionTime = { id: string; title: string; minutes: number; date: string | null };
 
+/** Айдың бірінші күні */
+export function startOfMonth(d: Date): Date {
+  return new Date(d.getFullYear(), d.getMonth(), 1);
+}
+
+function addMonths(d: Date, n: number): Date {
+  return new Date(d.getFullYear(), d.getMonth() + n, 1);
+}
+
 /**
- * Бір мақсаттың бір аптасы.
+ * Бір мақсаттың бір кезеңі — апта немесе ай.
  *
- * `weekStart` — дүйсенбі. Өткен аптаны көру үшін оны 7 күнге кері
- * жылжыту жеткілікті: сұраныс сол аптаны және салыстыру үшін одан
- * бұрынғысын алады.
+ * Екеуінде де бағана бір КҮН: телефондағы экран уақыты сияқты, күндер
+ * қатары бірден көрінеді. Айда бағана көп болғандықтан астындағы жазу
+ * әр бесінші күнде ғана тұрады — әйтпесе сандар бір-біріне кіріп кетеді.
+ *
+ * anchor — көрсетіліп тұрған кезеңнің кез келген күні. Артқа қайту
+ * үшін оны 7 күнге не 1 айға жылжыту жеткілікті: сұраныс сол кезеңді
+ * және салыстыру үшін одан бұрынғысын алады.
  */
-export function useGoalWeek(goalId: string | null, weekStart: Date, now: Date) {
-  const from = startOfWeek(weekStart);
-  const to = addDays(from, 7);
-  const prevFrom = addDays(from, -7);
+export function useGoalPeriod(
+  goalId: string | null,
+  mode: PeriodMode,
+  anchor: Date,
+  now: Date,
+) {
+  const from = mode === 'week' ? startOfWeek(anchor) : startOfMonth(anchor);
+  const to = mode === 'week' ? addDays(from, 7) : addMonths(from, 1);
+  const prevFrom = mode === 'week' ? addDays(from, -7) : addMonths(from, -1);
 
   const q = useSessions(prevFrom, to);
   const { rootOf, actionOf } = useRootIndex();
@@ -204,19 +231,31 @@ export function useGoalWeek(goalId: string | null, weekStart: Date, now: Date) {
   const prevTotal = previous.reduce((a, r) => a + (r.minutes ?? 0), 0);
 
   // ── күндік бағаналар ──
-  const days: DayTime[] = Array.from({ length: 7 }, (_, i) => {
+  const length = Math.round((to.getTime() - from.getTime()) / DAY_MS);
+  const todayMs = startOfDay(now).getTime();
+
+  const bars: Bar[] = Array.from({ length }, (_, i) => {
     const date = addDays(from, i);
+    const day = date.getDate();
     return {
-      date,
-      short: SHORT[i]!,
+      key: date.toISOString(),
+      // Айда әр бесінші күн ғана жазылады — қалғаны бір-біріне кіреді
+      label:
+        mode === 'week'
+          ? SHORT[i] ?? ''
+          : day === 1 || day % 5 === 0
+            ? String(day)
+            : '',
       minutes: 0,
-      today: date.getTime() === startOfDay(now).getTime(),
+      today: date.getTime() === todayMs,
     };
   });
 
   for (const r of current) {
-    const i = Math.floor((startOfDay(new Date(r.created_at)).getTime() - from.getTime()) / DAY_MS);
-    const bucket = days[Math.min(Math.max(i, 0), 6)];
+    const i = Math.floor(
+      (startOfDay(new Date(r.created_at)).getTime() - from.getTime()) / DAY_MS,
+    );
+    const bucket = bars[Math.min(Math.max(i, 0), length - 1)];
     if (bucket) bucket.minutes += r.minutes ?? 0;
   }
 
@@ -238,6 +277,16 @@ export function useGoalWeek(goalId: string | null, weekStart: Date, now: Date) {
 
   const actions = [...byAction.values()].sort((a, b) => b.minutes - a.minutes);
 
+  /**
+   * Күніне орташа — кезең әлі бітпесе өткен күндерге ғана бөлінеді.
+   * ⚠ Әйтпесе ағымдағы ай әрқашан нашар болып көрінер еді: әлі
+   * болмаған күндер орташаны төмендетеді.
+   */
+  const elapsed = Math.min(
+    Math.max(Math.floor((todayMs - from.getTime()) / DAY_MS) + 1, 1),
+    length,
+  );
+
   return {
     isLoading: q.isLoading,
     isError: q.isError,
@@ -248,11 +297,12 @@ export function useGoalWeek(goalId: string | null, weekStart: Date, now: Date) {
     prevTotal,
     /** Салыстыруға дерек болмаса null — нөл деп көрсету жаңылтады */
     delta: previous.length > 0 ? total - prevTotal : null,
-    days,
+    perDay: total / elapsed,
+    bars,
     actions,
     sessions: current.length,
-    /** Келер аптаға өтуге бола ма — болашақты қарауға болмайды */
-    canGoNext: to.getTime() <= startOfDay(now).getTime(),
+    /** Келер кезеңге өтуге бола ма — болашақты қарауға болмайды */
+    canGoNext: to.getTime() <= todayMs,
   };
 }
 

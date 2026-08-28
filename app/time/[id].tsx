@@ -1,11 +1,11 @@
 /**
  * УАҚЫТ ЕСЕБІ — бір мақсат.
  *
- * Аптаның күндері, қай әрекетке қанша уақыт кеткені және өткен аптамен
- * салыстыру. ‹ › арқылы кез келген өткен аптаны ашуға болады: аптаның
- * қалай өзгергенін көру үшін артқа қайту керек.
+ * Телефондағы экран уақыты сияқты: Апта / Ай ауыстырғышы, күндік
+ * бағаналар, күніне орташа және өткен кезеңмен салыстыру. ‹ › арқылы
+ * кез келген өткен аптаны не айды ашуға болады.
  *
- * ⚠ Болашақ аптаға өтуге болмайды: әлі болмаған нәрсенің есебі жоқ.
+ * ⚠ Болашақ кезеңге өтуге болмайды: әлі болмаған нәрсенің есебі жоқ.
  *
  * ⚠ Бұл уақыт мақсаттың пайызына кірмейді (CLAUDE.md §1).
  */
@@ -15,17 +15,19 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useLocalSearchParams } from 'expo-router';
 
 import { color as C, radius as R, font, gutter, centered } from '../../theme/tokens';
-import { kk, formatDayMonth } from '../../i18n/kk';
+import { kk, formatDayMonth, monthsUpper } from '../../i18n/kk';
 import { goBack } from '../../lib/nav';
 import { errorText } from '../../lib/errors';
 import { useBreakpoint } from '../../lib/breakpoints';
 import { useGoals } from '../../lib/goals';
 import {
-  useGoalWeek, useGoalTotal, fmtMinutes, fmtShort, startOfWeek, addDays,
+  useGoalPeriod, useGoalTotal, fmtMinutes, fmtShort,
+  startOfWeek, startOfMonth, addDays, type PeriodMode,
 } from '../../lib/report';
-import { Card, DarkCard, SectionLabel } from '../../components/ui';
+import { Card, DarkCard, SectionLabel, Segments } from '../../components/ui';
 import { ChevronLeftIcon, ChevronRightIcon } from '../../components/icons';
 
+const MODES: PeriodMode[] = ['week', 'month'];
 const CHART_H = 132;
 
 export default function GoalTimeScreen() {
@@ -37,14 +39,34 @@ export default function GoalTimeScreen() {
   const { data: goals } = useGoals();
   const goal = (goals ?? []).find((g) => g.id === id) ?? null;
 
-  /** Қай аптаны көрсетіп тұр — ‹ › осыны жылжытады */
-  const [weekStart, setWeekStart] = useState(() => startOfWeek(now));
+  const [modeIndex, setModeIndex] = useState(0);
+  const mode = MODES[modeIndex]!;
 
-  const rep = useGoalWeek(id ?? null, weekStart, now);
+  /** Қай кезеңді көрсетіп тұр — ‹ › осыны жылжытады */
+  const [anchor, setAnchor] = useState(() => now);
+
+  const rep = useGoalPeriod(id ?? null, mode, anchor, now);
   const allTime = useGoalTotal(id ?? null, now);
 
-  const peak = Math.max(1, ...rep.days.map((d) => d.minutes));
-  const thisWeek = startOfWeek(now).getTime() === rep.from.getTime();
+  const peak = Math.max(1, ...rep.bars.map((b) => b.minutes));
+
+  /** Кезеңді бір саты кері не алға жылжыту */
+  const shift = (n: number) =>
+    setAnchor((a) =>
+      mode === 'week'
+        ? addDays(startOfWeek(a), n * 7)
+        : new Date(a.getFullYear(), a.getMonth() + n, 1),
+    );
+
+  const current =
+    mode === 'week'
+      ? startOfWeek(now).getTime() === rep.from.getTime()
+      : startOfMonth(now).getTime() === rep.from.getTime();
+
+  const title =
+    mode === 'week'
+      ? `${formatDayMonth(rep.from)} — ${formatDayMonth(rep.to)}`
+      : `${cap(monthsUpper[rep.from.getMonth()]!)} ${rep.from.getFullYear()}`;
 
   return (
     <ScrollView
@@ -67,58 +89,81 @@ export default function GoalTimeScreen() {
       </View>
 
       <View style={styles.body}>
-        {/* Мақсаттың бүкіл уақыты — аптадан бөлек, өзгермейтін сан */}
+        {/* Мақсаттың бүкіл уақыты — кезеңнен бөлек, өзгермейтін сан */}
         <DarkCard style={styles.hero}>
           <Text style={styles.heroLabel}>{kk.time.goalTotal}</Text>
           <Text style={styles.heroValue}>{allTime > 0 ? fmtMinutes(allTime) : '—'}</Text>
         </DarkCard>
 
-        {/* ── Апта ауыстырғышы ── */}
+        <Segments
+          items={[kk.time.weekMode, kk.time.monthMode]}
+          index={modeIndex}
+          onChange={(i) => {
+            setModeIndex(i);
+            // Кезең түрі ауысқанда бүгінге қайтамыз: қырық апта кері
+            // кеткен жерден айға өту адасуға апарады
+            setAnchor(now);
+          }}
+        />
+
+        {/* ── Кезең ауыстырғышы ── */}
         <Card style={styles.pad}>
-          <View style={styles.weekHead}>
+          <View style={styles.periodHead}>
             <Pressable
-              onPress={() => setWeekStart((w) => addDays(w, -7))}
+              onPress={() => shift(-1)}
               style={styles.arrow}
               accessibilityRole="button"
-              accessibilityLabel={kk.time.prevWeek}
+              accessibilityLabel={kk.time.prev}
             >
               <ChevronLeftIcon size={14} color={C.ink3} strokeWidth={2.4} />
             </Pressable>
 
             <View style={{ flexGrow: 1, alignItems: 'center' }}>
-              <Text style={styles.weekRange}>
-                {formatDayMonth(rep.from)} — {formatDayMonth(rep.to)}
-              </Text>
-              {thisWeek && <Text style={styles.weekNow}>{kk.time.thisWeek}</Text>}
+              <Text style={styles.periodTitle}>{title}</Text>
+              {current && <Text style={styles.periodNow}>{kk.time.now}</Text>}
             </View>
 
             <Pressable
-              onPress={() => rep.canGoNext && setWeekStart((w) => addDays(w, 7))}
+              onPress={() => rep.canGoNext && shift(1)}
               disabled={!rep.canGoNext}
               style={[styles.arrow, !rep.canGoNext && { opacity: 0.3 }]}
               accessibilityRole="button"
-              accessibilityLabel={kk.time.nextWeek}
+              accessibilityLabel={kk.time.next}
             >
               <ChevronRightIcon size={14} color={C.ink3} strokeWidth={2.4} />
             </Pressable>
           </View>
 
           <View style={styles.totalRow}>
-            <Text style={styles.total}>{rep.total > 0 ? fmtMinutes(rep.total) : '—'}</Text>
-            {rep.delta != null && rep.delta !== 0 && (
-              <Text
-                style={[styles.delta, { color: rep.delta > 0 ? C.accentDeep : C.ink3 }]}
-              >
-                {rep.delta > 0 ? '+' : '−'}
-                {fmtMinutes(Math.abs(rep.delta))}
+            <View style={{ flexGrow: 1, flexShrink: 1, minWidth: 0 }}>
+              <Text style={styles.totalLabel}>{kk.time.perDay}</Text>
+              <View style={styles.bigRow}>
+                <Text style={styles.big}>
+                  {rep.total > 0 ? fmtMinutes(rep.perDay) : '—'}
+                </Text>
+                {rep.delta != null && rep.delta !== 0 && (
+                  <Text
+                    style={[styles.delta, { color: rep.delta > 0 ? C.accentDeep : C.ink3 }]}
+                  >
+                    {rep.delta > 0 ? '+' : '−'}
+                    {fmtMinutes(Math.abs(rep.delta))}
+                  </Text>
+                )}
+              </View>
+            </View>
+
+            <View style={styles.sumBox}>
+              <Text style={styles.sumLabel}>{kk.time.periodTotal}</Text>
+              <Text style={styles.sumValue}>
+                {rep.total > 0 ? fmtMinutes(rep.total) : '—'}
               </Text>
-            )}
+            </View>
           </View>
 
           <Text style={styles.sub}>
             {rep.delta == null
               ? kk.time.noCompare
-              : `${kk.time.prevWeekWas} ${fmtMinutes(rep.prevTotal)}`}
+              : `${mode === 'week' ? kk.time.prevWeekWas : kk.time.prevMonthWas} ${fmtMinutes(rep.prevTotal)}`}
           </Text>
 
           {/* ── Күндік бағаналар ── */}
@@ -129,26 +174,31 @@ export default function GoalTimeScreen() {
           ) : rep.isError ? (
             <Text style={styles.error}>{errorText(rep.error)}</Text>
           ) : (
-            <View style={styles.chart}>
-              {rep.days.map((d) => {
+            <View style={[styles.chart, mode === 'month' && { gap: 2 }]}>
+              {rep.bars.map((b) => {
                 const h = Math.max(
-                  Math.round((d.minutes / peak) * (CHART_H - 30)),
-                  d.minutes ? 6 : 3,
+                  Math.round((b.minutes / peak) * (CHART_H - 30)),
+                  b.minutes ? 5 : 3,
                 );
                 return (
-                  <View key={d.date.toISOString()} style={styles.col}>
-                    <Text style={[styles.colTop, d.today && { color: C.accentDeep }]}>
-                      {fmtShort(d.minutes)}
-                    </Text>
+                  <View key={b.key} style={styles.col}>
+                    {/* Айда бағана көп — үстіне сан сыймайды */}
+                    {mode === 'week' && (
+                      <Text style={[styles.colTop, b.today && { color: C.accentDeep }]}>
+                        {fmtShort(b.minutes)}
+                      </Text>
+                    )}
                     <View
                       style={[
                         styles.bar,
+                        mode === 'month' && { maxWidth: 14, borderRadius: R.micro },
                         { height: h },
-                        d.minutes === 0 && { backgroundColor: C.lineSoft },
+                        b.minutes === 0 && { backgroundColor: C.lineSoft },
+                        b.today && b.minutes > 0 && { backgroundColor: C.accentDeep },
                       ]}
                     />
-                    <Text style={[styles.colLabel, d.today && styles.colLabelOn]}>
-                      {d.short}
+                    <Text style={[styles.colLabel, b.today && styles.colLabelOn]}>
+                      {b.label}
                     </Text>
                   </View>
                 );
@@ -162,7 +212,7 @@ export default function GoalTimeScreen() {
 
         <Card style={styles.pad}>
           {rep.actions.length === 0 ? (
-            <Text style={styles.empty}>{kk.time.emptyWeek}</Text>
+            <Text style={styles.empty}>{kk.time.emptyPeriod}</Text>
           ) : (
             rep.actions.map((a, i) => (
               <View key={a.id} style={[styles.actionRow, i > 0 && styles.line]}>
@@ -201,6 +251,8 @@ export default function GoalTimeScreen() {
   );
 }
 
+const cap = (s: string) => s.charAt(0) + s.slice(1).toLowerCase();
+
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: C.bg },
   header: {
@@ -228,19 +280,42 @@ const styles = StyleSheet.create({
     color: '#FFFFFF', marginTop: 7,
   },
 
-  weekHead: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  periodHead: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   arrow: {
     width: 30, height: 30, borderRadius: R.boxSm,
     alignItems: 'center', justifyContent: 'center',
     backgroundColor: C.cardSoft, borderWidth: 1, borderColor: C.lineField,
   },
-  weekRange: { fontFamily: font.bold, fontSize: 13.5, color: C.ink },
-  weekNow: { fontFamily: font.bold, fontSize: 9.5, letterSpacing: 0.9, color: C.accent, marginTop: 2 },
+  periodTitle: { fontFamily: font.bold, fontSize: 13.5, color: C.ink },
+  periodNow: {
+    fontFamily: font.bold, fontSize: 9.5, letterSpacing: 0.9,
+    color: C.accent, marginTop: 2,
+  },
 
-  totalRow: { flexDirection: 'row', alignItems: 'baseline', gap: 9, marginTop: 14 },
-  total: { fontFamily: font.display, fontSize: 25, letterSpacing: -1, color: C.ink },
+  totalRow: {
+    flexDirection: 'row', alignItems: 'flex-start',
+    justifyContent: 'space-between', gap: 12, marginTop: 14,
+  },
+  totalLabel: {
+    fontFamily: font.bold, fontSize: 9.5, letterSpacing: 1.14,
+    textTransform: 'uppercase', color: C.ink3,
+  },
+  bigRow: { flexDirection: 'row', alignItems: 'baseline', gap: 9, marginTop: 5 },
+  big: { fontFamily: font.display, fontSize: 25, letterSpacing: -1, color: C.ink },
   delta: { fontFamily: font.bold, fontSize: 12 },
-  sub: { fontFamily: font.prose, fontSize: 11, color: C.inkMuted, marginTop: 5 },
+
+  sumBox: {
+    flexShrink: 0, alignItems: 'flex-end',
+    backgroundColor: C.tintChip, borderRadius: R.cardXs,
+    paddingHorizontal: 12, paddingVertical: 9,
+  },
+  sumLabel: {
+    fontFamily: font.bold, fontSize: 9, letterSpacing: 0.9,
+    textTransform: 'uppercase', color: C.accentDeep,
+  },
+  sumValue: { fontFamily: font.bold, fontSize: 13.5, color: C.ink, marginTop: 3 },
+
+  sub: { fontFamily: font.prose, fontSize: 11, color: C.inkMuted, marginTop: 8 },
 
   chart: {
     flexDirection: 'row', alignItems: 'flex-end', gap: 7,
@@ -248,13 +323,13 @@ const styles = StyleSheet.create({
   },
   col: {
     flexGrow: 1, flexShrink: 1, alignItems: 'center',
-    justifyContent: 'flex-end', gap: 7, height: '100%',
+    justifyContent: 'flex-end', gap: 6, height: '100%',
   },
   colTop: { fontFamily: font.bold, fontSize: 9, color: C.ink4 },
   bar: {
     width: '100%', maxWidth: 40, borderRadius: R.boxSm, backgroundColor: C.accent,
   },
-  colLabel: { fontFamily: font.body, fontSize: 10, color: C.inkMuted },
+  colLabel: { fontFamily: font.body, fontSize: 9.5, color: C.inkMuted },
   colLabelOn: { fontFamily: font.bold, color: C.accentDeep },
 
   actionRow: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 11 },
