@@ -22,6 +22,8 @@ import {
   ProgressRing, ProgressBar, Chip, CollapsibleSegments, HabitCell,
 } from '../../components/ui';
 import { MenuIcon, BellIcon, QuoteIcon, StarIcon } from '../../components/icons';
+import { TopBar } from '../../components/layout/TopBar';
+import { useBreakpoint } from '../../lib/breakpoints';
 import { TaskRow } from '../../components/calendar/TaskRow';
 
 const PERIODS = [kk.period.day, kk.period.week, kk.period.month, kk.period.year] as const;
@@ -31,6 +33,8 @@ const MOTTO = '«Мен армандаған адам — бүгін тұрып 
 export default function TodayScreen() {
   const insets = useSafeAreaInsets();
   const today = new Date();
+  // Кең экранда жоғарғы жолақ басқаша: сөзбелгі бүйір мәзірде тұр
+  const wide = useBreakpoint() !== 'phone';
 
   const [period, setPeriod] = useState(0);
   const [segOpen, setSegOpen] = useState(true);
@@ -48,28 +52,35 @@ export default function TodayScreen() {
   const dayPct = tasks.length ? Math.round((doneCount / tasks.length) * 100) : 0;
   const habitsDone = habits.filter((h) => h.done).length;
 
+  const segments = (
+    <CollapsibleSegments
+      items={PERIODS}
+      index={period}
+      onChange={setPeriod}
+      open={segOpen}
+      onToggleOpen={() => setSegOpen((v) => !v)}
+      maxWidth={250}
+    />
+  );
+
   return (
     <ScrollView
       style={styles.screen}
       contentContainerStyle={{ ...centered, paddingTop: insets.top + 8, paddingBottom: 32 }}
       showsVerticalScrollIndicator={false}
     >
-      <View style={styles.header}>
-        <MenuIcon size={22} />
-        <Text style={styles.wordmark}>{kk.app.name}</Text>
-        <BellIcon size={22} />
-      </View>
-
-      <View style={styles.segWrap}>
-        <CollapsibleSegments
-          items={PERIODS}
-          index={period}
-          onChange={setPeriod}
-          open={segOpen}
-          onToggleOpen={() => setSegOpen((v) => !v)}
-          maxWidth={250}
-        />
-      </View>
+      {wide ? (
+        <TopBar title={kk.nav.today} right={segments} />
+      ) : (
+        <>
+          <View style={styles.header}>
+            <MenuIcon size={22} />
+            <Text style={styles.wordmark}>{kk.app.name}</Text>
+            <BellIcon size={22} />
+          </View>
+          <View style={styles.segWrap}>{segments}</View>
+        </>
+      )}
 
       {/* мотивация — мақсат емес нәрсе қара карточкада */}
       <DarkCard style={styles.motto} radius={R.cardXs}>

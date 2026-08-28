@@ -82,6 +82,7 @@ export const kk = {
     notes: 'Менің ойларым',
     deadlines: 'Мерзімдер',
     settings: 'Баптау',
+    signOut: 'Шығу',
     profile: 'Профиль',
   },
 

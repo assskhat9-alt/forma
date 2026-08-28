@@ -18,6 +18,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { color as C, radius as R, font } from '../../theme/tokens';
 import { kk, monthsUpper } from '../../i18n/kk';
+import { TopBar } from '../layout/TopBar';
 import { CollapsibleSegments } from '../ui';
 import { ChevronLeftIcon, ChevronRightIcon, PlusIcon } from '../icons';
 import { MonthGridWide } from './MonthGridWide';
@@ -80,37 +81,40 @@ export function CalendarWide(p: Props) {
 
   return (
     <View style={[styles.root, { paddingTop: insets.top + 22, paddingBottom: insets.bottom + 22 }]}>
-      {/* хедер */}
-      <View style={styles.header}>
-        <View style={styles.headLeft}>
-          <Text style={styles.month}>{monthTitle}</Text>
-          <View style={styles.arrows}>
-            <Pressable onPress={p.onPrevMonth} style={styles.arrow} accessibilityRole="button">
-              <ChevronLeftIcon size={14} color={C.darkInk3} strokeWidth={2.4} />
-            </Pressable>
-            <Pressable onPress={p.onNextMonth} style={styles.arrow} accessibilityRole="button">
-              <ChevronRightIcon size={14} color={C.darkInk3} strokeWidth={2.4} />
-            </Pressable>
-          </View>
-        </View>
-
-        <View style={styles.headRight}>
-          <View style={{ maxWidth: 340 }}>
-            <CollapsibleSegments
-              items={p.periods}
-              index={p.period}
-              onChange={p.onPeriod}
-              open={p.segOpen}
-              onToggleOpen={p.onToggleSeg}
-              maxWidth={300}
-            />
-          </View>
+      {/* хедер — панельдің жоғарғы жолағы */}
+      <TopBar
+        title={monthTitle}
+        padH={0}
+        actions={
           <Pressable onPress={p.onOpenForm} style={styles.addBtn} accessibilityRole="button">
             <PlusIcon size={13} color="#FFFFFF" strokeWidth={2.6} />
             <Text style={styles.addText}>{kk.calendar.taskLabel}</Text>
           </Pressable>
-        </View>
-      </View>
+        }
+        right={
+          <View style={styles.controls}>
+            <View style={styles.arrows}>
+              <Pressable onPress={p.onPrevMonth} style={styles.arrow} accessibilityRole="button">
+                <ChevronLeftIcon size={14} color={C.darkInk3} strokeWidth={2.4} />
+              </Pressable>
+              <Pressable onPress={p.onNextMonth} style={styles.arrow} accessibilityRole="button">
+                <ChevronRightIcon size={14} color={C.darkInk3} strokeWidth={2.4} />
+              </Pressable>
+            </View>
+            <View style={{ flexGrow: 1 }} />
+            <View style={{ maxWidth: 340 }}>
+              <CollapsibleSegments
+                items={p.periods}
+                index={p.period}
+                onChange={p.onPeriod}
+                open={p.segOpen}
+                onToggleOpen={p.onToggleSeg}
+                maxWidth={300}
+              />
+            </View>
+          </View>
+        }
+      />
 
       {/* календарь + сырғымалы панельдер */}
       <View style={[styles.columns, { gap: lay.gap }]}>
@@ -153,15 +157,7 @@ export function CalendarWide(p: Props) {
 
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: C.bg, paddingHorizontal: 22 },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: 14,
-    gap: 16,
-  },
-  headLeft: { flexDirection: 'row', alignItems: 'center', gap: 16 },
-  month: { fontFamily: font.bold, fontSize: 20, letterSpacing: -0.5, color: C.ink },
+  controls: { flexDirection: 'row', alignItems: 'center', gap: 16 },
   arrows: { flexDirection: 'row', gap: 5 },
   arrow: {
     width: 30,
@@ -173,20 +169,14 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  headRight: { flexDirection: 'row', alignItems: 'center', gap: 10, flexShrink: 1 },
   addBtn: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 7,
-    backgroundColor: C.accent,
-    borderRadius: R.sm,
+    height: 40,
     paddingHorizontal: 16,
-    paddingVertical: 10,
-    shadowColor: C.accent,
-    shadowOpacity: 0.28,
-    shadowRadius: 16,
-    shadowOffset: { width: 0, height: 6 },
-    elevation: 5,
+    borderRadius: R.pill,
+    backgroundColor: C.accent,
   },
   addText: { fontFamily: font.bold, fontSize: 12, color: '#FFFFFF' },
   columns: { flexDirection: 'row', flexGrow: 1, minHeight: 0 },

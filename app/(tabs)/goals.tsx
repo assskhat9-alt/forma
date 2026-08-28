@@ -19,8 +19,11 @@ import {
 } from '../../lib/goals';
 import { Card, SectionLabel, ProgressRing, ProgressBar, PaceBadge } from '../../components/ui';
 import { MenuIcon, PlusIcon, CalendarChipIcon, ChevronRightIcon } from '../../components/icons';
+import { TopBar } from '../../components/layout/TopBar';
+import { useBreakpoint } from '../../lib/breakpoints';
 
 export default function GoalsScreen() {
+  const wide = useBreakpoint() !== 'phone';
   const insets = useSafeAreaInsets();
   const today = useMemo(() => new Date(), []);
   const [open, setOpen] = useState<string | null>(null);
@@ -44,13 +47,29 @@ export default function GoalsScreen() {
       contentContainerStyle={{ ...centered, paddingTop: insets.top + 18, paddingBottom: 32 }}
       showsVerticalScrollIndicator={false}
     >
-      <View style={styles.header}>
-        <MenuIcon size={22} />
-        <Text style={styles.headerTitle}>{today.getFullYear()} ЖЫЛ</Text>
-        <Pressable onPress={() => router.push('/goal/new')} hitSlop={10} accessibilityRole="button">
-          <PlusIcon size={22} />
-        </Pressable>
-      </View>
+      {wide ? (
+        <TopBar
+          title={`${today.getFullYear()} жыл`}
+          actions={
+            <Pressable
+              onPress={() => router.push('/goal/new')}
+              style={styles.addBtn}
+              accessibilityRole="button"
+              accessibilityLabel="Жаңа мақсат"
+            >
+              <PlusIcon size={17} color="#FFFFFF" />
+            </Pressable>
+          }
+        />
+      ) : (
+        <View style={styles.header}>
+          <MenuIcon size={22} />
+          <Text style={styles.headerTitle}>{today.getFullYear()} ЖЫЛ</Text>
+          <Pressable onPress={() => router.push('/goal/new')} hitSlop={10} accessibilityRole="button">
+            <PlusIcon size={22} />
+          </Pressable>
+        </View>
+      )}
 
       <View style={styles.body}>
         {isLoading ? (
@@ -237,6 +256,10 @@ const styles = StyleSheet.create({
   header: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
     paddingHorizontal: gutter, paddingBottom: 10,
+  },
+  addBtn: {
+    width: 40, height: 40, borderRadius: 999,
+    backgroundColor: C.accent, alignItems: 'center', justifyContent: 'center',
   },
   headerTitle: { fontFamily: font.display, fontSize: 13, letterSpacing: 2.08, color: C.ink },
   body: { paddingHorizontal: gutter, gap: 10 },
