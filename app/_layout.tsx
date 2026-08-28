@@ -82,6 +82,14 @@ function RootNavigator() {
       <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: C.bg } }}>
         <Stack.Screen name="(auth)" />
         <Stack.Screen name="(tabs)" />
+        {/*
+          Рефлексия — мөлдір модаль: артында тұрған экран көрініп тұрады
+          (Refleksiya.dc.html-де солай, көмескіленген фон).
+        */}
+        <Stack.Screen
+          name="reflection"
+          options={{ presentation: 'transparentModal', animation: 'fade' }}
+        />
       </Stack>
     </View>
   );

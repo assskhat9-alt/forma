@@ -147,7 +147,11 @@ export default function MonthScreen() {
               total={statOf(w.id)?.total ?? 0}
               done={statOf(w.id)?.done ?? 0}
               onAdd={() => openForm(w.id, w.period_start)}
-              onToggle={(actionId, done) => toggle.mutate({ id: actionId, done })}
+              onToggle={(actionId, done) => {
+                toggle.mutate({ id: actionId, done });
+                // §7.4: орындалғанда каскадтық әсер көрсетіледі
+                if (done) router.push(`/reflection?taskId=${actionId}` as never);
+              }}
               onRemove={(actionId) => remove.mutate(actionId)}
             />
           ))}

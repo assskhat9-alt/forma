@@ -148,7 +148,12 @@ export default function TodayScreen() {
                   done: task.done,
                   goal: task.goal ?? { id: '', title: '—', color: C.accent },
                 }}
-                onToggle={(id) => toggleTask.mutate({ id, done: !task.done })}
+                onToggle={(id) => {
+                  const next = !task.done;
+                  toggleTask.mutate({ id, done: next });
+                  // §7.4: орындалғанда ғана — белгіні алғанда емес
+                  if (next) router.push(`/reflection?taskId=${id}` as never);
+                }}
                 last={i === tasks.length - 1}
               />
             ))}
