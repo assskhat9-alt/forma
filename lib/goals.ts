@@ -142,7 +142,9 @@ export function useRootGoals(): GoalRef[] {
   const { data: goals } = useGoals();
   const colors = colorMap(goals ?? []);
   return (goals ?? [])
-    .filter((g) => !g.parent_id && g.status !== 'dropped')
+    // ⚠ Тек 'year'. Бұрын «тамыры жоқтың бәрі» деп алынатын — сонда
+    // мақсатсыз бір реттік әрекет те мақсат болып тізімге шығатын.
+    .filter((g) => g.level === 'year' && g.status !== 'dropped')
     .map((g) => ({ id: g.id, title: g.title, color: colors.get(g.id) ?? C.accent }));
 }
 
@@ -409,6 +411,10 @@ export type NewAction = {
    * Айды бәрібір күн бойынша month_for_date() табады.
    */
   monthId?: string;
+  /**
+   * Мақсатсыз бір реттік әрекет үшін екеуін де БЕРМЕҢІЗ: сонда әрекет
+   * ешбір мақсаттың тармағына кірмейді де, пайызды жылжытпайды.
+   */
   goalId?: string;
   title: string;
   date: Date;
@@ -449,7 +455,9 @@ export function useCreateAction() {
         if (e1) throw e1;
         goalId = month.parent_id;
       }
-      if (!goalId) throw new Error('Мақсат табылмады');
+      // Мақсат таңдалмаса — бұл жеке, бір реттік күндік жоспар.
+      // parent_id null болғандықтан ол ешбір жылдық мақсаттың
+      // ағашына кірмейді, демек progress() оны санамайды.
 
       const repeats = Math.max(a.repeatWeeks ?? 1, 1);
       const rows = [];
@@ -460,17 +468,22 @@ export function useCreateAction() {
         d.setDate(d.getDate() + i * 7);
         const iso = toISODate(d);
 
-        // Күн қай айға түссе — сол айға тіркеледі
-        const { data: target, error: e2 } = await supabase.rpc('month_for_date', {
-          p_goal_id: goalId,
-          p_date: iso,
-        });
-        if (e2) throw e2;
+        // Күн қай айға түссе — сол айға тіркеледі.
+        // Мақсатсыз әрекетте ай да, мерзім шектеуі де жоқ.
+        let target: string | null = null;
+        if (goalId) {
+          const { data: found, error: e2 } = await supabase.rpc('month_for_date', {
+            p_goal_id: goalId,
+            p_date: iso,
+          });
+          if (e2) throw e2;
 
-        // Мерзімнен тыс күн — тіркелмейді, бірақ қалғаны сақталады
-        if (!target) {
-          skipped += 1;
-          continue;
+          // Мерзімнен тыс күн — тіркелмейді, бірақ қалғаны сақталады
+          if (!found) {
+            skipped += 1;
+            continue;
+          }
+          target = found as string;
         }
 
         let scheduled: string | null = null;
@@ -483,7 +496,7 @@ export function useCreateAction() {
 
         rows.push({
           user_id: userId,
-          parent_id: target as string,
+          parent_id: target,
           level: 'day' as const,
           title: a.title,
           period_start: iso,

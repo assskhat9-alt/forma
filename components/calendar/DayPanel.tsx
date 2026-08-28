@@ -15,11 +15,13 @@ type Props = {
   date: Date;
   tasks: DayTask[];
   onToggle: (id: string) => void;
+  /** Берілсе — әр жолда таймер түймесі шығады */
+  onFocus?: (task: DayTask) => void;
   onAdd: () => void;
   width: number;
 };
 
-export function DayPanel({ date, tasks, onToggle, onAdd, width }: Props) {
+export function DayPanel({ date, tasks, onToggle, onFocus, onAdd, width }: Props) {
   const done = tasks.filter((t) => t.done).length;
   const pct = tasks.length ? Math.round((done / tasks.length) * 100) : 0;
 
@@ -47,6 +49,7 @@ export function DayPanel({ date, tasks, onToggle, onAdd, width }: Props) {
               key={t.id}
               task={t}
               onToggle={onToggle}
+              onFocus={onFocus}
               compact
               last={i === tasks.length - 1}
             />

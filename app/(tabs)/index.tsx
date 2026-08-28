@@ -144,7 +144,8 @@ export default function HomeScreen() {
     title: t.title,
     time: t.time,
     done: t.done,
-    goal: t.goal ?? { title: '—', color: C.accent },
+    // Мақсатсыз бір реттік әрекет — бос тұрмасын, солай деп аталсын
+    goal: t.goal ?? { title: kk.calendar.noGoal, color: C.ink4 },
   }));
 
   /** §7.4: рефлексия белгі ҚОЙЫЛҒАНДА ашылады, алынғанда емес */
@@ -283,6 +284,7 @@ export default function HomeScreen() {
             doneText={kk.home.stateDone}
             openText={kk.home.stateOpen}
             onToggle={(r) => toggle(r.id, r.done)}
+            onFocus={(r) => router.push(`/focus?taskId=${r.id}` as never)}
             right={
               <Pressable
                 onPress={() => router.navigate('/calendar' as never)}
@@ -302,14 +304,9 @@ export default function HomeScreen() {
             {tasks.map((task, i) => (
               <TaskRow
                 key={task.id}
-                task={{
-                  id: task.id,
-                  title: task.title,
-                  time: task.time,
-                  done: task.done,
-                  goal: task.goal ?? { id: '', title: '—', color: C.accent },
-                }}
+                task={task}
                 onToggle={(id) => toggle(id, task.done)}
+                onFocus={(t) => router.push(`/focus?taskId=${t.id}` as never)}
                 last={i === tasks.length - 1}
               />
             ))}

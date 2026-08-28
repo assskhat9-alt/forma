@@ -10,6 +10,7 @@
  */
 import React, { useMemo, useState } from 'react';
 import { View, ActivityIndicator, StyleSheet } from 'react-native';
+import { router } from 'expo-router';
 
 import { kk } from '../../i18n/kk';
 import { color as C } from '../../theme/tokens';
@@ -25,6 +26,7 @@ import {
 import { CalendarPhone } from '../../components/calendar/CalendarPhone';
 import { CalendarWide } from '../../components/calendar/CalendarWide';
 import type { TaskDraft } from '../../components/calendar/TaskForm';
+import type { DayTask } from '../../lib/goals';
 
 const PERIODS = [kk.period.day, kk.period.week, kk.period.month, kk.period.year] as const;
 
@@ -63,8 +65,9 @@ export default function CalendarScreen() {
     const title = draft.title.trim();
     if (!title) return;
 
-    const parentId = rootGoals[draft.goalIndex]?.id;
-    if (!parentId) return;
+    // 0 = «Мақсатсыз»: goalId берілмейді, әрекет каскадқа кірмейді
+    const parentId =
+      draft.goalIndex === 0 ? undefined : rootGoals[draft.goalIndex - 1]?.id;
 
     createAction.mutate({
       goalId: parentId,
@@ -101,6 +104,9 @@ export default function CalendarScreen() {
       const t = tasks.find((x) => x.id === id);
       if (t) toggleTask.mutate({ id, done: !t.done });
     },
+    // Күнтізбедегі әрекетті таңдап, дәл соған таймер қосу
+    onFocusTask: (task: DayTask) =>
+      router.push(`/focus?taskId=${task.id}` as never),
     onPrevMonth: () => setAnchor((a) => prevMonth(a)),
     onNextMonth: () => setAnchor((a) => nextMonth(a)),
     onOpenForm: () => setAdding(true),

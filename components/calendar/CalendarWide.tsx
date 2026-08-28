@@ -45,6 +45,8 @@ type Props = {
   segOpen: boolean;
   onSelect: (d: Date) => void;
   onToggleTask: (id: string) => void;
+  /** Әрекетті таңдап, дәл соған фокус таймерін қосу */
+  onFocusTask: (task: DayTask) => void;
   onPrevMonth: () => void;
   onNextMonth: () => void;
   onOpenForm: () => void;
@@ -134,6 +136,7 @@ export function CalendarWide(p: Props) {
             date={p.selected}
             tasks={p.tasks}
             onToggle={p.onToggleTask}
+            onFocus={p.onFocusTask}
             onAdd={p.onOpenForm}
             width={p.bp === 'desktop' ? 300 : 260}
           />

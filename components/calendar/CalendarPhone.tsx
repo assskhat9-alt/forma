@@ -32,6 +32,8 @@ type Props = {
   segOpen: boolean;
   onSelect: (d: Date) => void;
   onToggleTask: (id: string) => void;
+  /** Әрекетті таңдап, дәл соған фокус таймерін қосу */
+  onFocusTask: (task: DayTask) => void;
   onPrevMonth: () => void;
   onNextMonth: () => void;
   onOpenForm: () => void;
@@ -123,6 +125,7 @@ export function CalendarPhone(p: Props) {
                     key={task.id}
                     task={task}
                     onToggle={p.onToggleTask}
+                    onFocus={p.onFocusTask}
                     last={i === p.tasks.length - 1}
                   />
                 ))}

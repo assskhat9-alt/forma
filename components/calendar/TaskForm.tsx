@@ -82,21 +82,22 @@ export function TaskForm({ date, draft, onChange, onClose, onSubmit, variant, wi
           />
         </Field>
 
+        {/*
+          ⚠ Бірінші нұсқа әрқашан «Мақсатсыз». Күнтізбеге жазылған бір
+          реттік жоспар автоматты түрде жылдық мақсатқа кірмеуі керек:
+          әйтпесе жай ғана шаруа жылдық пайызды жылжытып жібереді.
+        */}
         <Field label={kk.calendar.whichGoal}>
-          {goals.length === 0 ? (
-            <Text style={styles.noGoals}>
-              Әлі мақсат жоқ. Тапсырма мақсатсыз да сақталады, бірақ ол
-              каскадқа қосылмайды — пайызды жылжытпайды.
-            </Text>
-          ) : (
-            <Options
-              items={goals.map((g) => g.title)}
-              index={draft.goalIndex}
-              onPick={(goalIndex) => onChange({ ...draft, goalIndex })}
-              wrap
-              pill
-            />
-          )}
+          <Options
+            items={[kk.calendar.noGoal, ...goals.map((g) => g.title)]}
+            index={draft.goalIndex}
+            onPick={(goalIndex) => onChange({ ...draft, goalIndex })}
+            wrap
+            pill
+          />
+          <Text style={styles.noGoals}>
+            {draft.goalIndex === 0 ? kk.calendar.noGoalHint : kk.calendar.inGoalHint}
+          </Text>
         </Field>
 
         <Field label={kk.calendar.repeat}>
@@ -257,7 +258,7 @@ const styles = StyleSheet.create({
   optionFlex: { flexGrow: 1, flexBasis: 0 },
   optionAuto: { paddingHorizontal: 13 },
   optionText: { fontFamily: font.bold, fontSize: 11.5 },
-  noGoals: { fontFamily: font.prose, fontSize: 11.5, lineHeight: 17, color: C.ink4 },
+  noGoals: { fontFamily: font.prose, fontSize: 11.5, lineHeight: 17, color: C.ink4, marginTop: 9 },
   submit: {
     alignItems: 'center',
     justifyContent: 'center',

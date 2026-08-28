@@ -13,6 +13,7 @@ import { View, Text, Pressable, StyleSheet } from 'react-native';
 
 import { color as C, radius as R, font } from '../../theme/tokens';
 import { Card, SectionLabel, Checkbox } from '../ui';
+import { PlayIcon } from '../icons';
 
 export type TableRow = {
   id: string;
@@ -31,6 +32,7 @@ export function TaskTable({
   doneText,
   openText,
   onToggle,
+  onFocus,
   right,
 }: {
   title: string;
@@ -42,6 +44,8 @@ export function TaskTable({
   doneText: string;
   openText: string;
   onToggle: (row: TableRow) => void;
+  /** Берілсе — орындалмаған жолда таймер түймесі шығады */
+  onFocus?: (row: TableRow) => void;
   /** Тақырыптың оң жағындағы батырмалар */
   right?: React.ReactNode;
 }) {
@@ -87,7 +91,7 @@ export function TaskTable({
                 {r.time ?? noTimeText}
               </Text>
 
-              <View style={styles.colState}>
+              <View style={[styles.colState, styles.cellRow]}>
                 <Pressable
                   onPress={() => onToggle(r)}
                   style={[styles.badge, r.done && styles.badgeOn]}
@@ -98,6 +102,18 @@ export function TaskTable({
                     {r.done ? doneText : openText}
                   </Text>
                 </Pressable>
+
+                {onFocus && !r.done && (
+                  <Pressable
+                    onPress={() => onFocus(r)}
+                    style={styles.focus}
+                    hitSlop={6}
+                    accessibilityRole="button"
+                    accessibilityLabel={r.title}
+                  >
+                    <PlayIcon size={10} color={C.accentDeep} />
+                  </Pressable>
+                )}
               </View>
             </View>
           ))}
@@ -128,7 +144,7 @@ const styles = StyleSheet.create({
   colTitle: { flexGrow: 1, flexShrink: 1, flexBasis: 0, minWidth: 0 },
   colGoal: { width: 132, flexShrink: 0 },
   colTime: { width: 62, flexShrink: 0 },
-  colState: { width: 104, flexShrink: 0, alignItems: 'flex-start' },
+  colState: { width: 142, flexShrink: 0, justifyContent: 'flex-start' },
 
   cellRow: { flexDirection: 'row', alignItems: 'center', gap: 9 },
   title: { fontFamily: font.title, fontSize: 13, color: C.ink, flexShrink: 1 },
@@ -148,4 +164,9 @@ const styles = StyleSheet.create({
   badgeOn: { backgroundColor: C.darkBg, borderColor: C.darkBg },
   badgeText: { fontFamily: font.bold, fontSize: 11, color: C.accentDeep },
   badgeTextOn: { color: '#FFFFFF' },
+  focus: {
+    width: 28, height: 28, borderRadius: R.pill, flexShrink: 0,
+    backgroundColor: C.tintChip,
+    alignItems: 'center', justifyContent: 'center',
+  },
 });
