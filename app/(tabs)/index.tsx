@@ -320,11 +320,19 @@ export default function HomeScreen() {
               <SectionLabel>{kk.today.habits}</SectionLabel>
               <Chip label={kk.today.habitsExcluded} tone="flat" size="sm" />
             </View>
-            {habits.length > 0 && (
-              <Text style={styles.habCount}>
-                {habitsDone}/{habits.length}
-              </Text>
-            )}
+            <Pressable
+              onPress={() => router.navigate('/habits' as never)}
+              hitSlop={8}
+              style={styles.habLink}
+              accessibilityRole="link"
+            >
+              {habits.length > 0 && (
+                <Text style={styles.habCount}>
+                  {habitsDone}/{habits.length}
+                </Text>
+              )}
+              <ChevronRightIcon size={12} color={C.accent} strokeWidth={2.6} />
+            </Pressable>
           </View>
 
           {habits.length === 0 ? (
@@ -446,6 +454,7 @@ const styles = StyleSheet.create({
 
   habHead: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   habTitle: { flexDirection: 'row', alignItems: 'center', gap: 7, flexShrink: 1 },
+  habLink: { flexDirection: 'row', alignItems: 'center', gap: 5, flexShrink: 0 },
   habCount: { fontFamily: font.bold, fontSize: 11, color: C.accent },
   habEmpty: { fontFamily: font.prose, fontSize: 11.5, lineHeight: 17, color: C.ink4, marginTop: 10 },
   habRow: { flexDirection: 'row', gap: 7, marginTop: 10 },
