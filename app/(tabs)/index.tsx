@@ -209,18 +209,18 @@ export default function HomeScreen() {
           ))}
         </View>
 
-        {/* ── 2. Мақсаттарға кеткен уақыт — сандар қатарынан ірі ── */}
-        <TimeCard
-          total={timeRep.total}
-          goals={timeRep.goals}
-          onPress={() => router.navigate('/time' as never)}
-        />
-
-        {/* ── 3. Апта серпіні + оң баған ── */}
+        {/* ── 2. Апта серпіні + оң баған ── */}
         <View style={[styles.mid, wide && styles.midWide]}>
           <WeekBars title={kk.home.weekTrend} days={weekDays} onPickDay={setSelected} />
 
           <View style={[styles.side, wide && styles.sideWide]}>
+            {/* Мақсаттарға кеткен уақыт — шаршы, бағанның басында */}
+            <TimeCard
+              total={timeRep.total}
+              goals={timeRep.goals}
+              onPress={() => router.navigate('/time' as never)}
+            />
+
             <WeekStrip
               title={stripTitle}
               days={stripDays}
@@ -259,7 +259,7 @@ export default function HomeScreen() {
         {/* Уақыты келген әрекет — ұсыныс, автоматты қосылу емес */}
         {dueAction && <DueBanner action={dueAction} />}
 
-        {/* ── 4. Таңдалған күннің әрекеттері ── */}
+        {/* ── 3. Таңдалған күннің әрекеттері ── */}
         <View style={styles.dateRow}>
           <View style={{ flexShrink: 1 }}>
             <Text style={styles.date}>{formatDayMonthWeekday(selected)}</Text>
@@ -325,7 +325,7 @@ export default function HomeScreen() {
           </Card>
         )}
 
-        {/* ── 5. ӘДЕТТЕР — әдейі бөлек, пайызға кірмейді ── */}
+        {/* ── 4. ӘДЕТТЕР — әдейі бөлек, пайызға кірмейді ── */}
         <DashedCard style={styles.padSm}>
           <View style={styles.habHead}>
             <View style={styles.habTitle}>
