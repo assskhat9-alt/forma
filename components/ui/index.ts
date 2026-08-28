@@ -9,3 +9,4 @@ export { CollapsibleSegments, Segments } from './SegmentedControl';
 export { Toggle } from './Toggle';
 export { DateField } from './DatePicker';
 export { BottomNav, type TabBarProps } from './BottomNav';
+export { Fab } from './Fab';

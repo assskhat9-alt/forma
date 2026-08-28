@@ -21,8 +21,8 @@ import {
 } from '../../lib/goals';
 import { errorText } from '../../lib/errors';
 import { goBack } from '../../lib/nav';
-import { Card, SectionLabel, ProgressBar, Checkbox } from '../../components/ui';
-import { ChevronLeftIcon, PlusIcon, CloseIcon, ClockIcon } from '../../components/icons';
+import { Card, SectionLabel, ProgressBar, Checkbox, Fab } from '../../components/ui';
+import { ChevronLeftIcon, CloseIcon, ClockIcon } from '../../components/icons';
 import { ActionForm, REPEATS, type ActionDraft } from '../../components/month/ActionForm';
 
 export default function MonthScreen() {
@@ -105,7 +105,7 @@ export default function MonthScreen() {
         contentContainerStyle={{
           ...centered,
           paddingTop: insets.top + 18,
-          paddingBottom: insets.bottom + 32,
+          paddingBottom: insets.bottom + 96,
         }}
         showsVerticalScrollIndicator={false}
       >
@@ -137,13 +137,7 @@ export default function MonthScreen() {
           </Card>
 
           {/* ӘРЕКЕТТЕР — негізгі блок */}
-          <View style={styles.listHead}>
-            <SectionLabel>{kk.month.actions}</SectionLabel>
-            <Pressable onPress={openForm} style={styles.addTop} accessibilityRole="button">
-              <PlusIcon size={13} color={C.accentDeep} strokeWidth={2.8} />
-              <Text style={styles.addTopText}>{kk.goal.addAction}</Text>
-            </Pressable>
-          </View>
+          <SectionLabel style={styles.listHead}>{kk.month.actions}</SectionLabel>
 
           <Card level="cardSm" radius={R.cardSm} style={styles.listCard}>
             {actions.length === 0 ? (
@@ -244,6 +238,9 @@ export default function MonthScreen() {
         </View>
       </ScrollView>
 
+      {/* Қосу — тізімнің үстінде, саусақ жететін жерде */}
+      {!draft && <Fab label={kk.goal.addAction} onPress={openForm} />}
+
       {draft && goal && (
         <ActionForm
           visible
@@ -294,16 +291,7 @@ const styles = StyleSheet.create({
   summarySub: { fontFamily: font.title, fontSize: 12, color: C.inkMuted },
   summaryRange: { fontFamily: font.body, fontSize: 11, color: C.ink4, marginTop: 4 },
 
-  listHead: {
-    flexDirection: 'row', alignItems: 'center',
-    justifyContent: 'space-between', paddingLeft: 4, marginTop: 6,
-  },
-  addTop: {
-    flexDirection: 'row', alignItems: 'center', gap: 6,
-    backgroundColor: C.tintRow, borderRadius: R.pill,
-    paddingHorizontal: 12, paddingVertical: 7,
-  },
-  addTopText: { fontFamily: font.bold, fontSize: 11.5, color: C.accentDeep },
+  listHead: { paddingLeft: 4, marginTop: 6 },
 
   listCard: { paddingHorizontal: 15, paddingVertical: 4 },
   empty: { paddingVertical: 26, alignItems: 'center', gap: 6 },

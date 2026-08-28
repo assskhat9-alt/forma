@@ -65,9 +65,8 @@ export default function GoalsScreen() {
         <View style={styles.header}>
           <MenuIcon size={22} />
           <Text style={styles.headerTitle}>{today.getFullYear()} ЖЫЛ</Text>
-          <Pressable onPress={() => router.push('/goal/new')} hitSlop={10} accessibilityRole="button">
-            <PlusIcon size={22} />
-          </Pressable>
+          {/* ⚠ Мұнда + жоқ: телефонда төменгі жолақтағы ◆ дәл сол істі істейді */}
+          <View style={{ width: 22 }} />
         </View>
       )}
 
