@@ -456,10 +456,14 @@ export default function FocusScreen() {
                 <Text style={styles.totalUnit}>{kk.focus.hours}</Text>
               </View>
             </View>
-            <View style={styles.reportBtn}>
+            <Pressable
+              onPress={() => router.push('/time' as never)}
+              style={styles.reportBtn}
+              accessibilityRole="link"
+            >
               <Text style={styles.reportText}>{kk.focus.fullReport}</Text>
               <ChevronRightIcon size={11} color={C.accentOnDark} strokeWidth={3} />
-            </View>
+            </Pressable>
           </View>
 
           {(today?.byGoal ?? []).length > 0 && (

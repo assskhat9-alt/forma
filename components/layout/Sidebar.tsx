@@ -32,6 +32,7 @@ import {
   HomeIcon,
   CalendarIcon,
   ClockIcon,
+  BarChartIcon,
   UserIcon,
   LogOutIcon,
   type IconProps,
@@ -62,6 +63,7 @@ const PLAN_ITEMS: Item[] = [
 const TOOL_ITEMS: Item[] = [
   { name: kk.nav.calendar, href: '/calendar', Icon: CalendarIcon },
   { name: kk.nav.focus, href: '/focus', Icon: ClockIcon },
+  { name: kk.nav.time, href: '/time', Icon: BarChartIcon },
 ];
 
 /** Төменгі тұрақты топ — навигация емес, аккаунт */
