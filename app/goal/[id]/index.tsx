@@ -20,7 +20,6 @@ import { useGoals, useMonths, useNodeStats, useChildrenStats } from '../../../li
 import { goBack } from '../../../lib/nav';
 import { Card, DarkCard, SectionLabel, ProgressBar } from '../../../components/ui';
 import { ChevronLeftIcon, DotsIcon, CalendarChipIcon, ChevronRightIcon } from '../../../components/icons';
-import { GoalTime } from '../../../components/goal/GoalTime';
 
 export default function GoalDetail() {
   const insets = useSafeAreaInsets();
@@ -155,9 +154,6 @@ export default function GoalDetail() {
             </Text>
           </View>
         )}
-
-        {/* УАҚЫТ — мақсаттың бір қыры, бөлек бөлім емес */}
-        <GoalTime goalId={goal.id} now={today} />
 
         {/* АЙЛАР — жүйе ашқан қаңқа */}
         <SectionLabel style={{ paddingLeft: 4, marginTop: 4 }}>{kk.goal.months}</SectionLabel>

@@ -456,20 +456,14 @@ export default function FocusScreen() {
                 <Text style={styles.totalUnit}>{kk.focus.hours}</Text>
               </View>
             </View>
-            {/*
-              Есеп бөлек экран емес — мақсаттың ішінде. Тапсырма
-              байланбаса апаратын жер де жоқ, сондықтан түйме шықпайды.
-            */}
-            {attached && (
-              <Pressable
-                onPress={() => router.push(`/goal/${attached.id}` as never)}
-                style={styles.reportBtn}
-                accessibilityRole="link"
-              >
-                <Text style={styles.reportText}>{kk.focus.fullReport}</Text>
-                <ChevronRightIcon size={11} color={C.accentOnDark} strokeWidth={3} />
-              </Pressable>
-            )}
+            <Pressable
+              onPress={() => router.push('/time' as never)}
+              style={styles.reportBtn}
+              accessibilityRole="link"
+            >
+              <Text style={styles.reportText}>{kk.focus.fullReport}</Text>
+              <ChevronRightIcon size={11} color={C.accentOnDark} strokeWidth={3} />
+            </Pressable>
           </View>
 
           {(today?.byGoal ?? []).length > 0 && (
