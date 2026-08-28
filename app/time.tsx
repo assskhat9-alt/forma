@@ -1,72 +1,46 @@
 /**
- * УАҚЫТ ЕСЕБІ (design/Uaqyt.dc.html).
+ * УАҚЫТ ЕСЕБІ — жалпы көрініс (design/Uaqyt.dc.html).
  *
- * Фокус таймері жинаған уақыттың қорытындысы: кезең бойынша жалпы сан,
- * бағаналы диаграмма және мақсаттар бойынша бөлінісі.
+ * Ең бірінші тұратыны — БАРЛЫҚ мақсатқа кеткен жалпы уақыт. Астында
+ * мақсаттар тізімі: әрқайсысының үлесі көрініп тұрады, үстінен
+ * бассаңыз сол мақсаттың жеке есебі ашылады.
  *
- * ⚠ Бұл экран ЕШТЕҢЕ БОЛЖАМАЙДЫ. Барлық сан — жазылған сессиялардың
- * қосындысы. Салыстыруға алдыңғы кезеңнің деректері жетпесе, айырма
- * көрсетілмейді.
- *
- * ⚠ Мұндағы уақыт мақсаттың ПАЙЫЗЫНА қатыспайды: пайыз орындалған
- * әрекеттен есептеледі, отырған сағаттан емес (CLAUDE.md §1).
+ * ⚠ Бұл уақыт мақсаттың пайызына кірмейді: пайыз орындалған әрекеттен
+ * есептеледі, отырған сағаттан емес (CLAUDE.md §1).
  */
 import React, { useState } from 'react';
 import { View, Text, ScrollView, Pressable, StyleSheet, ActivityIndicator } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { router } from 'expo-router';
 
 import { color as C, radius as R, font, gutter, centered } from '../theme/tokens';
 import { kk, formatDayMonth } from '../i18n/kk';
 import { goBack } from '../lib/nav';
 import { errorText } from '../lib/errors';
 import { useBreakpoint } from '../lib/breakpoints';
-import {
-  useTimeReport, fmtMinutes, fmtShort, type ReportRange,
-} from '../lib/report';
-import { Card, SectionLabel, Segments } from '../components/ui';
-import { ChevronLeftIcon } from '../components/icons';
+import { useTimeOverview, fmtMinutes, OTHER, type Range } from '../lib/report';
+import { Card, DarkCard, SectionLabel, Segments } from '../components/ui';
+import { ChevronLeftIcon, ChevronRightIcon } from '../components/icons';
 
-const RANGES: { key: ReportRange; name: string }[] = [
-  { key: 'day', name: kk.time.day },
+const RANGES: { key: Range; name: string }[] = [
   { key: 'week', name: kk.time.week },
   { key: 'month', name: kk.time.month },
+  { key: 'all', name: kk.time.all },
 ];
-
-/** Диаграмманың биіктігі */
-const CHART_H = 148;
 
 export default function TimeScreen() {
   const insets = useSafeAreaInsets();
   const wide = useBreakpoint() !== 'phone';
-  const today = new Date();
+  const now = new Date();
 
-  const [rangeIndex, setRangeIndex] = useState(1);
-  /** Таңдалған бағана — тізім соған қарай сүзіледі. −1 = бәрі */
-  const [picked, setPicked] = useState(-1);
-
-  const range = RANGES[rangeIndex]!.key;
-  const rep = useTimeReport(range, today);
-
-  const peak = Math.max(1, ...rep.bars.map((b) => b.minutes));
-
-  // Бағана таңдалса — тізім соның ішіндегі бөлінісін көрсетеді
-  const bar = picked >= 0 ? rep.bars[picked] : null;
-  const listTotal = bar ? bar.minutes : rep.total;
-  const list = bar
-    ? bar.segments
-        .map((s) => ({
-          id: s.id,
-          title: rep.goals.find((g) => g.id === s.id)?.title ?? '—',
-          color: s.color,
-          minutes: s.minutes,
-          pct: bar.minutes ? Math.round((s.minutes / bar.minutes) * 100) : 0,
-        }))
-        .sort((a, b) => b.minutes - a.minutes)
-    : rep.goals;
+  // ⚠ Әдепкісі — «Бәрі»: бұл экранның басты сұрағы «жалпы қанша кетті»
+  const [index, setIndex] = useState(2);
+  const range = RANGES[index]!.key;
+  const rep = useTimeOverview(range, now);
 
   const scope =
-    range === 'day'
-      ? kk.time.scopeDay
+    range === 'all'
+      ? kk.time.allTime
       : `${formatDayMonth(rep.from)} — ${formatDayMonth(rep.to)}`;
 
   return (
@@ -80,7 +54,7 @@ export default function TimeScreen() {
       showsVerticalScrollIndicator={false}
     >
       <View style={styles.header}>
-        <Pressable onPress={() => goBack('/focus')} hitSlop={10} accessibilityRole="button">
+        <Pressable onPress={() => goBack('/')} hitSlop={10} accessibilityRole="button">
           <ChevronLeftIcon size={20} color={C.ink} strokeWidth={2.2} />
         </Pressable>
         <Text style={styles.headerTitle}>{kk.time.title}</Text>
@@ -90,11 +64,8 @@ export default function TimeScreen() {
       <View style={styles.body}>
         <Segments
           items={RANGES.map((r) => r.name)}
-          index={rangeIndex}
-          onChange={(i) => {
-            setRangeIndex(i);
-            setPicked(-1);
-          }}
+          index={index}
+          onChange={setIndex}
         />
 
         {rep.isError ? (
@@ -109,156 +80,68 @@ export default function TimeScreen() {
           </Card>
         ) : (
           <>
-            {/* ── Жалпы ── */}
-            <Card style={styles.pad}>
-              <View style={styles.totalRow}>
-                <View style={{ flexGrow: 1, flexShrink: 1, minWidth: 0 }}>
-                  <SectionLabel>{scope}</SectionLabel>
+            {/*
+              Жалпы уақыт — қара карточкада. Бұл мақсаттың пайызы емес,
+              сондықтан ақ карточкада тұрмауы керек (CLAUDE.md §3).
+            */}
+            <DarkCard style={styles.hero}>
+              <Text style={styles.heroLabel}>{kk.time.totalLabel}</Text>
+              <Text style={styles.heroValue}>
+                {rep.total > 0 ? fmtMinutes(rep.total) : '—'}
+              </Text>
+              <Text style={styles.heroSub}>
+                {scope}
+                {rep.sessions > 0 ? ` · ${rep.sessions} ${kk.time.sessionsWord}` : ''}
+              </Text>
+            </DarkCard>
 
-                  <View style={styles.bigRow}>
-                    <Text style={styles.big}>
-                      {rep.total > 0 ? fmtMinutes(rep.total) : '—'}
-                    </Text>
-                    {rep.delta != null && rep.delta !== 0 && (
-                      <Text
-                        style={[
-                          styles.delta,
-                          { color: rep.delta > 0 ? C.accentDeep : C.ink3 },
-                        ]}
-                      >
-                        {rep.delta > 0 ? '+' : '−'}
-                        {fmtMinutes(Math.abs(rep.delta))}
-                      </Text>
-                    )}
-                  </View>
+            <SectionLabel style={{ paddingLeft: 4 }}>{kk.time.byGoal}</SectionLabel>
 
-                  <Text style={styles.sub}>
-                    {rep.delta == null
-                      ? kk.time.noCompare
-                      : `${kk.time.before} ${fmtMinutes(rep.prevTotal)}`}
-                  </Text>
-                </View>
-
-                {/* Күндік есепте «күніне орташа» мағынасыз — сессия саны тұрады */}
-                <View style={styles.avgBox}>
-                  <Text style={styles.avgLabel}>
-                    {rep.perDay == null ? kk.time.sessions : kk.time.perDay}
-                  </Text>
-                  <Text style={styles.avgValue}>
-                    {rep.perDay == null ? rep.sessions : fmtMinutes(rep.perDay)}
-                  </Text>
-                </View>
-              </View>
-            </Card>
-
-            {/* ── Диаграмма ── */}
-            <Card style={styles.pad}>
-              <View style={styles.chartHead}>
-                <SectionLabel>
-                  {range === 'day'
-                    ? kk.time.byHour
-                    : range === 'week'
-                      ? kk.time.byDay
-                      : kk.time.byWeek}
-                </SectionLabel>
-                <Text style={styles.hint}>{kk.time.tapHint}</Text>
-              </View>
-
-              {rep.total === 0 ? (
+            {rep.goals.length === 0 ? (
+              <Card style={styles.pad}>
                 <Text style={styles.empty}>{kk.time.empty}</Text>
-              ) : (
-                <View style={styles.chart}>
-                  {rep.bars.map((b, i) => {
-                    const on = picked === -1 || picked === i;
-                    const h = Math.max(Math.round((b.minutes / peak) * (CHART_H - 30)), b.minutes ? 6 : 3);
+              </Card>
+            ) : (
+              rep.goals.map((g) => {
+                // Жеке шаруаның мақсаты жоқ — ашатын беті де жоқ
+                const openable = g.id !== OTHER.id;
 
-                    return (
-                      <Pressable
-                        key={b.key}
-                        onPress={() => setPicked(picked === i ? -1 : i)}
-                        style={styles.col}
-                        accessibilityRole="button"
-                        accessibilityLabel={`${b.label}: ${fmtMinutes(b.minutes)}`}
-                        accessibilityState={{ selected: picked === i }}
-                      >
-                        <Text style={[styles.colTop, picked === i && { color: C.accentDeep }]}>
-                          {fmtShort(b.minutes)}
-                        </Text>
-
-                        <View style={[styles.bar, { height: h, opacity: on ? 1 : 0.32 }]}>
-                          {b.minutes === 0 ? (
-                            <View style={{ flexGrow: 1, backgroundColor: C.lineSoft }} />
-                          ) : (
-                            b.segments.map((s) => (
-                              <View
-                                key={s.id}
-                                style={{
-                                  // Қабаттың үлесі — пайызбен жазсақ RN типі қабылдамайды
-                                  flexGrow: s.minutes,
-                                  flexBasis: 0,
-                                  backgroundColor: s.color,
-                                }}
-                              />
-                            ))
-                          )}
-                        </View>
-
-                        <Text style={[styles.colLabel, picked === i && { color: C.accentDeep }]}>
-                          {b.label}
-                        </Text>
-                      </Pressable>
-                    );
-                  })}
-                </View>
-              )}
-            </Card>
-
-            {/* ── Мақсаттар бойынша ── */}
-            <Card style={styles.pad}>
-              <View style={styles.chartHead}>
-                <SectionLabel>{kk.time.byGoal}</SectionLabel>
-                {bar && (
-                  <Pressable onPress={() => setPicked(-1)} hitSlop={8} accessibilityRole="button">
-                    <Text style={styles.clear}>
-                      {bar.label} · {kk.time.showAll}
-                    </Text>
-                  </Pressable>
-                )}
-              </View>
-
-              {list.length === 0 ? (
-                <Text style={styles.empty}>{kk.time.empty}</Text>
-              ) : (
-                list.map((g, i) => (
-                  <View key={g.id} style={[styles.goalRow, i > 0 && styles.goalLine]}>
-                    <View style={[styles.dot, { backgroundColor: g.color }]} />
-
-                    <View style={{ flexGrow: 1, flexShrink: 1, minWidth: 0 }}>
+                return (
+                  <Pressable
+                    key={g.id}
+                    onPress={openable ? () => router.push(`/time/${g.id}` as never) : undefined}
+                    accessibilityRole={openable ? 'link' : undefined}
+                  >
+                    <Card level="cardSm" radius={R.cardSm} style={styles.goal}>
                       <View style={styles.goalHead}>
+                        <View style={[styles.dot, { backgroundColor: g.color }]} />
                         <Text style={styles.goalName} numberOfLines={1}>
                           {g.title}
                         </Text>
                         <Text style={styles.goalTime}>{fmtMinutes(g.minutes)}</Text>
+                        {openable && (
+                          <ChevronRightIcon size={13} color={C.ink4} strokeWidth={2.4} />
+                        )}
                       </View>
 
-                      <View style={styles.goalBarRow}>
+                      <View style={styles.barRow}>
                         <View style={styles.track}>
                           <View
                             style={{
                               height: 5,
                               borderRadius: 999,
                               backgroundColor: g.color,
-                              width: `${listTotal ? (g.minutes / listTotal) * 100 : 0}%`,
+                              width: `${g.pct}%`,
                             }}
                           />
                         </View>
-                        <Text style={styles.goalPct}>{g.pct}%</Text>
+                        <Text style={styles.pct}>{g.pct}%</Text>
                       </View>
-                    </View>
-                  </View>
-                ))
-              )}
-            </Card>
+                    </Card>
+                  </Pressable>
+                );
+              })
+            )}
 
             <Text style={styles.footer}>{kk.time.notCounted}</Text>
           </>
@@ -278,71 +161,38 @@ const styles = StyleSheet.create({
     fontFamily: font.display, fontSize: 13, letterSpacing: 2.08, color: C.ink,
   },
 
-  body: { paddingHorizontal: gutter, gap: 11 },
+  body: { paddingHorizontal: gutter, gap: 10 },
   pad: { padding: 17 },
   center: { paddingVertical: 30, alignItems: 'center' },
   error: { fontFamily: font.prose, fontSize: 13, color: C.inkProse },
-  empty: {
-    fontFamily: font.prose, fontSize: 12.5, lineHeight: 19,
-    color: C.ink4, marginTop: 12,
-  },
+  empty: { fontFamily: font.prose, fontSize: 12.5, lineHeight: 19, color: C.ink4 },
 
-  totalRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 12 },
-  bigRow: { flexDirection: 'row', alignItems: 'baseline', gap: 9, marginTop: 6 },
-  big: {
-    fontFamily: font.display, fontSize: 27, letterSpacing: -1.1, color: C.ink,
+  hero: { padding: 18 },
+  heroLabel: {
+    fontFamily: font.bold, fontSize: 10, letterSpacing: 1.3,
+    textTransform: 'uppercase', color: C.accent2,
   },
-  delta: { fontFamily: font.bold, fontSize: 12 },
-  sub: { fontFamily: font.prose, fontSize: 11, color: C.inkMuted, marginTop: 6 },
+  heroValue: {
+    fontFamily: font.display, fontSize: 32, letterSpacing: -1.4,
+    color: '#FFFFFF', marginTop: 8,
+  },
+  heroSub: { fontFamily: font.prose, fontSize: 11.5, color: C.darkInk2, marginTop: 7 },
 
-  avgBox: {
-    flexShrink: 0, alignItems: 'flex-end',
-    backgroundColor: C.tintChip, borderRadius: R.cardXs,
-    paddingHorizontal: 12, paddingVertical: 9,
-  },
-  avgLabel: {
-    fontFamily: font.bold, fontSize: 9, letterSpacing: 0.9,
-    textTransform: 'uppercase', color: C.accentDeep,
-  },
-  avgValue: { fontFamily: font.bold, fontSize: 13.5, color: C.ink, marginTop: 3 },
-
-  chartHead: {
-    flexDirection: 'row', alignItems: 'center',
-    justifyContent: 'space-between', gap: 10,
-  },
-  hint: { fontFamily: font.bold, fontSize: 10, color: C.ink4, flexShrink: 1 },
-  clear: { fontFamily: font.bold, fontSize: 10.5, color: C.accent },
-
-  chart: {
-    flexDirection: 'row', alignItems: 'flex-end', gap: 7,
-    height: CHART_H, marginTop: 13,
-  },
-  col: {
-    flexGrow: 1, flexShrink: 1, alignItems: 'center',
-    justifyContent: 'flex-end', gap: 7, height: '100%',
-  },
-  colTop: { fontFamily: font.bold, fontSize: 9, color: C.ink4 },
-  bar: {
-    width: '100%', maxWidth: 46, borderRadius: R.boxSm,
-    overflow: 'hidden', backgroundColor: C.tintBar,
-  },
-  colLabel: { fontFamily: font.bold, fontSize: 9, color: C.ink4 },
-
-  goalRow: { flexDirection: 'row', alignItems: 'center', gap: 11, paddingVertical: 11 },
-  goalLine: { borderTopWidth: 1, borderTopColor: C.lineSoft },
+  goal: { paddingHorizontal: 15, paddingVertical: 14 },
+  goalHead: { flexDirection: 'row', alignItems: 'center', gap: 10 },
   dot: { width: 9, height: 9, borderRadius: 999, flexShrink: 0 },
-  goalHead: {
-    flexDirection: 'row', alignItems: 'center',
-    justifyContent: 'space-between', gap: 8,
+  goalName: {
+    fontFamily: font.title, fontSize: 13, color: C.ink,
+    flexGrow: 1, flexShrink: 1,
   },
-  goalName: { fontFamily: font.title, fontSize: 12.5, color: C.ink, flexShrink: 1 },
-  goalTime: { fontFamily: font.bold, fontSize: 12.5, color: C.ink, flexShrink: 0 },
-  goalBarRow: { flexDirection: 'row', alignItems: 'center', gap: 9, marginTop: 6 },
+  goalTime: { fontFamily: font.bold, fontSize: 13, color: C.ink, flexShrink: 0 },
+
+  barRow: { flexDirection: 'row', alignItems: 'center', gap: 9, marginTop: 10 },
   track: {
     flexGrow: 1, height: 5, borderRadius: 999,
     backgroundColor: C.tintBar, overflow: 'hidden',
   },
-  goalPct: {
+  pct: {
     fontFamily: font.bold, fontSize: 10.5, color: C.inkMuted,
     width: 32, textAlign: 'right',
   },

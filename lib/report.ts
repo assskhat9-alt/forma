@@ -1,62 +1,51 @@
 /**
  * Уақыт есебі — фокус сессияларының жиынтығы.
  *
- * ⚠ Мұндағы бірде-бір сан ойдан шықпайды. «Өткен аптадан +2 сағат»
- * деген айырма да нақты: алдыңғы кезеңнің дәл сол ұзындықтағы
- * сессиялары есептеліп, айырмасы алынады. Салыстыруға дерек жетпесе
+ * Екі деңгей:
+ *   1. Жалпы  — барлық мақсатқа кеткен уақыт, мақсат бойынша бөлінісі.
+ *   2. Мақсат — сол мақсаттың апталары: күндік бағаналар, қай әрекетке
+ *      қанша кеткені, өткен аптамен салыстыру.
+ *
+ * ⚠ Мұндағы бірде-бір сан ойдан шықпайды. Салыстыру да нақты: өткен
+ * аптаның дәл сол ұзындықтағы сессиялары есептеледі. Дерек болмаса
  * айырма МҮЛДЕ көрсетілмейді.
  *
- * Бөліну (bucket) кезеңге қарай өзгереді:
- *   күн  → 3 сағаттық 8 бөлік
- *   апта → 7 күндік бағана
- *   ай   → 4 апталық бағана
+ * ⚠ Бұл уақыт мақсаттың ПАЙЫЗЫНА қатыспайды: пайыз орындалған
+ * әрекеттен есептеледі, отырған сағаттан емес (CLAUDE.md §1).
  */
 import { useQuery } from '@tanstack/react-query';
 
 import { supabase } from './supabase';
 import { useGoals, useRootGoals } from './goals';
 import { color as C } from '../theme/tokens';
-import type { FocusSession } from './database.types';
-
-export type ReportRange = 'day' | 'week' | 'month';
-
-/** Бір бағана: жалпы уақыты және мақсаттар бойынша қабаттары */
-export type ReportBar = {
-  key: string;
-  label: string;
-  minutes: number;
-  segments: { id: string; color: string; minutes: number }[];
-};
-
-export type ReportGoal = {
-  id: string;
-  title: string;
-  color: string;
-  minutes: number;
-  /** Кезеңдегі үлесі */
-  pct: number;
-};
+import type { Goal, FocusSession } from './database.types';
 
 /** Мақсатқа тіркелмеген уақыт осы жолмен жүреді */
-const OTHER = { id: '__other__', title: 'Жеке шаруа', color: C.ink4 };
+export const OTHER = { id: '__other__', title: 'Жеке шаруа', color: C.ink4 };
 
 const DAY_MS = 86_400_000;
 
-function startOfDay(d: Date): Date {
+/** «Бәрі» кезеңінің басы — қолданба бұдан бұрын болған жоқ */
+const EPOCH = new Date('2020-01-01T00:00:00');
+
+export type Range = 'week' | 'month' | 'all';
+
+export function startOfDay(d: Date): Date {
   const x = new Date(d);
   x.setHours(0, 0, 0, 0);
   return x;
 }
 
-function addDays(d: Date, n: number): Date {
-  const x = new Date(d);
+export function addDays(d: Date, n: number): Date {
+  const x = startOfDay(d);
   x.setDate(x.getDate() + n);
   return x;
 }
 
-/** Кезеңнің ұзындығы — тәулікпен */
-function spanDays(range: ReportRange): number {
-  return range === 'day' ? 1 : range === 'week' ? 7 : 28;
+/** Дүйсенбіден басталатын аптаның басы */
+export function startOfWeek(d: Date): Date {
+  const x = startOfDay(d);
+  return addDays(x, -((x.getDay() + 6) % 7));
 }
 
 /** `95` → `1 сағ 35 мин` */
@@ -76,33 +65,38 @@ export function fmtShort(m: number): string {
   return `${(Math.round((m / 60) * 10) / 10).toString().replace('.', ',')}с`;
 }
 
-export function useTimeReport(range: ReportRange, anchor: Date) {
-  const { data: goals } = useGoals();
-  const rootGoals = useRootGoals();
+const SHORT = ['Дс', 'Сс', 'Ср', 'Бс', 'Жм', 'Сн', 'Жк'] as const;
 
-  const days = spanDays(range);
-  const to = addDays(startOfDay(anchor), 1); // ашық шек
-  const from = addDays(to, -days);
-  const prevFrom = addDays(from, -days);
+// ─────────────────────────────────────────────────────────────────────
+// Ортақ бөлік
+// ─────────────────────────────────────────────────────────────────────
 
-  const q = useQuery({
-    queryKey: ['timeReport', range, from.toISOString()],
+function useSessions(from: Date, to: Date) {
+  return useQuery({
+    queryKey: ['sessions', from.toISOString(), to.toISOString()],
     queryFn: async () => {
       const { data, error } = await supabase
         .from('focus_sessions')
         .select('*')
-        .gte('created_at', prevFrom.toISOString())
+        .gte('created_at', from.toISOString())
         .lt('created_at', to.toISOString());
       if (error) throw error;
       return (data ?? []) as FocusSession[];
     },
   });
+}
 
-  const rows = q.data ?? [];
+/** Сессияны тамырдағы жылдық мақсатқа апаратын көмекші */
+function useRootIndex() {
+  const { data: goals } = useGoals();
+  const rootGoals = useRootGoals();
 
-  // ── Әр сессияны тамырдағы мақсатқа апару ──
   const byId = new Map((goals ?? []).map((g) => [g.id, g]));
   const colorOf = new Map(rootGoals.map((g) => [g.id, g.color]));
+
+  /** Әрекеттің өзі — сессия соған тіркеледі */
+  const actionOf = (goalId: string | null): Goal | null =>
+    goalId ? byId.get(goalId) ?? null : null;
 
   const rootOf = (goalId: string | null) => {
     if (!goalId) return OTHER;
@@ -112,72 +106,48 @@ export function useTimeReport(range: ReportRange, anchor: Date) {
       seen.add(cur.id);
       cur = byId.get(cur.parent_id);
     }
-    // Тамыры жоқ немесе өзі болса — бұл жеке шаруа, мақсат емес
+    // Тамыры жоқ немесе жылдық мақсат емес — бұл жеке шаруа
     if (!cur || !colorOf.has(cur.id)) return OTHER;
     return { id: cur.id, title: cur.title, color: colorOf.get(cur.id) ?? C.accent };
   };
 
-  const inRange = (r: FocusSession, a: Date, b: Date) => {
-    const t = new Date(r.created_at).getTime();
-    return t >= a.getTime() && t < b.getTime();
-  };
+  return { rootOf, actionOf };
+}
 
-  const current = rows.filter((r) => inRange(r, from, to));
-  const previous = rows.filter((r) => inRange(r, prevFrom, from));
+function rangeBounds(range: Range, now: Date): { from: Date; to: Date } {
+  const to = addDays(now, 1);
+  if (range === 'all') return { from: EPOCH, to };
+  return { from: addDays(to, range === 'week' ? -7 : -30), to };
+}
 
-  const total = current.reduce((a, r) => a + (r.minutes ?? 0), 0);
-  const prevTotal = previous.reduce((a, r) => a + (r.minutes ?? 0), 0);
+// ─────────────────────────────────────────────────────────────────────
+// 1-деңгей: жалпы уақыт және мақсат бойынша бөлінісі
+// ─────────────────────────────────────────────────────────────────────
 
-  // ── Бағаналар ──
-  const bucketCount = range === 'day' ? 8 : range === 'week' ? 7 : 4;
+export type GoalTime = {
+  id: string;
+  title: string;
+  color: string;
+  minutes: number;
+  /** Жалпы уақыттағы үлесі */
+  pct: number;
+};
 
-  /** Сессия қай бағанаға түседі */
-  const bucketOf = (r: FocusSession): number => {
-    const d = new Date(r.created_at);
-    if (range === 'day') return Math.min(Math.floor(d.getHours() / 3), 7);
-    const offset = Math.floor((startOfDay(d).getTime() - from.getTime()) / DAY_MS);
-    return range === 'week'
-      ? Math.min(Math.max(offset, 0), 6)
-      : Math.min(Math.max(Math.floor(offset / 7), 0), 3);
-  };
+export function useTimeOverview(range: Range, now: Date) {
+  const { from, to } = rangeBounds(range, now);
+  const q = useSessions(from, to);
+  const { rootOf } = useRootIndex();
 
-  const labelOf = (i: number): string => {
-    if (range === 'day') return `${String(i * 3).padStart(2, '0')}`;
-    if (range === 'week') {
-      const d = addDays(from, i);
-      return ['Дс', 'Сс', 'Ср', 'Бс', 'Жм', 'Сн', 'Жк'][(d.getDay() + 6) % 7]!;
-    }
-    const d = addDays(from, i * 7);
-    return `${d.getDate()}/${d.getMonth() + 1}`;
-  };
+  const rows = q.data ?? [];
+  const total = rows.reduce((a, r) => a + (r.minutes ?? 0), 0);
 
-  const bars: ReportBar[] = Array.from({ length: bucketCount }, (_, i) => ({
-    key: `b${i}`,
-    label: labelOf(i),
-    minutes: 0,
-    segments: [] as ReportBar['segments'],
-  }));
-
-  const sumInto = (bar: ReportBar, id: string, color: string, minutes: number) => {
-    bar.minutes += minutes;
-    const seg = bar.segments.find((s) => s.id === id);
-    if (seg) seg.minutes += minutes;
-    else bar.segments.push({ id, color, minutes });
-  };
-
-  for (const r of current) {
+  const byGoal = new Map<string, GoalTime>();
+  for (const r of rows) {
     const root = rootOf(r.goal_id);
-    sumInto(bars[bucketOf(r)]!, root.id, root.color, r.minutes ?? 0);
-  }
-
-  // ── Мақсаттар бойынша ──
-  const perGoal = new Map<string, ReportGoal>();
-  for (const r of current) {
-    const root = rootOf(r.goal_id);
-    const cur = perGoal.get(root.id);
+    const cur = byGoal.get(root.id);
     if (cur) cur.minutes += r.minutes ?? 0;
     else
-      perGoal.set(root.id, {
+      byGoal.set(root.id, {
         id: root.id,
         title: root.title,
         color: root.color,
@@ -186,9 +156,87 @@ export function useTimeReport(range: ReportRange, anchor: Date) {
       });
   }
 
-  const goalList = [...perGoal.values()]
+  const goals = [...byGoal.values()]
     .map((g) => ({ ...g, pct: total ? Math.round((g.minutes / total) * 100) : 0 }))
     .sort((a, b) => b.minutes - a.minutes);
+
+  return {
+    isLoading: q.isLoading,
+    isError: q.isError,
+    error: q.error,
+    from,
+    to: addDays(to, -1),
+    total,
+    sessions: rows.length,
+    goals,
+  };
+}
+
+// ─────────────────────────────────────────────────────────────────────
+// 2-деңгей: бір мақсаттың бір аптасы
+// ─────────────────────────────────────────────────────────────────────
+
+export type DayTime = { date: Date; short: string; minutes: number; today: boolean };
+export type ActionTime = { id: string; title: string; minutes: number; date: string | null };
+
+/**
+ * Бір мақсаттың бір аптасы.
+ *
+ * `weekStart` — дүйсенбі. Өткен аптаны көру үшін оны 7 күнге кері
+ * жылжыту жеткілікті: сұраныс сол аптаны және салыстыру үшін одан
+ * бұрынғысын алады.
+ */
+export function useGoalWeek(goalId: string | null, weekStart: Date, now: Date) {
+  const from = startOfWeek(weekStart);
+  const to = addDays(from, 7);
+  const prevFrom = addDays(from, -7);
+
+  const q = useSessions(prevFrom, to);
+  const { rootOf, actionOf } = useRootIndex();
+
+  const mine = (q.data ?? []).filter((r) => rootOf(r.goal_id).id === goalId);
+  const at = (r: FocusSession) => new Date(r.created_at).getTime();
+
+  const current = mine.filter((r) => at(r) >= from.getTime());
+  const previous = mine.filter((r) => at(r) < from.getTime());
+
+  const total = current.reduce((a, r) => a + (r.minutes ?? 0), 0);
+  const prevTotal = previous.reduce((a, r) => a + (r.minutes ?? 0), 0);
+
+  // ── күндік бағаналар ──
+  const days: DayTime[] = Array.from({ length: 7 }, (_, i) => {
+    const date = addDays(from, i);
+    return {
+      date,
+      short: SHORT[i]!,
+      minutes: 0,
+      today: date.getTime() === startOfDay(now).getTime(),
+    };
+  });
+
+  for (const r of current) {
+    const i = Math.floor((startOfDay(new Date(r.created_at)).getTime() - from.getTime()) / DAY_MS);
+    const bucket = days[Math.min(Math.max(i, 0), 6)];
+    if (bucket) bucket.minutes += r.minutes ?? 0;
+  }
+
+  // ── қай әрекетке қанша кеткені ──
+  const byAction = new Map<string, ActionTime>();
+  for (const r of current) {
+    const a = actionOf(r.goal_id);
+    const id = a?.id ?? OTHER.id;
+    const cur = byAction.get(id);
+    if (cur) cur.minutes += r.minutes ?? 0;
+    else
+      byAction.set(id, {
+        id,
+        title: a?.title ?? OTHER.title,
+        minutes: r.minutes ?? 0,
+        date: a?.period_start ?? null,
+      });
+  }
+
+  const actions = [...byAction.values()].sort((a, b) => b.minutes - a.minutes);
 
   return {
     isLoading: q.isLoading,
@@ -200,10 +248,19 @@ export function useTimeReport(range: ReportRange, anchor: Date) {
     prevTotal,
     /** Салыстыруға дерек болмаса null — нөл деп көрсету жаңылтады */
     delta: previous.length > 0 ? total - prevTotal : null,
+    days,
+    actions,
     sessions: current.length,
-    /** Күніне орташа — бір күндік есепте мағынасы жоқ, сондықтан null */
-    perDay: range === 'day' ? null : total / days,
-    bars,
-    goals: goalList,
+    /** Келер аптаға өтуге бола ма — болашақты қарауға болмайды */
+    canGoNext: to.getTime() <= startOfDay(now).getTime(),
   };
+}
+
+/** Мақсаттың бүкіл уақыты — апталық көріністің тақырыбында тұрады */
+export function useGoalTotal(goalId: string | null, now: Date) {
+  const q = useSessions(EPOCH, addDays(now, 1));
+  const { rootOf } = useRootIndex();
+
+  const mine = (q.data ?? []).filter((r) => rootOf(r.goal_id).id === goalId);
+  return mine.reduce((a, r) => a + (r.minutes ?? 0), 0);
 }
