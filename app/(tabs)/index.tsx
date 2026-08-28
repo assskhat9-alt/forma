@@ -56,9 +56,9 @@ export default function HomeScreen() {
   const insets = useSafeAreaInsets();
   const bp = useBreakpoint();
   const wide = bp !== 'phone';
-  // ⚠ Үш баған тек ПК-де сыяды: планшетте бүйір мәзірден кейін
-  // қалған ен жетпейді де, апта серпіні қысылып қалады
-  const three = bp === 'desktop';
+  // Планшетте де үш баған тұрады — бағандар мен шеттер тарылады
+  const three = wide;
+  const tablet = bp === 'tablet';
 
   const today = useMemo(() => new Date(), []);
   /** Панель қай күнді көрсетіп тұр — апта жолағы мен кесте осыған қарайды */
@@ -200,7 +200,7 @@ export default function HomeScreen() {
         </>
       )}
 
-      <View style={[styles.body, wide && styles.bodyWide]}>
+      <View style={[styles.body, wide && styles.bodyWide, tablet && styles.bodyTablet]}>
         {/* ── 1. Сандар қатары ── */}
         <View style={styles.statRow}>
           {stats.map((s, i) => (
@@ -214,18 +214,10 @@ export default function HomeScreen() {
         </View>
 
         {/* ── 2. Апта серпіні + оң баған ── */}
-        <View style={[styles.mid, wide && styles.midWide]}>
+        <View style={[styles.mid, wide && styles.midWide, tablet && styles.midTablet]}>
           <WeekBars title={kk.home.weekTrend} days={weekDays} onPickDay={setSelected} />
 
-          <View style={[styles.side, wide && styles.sideWide]}>
-            {!three && (
-              <TimeCard
-                total={timeRep.total}
-                goals={timeRep.goals}
-                onPress={() => router.navigate('/time' as never)}
-              />
-            )}
-
+          <View style={[styles.side, wide && styles.sideWide, tablet && styles.sideTablet]}>
             <WeekStrip
               title={stripTitle}
               days={stripDays}
@@ -258,15 +250,14 @@ export default function HomeScreen() {
             Апта серпіні мен деңгейлерден бөлек тұрады: бұл күндік
             көрсеткіш емес, жиналып отыратын еңбек.
           */}
-          {three && (
-            <View style={styles.timeColWide}>
-              <TimeCard
-                total={timeRep.total}
-                goals={timeRep.goals}
-                onPress={() => router.navigate('/time' as never)}
-              />
-            </View>
-          )}
+          <View style={[three && styles.timeColWide, tablet && styles.timeColTablet]}>
+            <TimeCard
+              total={timeRep.total}
+              goals={timeRep.goals}
+              onPress={() => router.navigate('/time' as never)}
+              compact={tablet}
+            />
+          </View>
         </View>
 
         {/* мотивация — мақсат емес нәрсе қара карточкада */}
@@ -439,14 +430,18 @@ const styles = StyleSheet.create({
 
   body: { paddingHorizontal: gutter, gap: 10, marginTop: 10 },
   bodyWide: { paddingHorizontal: 26, gap: 14, marginTop: 0 },
+  bodyTablet: { paddingHorizontal: 16, gap: 10 },
 
   statRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
 
   mid: { gap: 10 },
   midWide: { flexDirection: 'row', gap: 14, alignItems: 'flex-start' },
+  midTablet: { gap: 10 },
   side: { gap: 10 },
   sideWide: { width: 320, flexShrink: 0, gap: 14 },
+  sideTablet: { width: 224, gap: 10 },
   timeColWide: { width: 300, flexShrink: 0 },
+  timeColTablet: { width: 196 },
 
   motto: { padding: 16 },
   mottoLabel: {

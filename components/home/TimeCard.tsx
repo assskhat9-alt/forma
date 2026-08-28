@@ -21,14 +21,17 @@ export function TimeCard({
   total,
   goals,
   onPress,
+  /** Планшеттің тар бағанында — кішірек шрифт, аз жол */
+  compact = false,
 }: {
   total: number;
   goals: GoalTime[];
   onPress: () => void;
+  compact?: boolean;
 }) {
   return (
     <Pressable onPress={onPress} accessibilityRole="link">
-      <Card style={styles.root}>
+      <Card style={[styles.root, compact && styles.rootSm]}>
         <View style={styles.head}>
           <Text style={styles.label}>{kk.time.totalLabel}</Text>
           <View style={{ flexGrow: 1 }} />
@@ -37,7 +40,7 @@ export function TimeCard({
 
         {/* Сан шаршының ортасында тұрады — блоктың мәні сол */}
         <View style={styles.middle}>
-          <Text style={styles.value} numberOfLines={2} adjustsFontSizeToFit>
+          <Text style={[styles.value, compact && styles.valueSm]} numberOfLines={2}>
             {total > 0 ? fmtMinutes(total) : '—'}
           </Text>
         </View>
@@ -47,13 +50,15 @@ export function TimeCard({
         ) : (
           <View style={styles.list}>
             {/* Үшеуі жеткілікті — қалғанын толық есептен көреді */}
-            {goals.slice(0, 3).map((g) => (
+            {goals.slice(0, compact ? 2 : 3).map((g) => (
               <View key={g.id} style={styles.row}>
                 <View style={[styles.dot, { backgroundColor: g.color }]} />
-                <Text style={styles.rowName} numberOfLines={1}>
+                <Text style={[styles.rowName, compact && styles.rowSm]} numberOfLines={1}>
                   {g.title}
                 </Text>
-                <Text style={styles.rowTime}>{fmtMinutes(g.minutes)}</Text>
+                <Text style={[styles.rowTime, compact && styles.rowSm]}>
+                  {fmtMinutes(g.minutes)}
+                </Text>
               </View>
             ))}
           </View>
@@ -66,6 +71,7 @@ export function TimeCard({
 const styles = StyleSheet.create({
   /** Шаршы: ені қанша болса, биіктігі де сонша */
   root: { aspectRatio: 1, paddingHorizontal: 18, paddingVertical: 17 },
+  rootSm: { paddingHorizontal: 14, paddingVertical: 14 },
   head: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   label: {
     fontFamily: font.bold, fontSize: 9.5, letterSpacing: 1.14,
@@ -77,6 +83,7 @@ const styles = StyleSheet.create({
     fontFamily: font.display, fontSize: 38, lineHeight: 44,
     letterSpacing: -1.6, color: C.ink,
   },
+  valueSm: { fontSize: 26, lineHeight: 31, letterSpacing: -1 },
   empty: { fontFamily: font.prose, fontSize: 11.5, lineHeight: 17, color: C.ink4 },
 
   list: { gap: 9 },
@@ -84,4 +91,5 @@ const styles = StyleSheet.create({
   dot: { width: 6, height: 6, borderRadius: 999, flexShrink: 0 },
   rowName: { fontFamily: font.body, fontSize: 11.5, color: C.inkBody, flexGrow: 1, flexShrink: 1 },
   rowTime: { fontFamily: font.bold, fontSize: 11.5, color: C.ink, flexShrink: 0 },
+  rowSm: { fontSize: 10.5 },
 });
