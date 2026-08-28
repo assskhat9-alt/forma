@@ -54,7 +54,11 @@ const MOTTO = '«Мен армандаған адам — бүгін тұрып 
 
 export default function HomeScreen() {
   const insets = useSafeAreaInsets();
-  const wide = useBreakpoint() !== 'phone';
+  const bp = useBreakpoint();
+  const wide = bp !== 'phone';
+  // ⚠ Үш баған тек ПК-де сыяды: планшетте бүйір мәзірден кейін
+  // қалған ен жетпейді де, апта серпіні қысылып қалады
+  const three = bp === 'desktop';
 
   const today = useMemo(() => new Date(), []);
   /** Панель қай күнді көрсетіп тұр — апта жолағы мен кесте осыған қарайды */
@@ -214,12 +218,13 @@ export default function HomeScreen() {
           <WeekBars title={kk.home.weekTrend} days={weekDays} onPickDay={setSelected} />
 
           <View style={[styles.side, wide && styles.sideWide]}>
-            {/* Мақсаттарға кеткен уақыт — шаршы, бағанның басында */}
-            <TimeCard
-              total={timeRep.total}
-              goals={timeRep.goals}
-              onPress={() => router.navigate('/time' as never)}
-            />
+            {!three && (
+              <TimeCard
+                total={timeRep.total}
+                goals={timeRep.goals}
+                onPress={() => router.navigate('/time' as never)}
+              />
+            )}
 
             <WeekStrip
               title={stripTitle}
@@ -247,6 +252,21 @@ export default function HomeScreen() {
               emptyText={kk.home.levelsEmpty}
             />
           </View>
+
+          {/*
+            Үшінші баған — мақсаттарға кеткен жалпы уақыт.
+            Апта серпіні мен деңгейлерден бөлек тұрады: бұл күндік
+            көрсеткіш емес, жиналып отыратын еңбек.
+          */}
+          {three && (
+            <View style={styles.timeColWide}>
+              <TimeCard
+                total={timeRep.total}
+                goals={timeRep.goals}
+                onPress={() => router.navigate('/time' as never)}
+              />
+            </View>
+          )}
         </View>
 
         {/* мотивация — мақсат емес нәрсе қара карточкада */}
@@ -426,6 +446,7 @@ const styles = StyleSheet.create({
   midWide: { flexDirection: 'row', gap: 14, alignItems: 'flex-start' },
   side: { gap: 10 },
   sideWide: { width: 320, flexShrink: 0, gap: 14 },
+  timeColWide: { width: 300, flexShrink: 0 },
 
   motto: { padding: 16 },
   mottoLabel: {
