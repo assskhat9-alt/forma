@@ -19,7 +19,10 @@ import { useLocalSearchParams, router } from 'expo-router';
 import { color as C, radius as R, font, centered } from '../theme/tokens';
 import { kk, t as tpl } from '../i18n/kk';
 import { useGoals } from '../lib/goals';
-import { useImpact, useCreateReflection, DURATION_MINUTES, nowTime } from '../lib/reflections';
+import {
+  useImpact, useCreateReflection, useTaskFocusMinutes,
+  DURATION_MINUTES, humanMinutes, nowTime,
+} from '../lib/reflections';
 import { errorText } from '../lib/errors';
 import { goBack } from '../lib/nav';
 import { SectionLabel } from '../components/ui';
@@ -27,13 +30,27 @@ import { CheckIcon } from '../components/icons';
 
 export default function ReflectionScreen() {
   const insets = useSafeAreaInsets();
-  const { taskId } = useLocalSearchParams<{ taskId: string }>();
+  const { taskId, minutes } = useLocalSearchParams<{
+    taskId: string;
+    /** Фокус таймері өлшеген уақыт — болса, қайта сұралмайды */
+    minutes?: string;
+  }>();
+
+  /** Жаңа ғана аяқталған отырыс — сілтемедегі сан */
+  const passed = (() => {
+    const n = Number(minutes);
+    return Number.isFinite(n) && n >= 1 ? Math.round(n) : 0;
+  })();
 
   const { data: goals } = useGoals();
   const task = (goals ?? []).find((g) => g.id === taskId) ?? null;
 
   const { data: impact, isLoading } = useImpact(taskId ?? null);
   const create = useCreateReflection();
+
+  // Базадағы қосынды жазба әлі жетпей қалуы мүмкін — сондықтан үлкенін аламыз
+  const { data: logged } = useTaskFocusMinutes(taskId ?? null);
+  const timerMinutes = Math.max(logged ?? 0, passed) || null;
 
   const [mood, setMood] = useState<number | null>(null);
   const [duration, setDuration] = useState<number | null>(null);
@@ -51,7 +68,9 @@ export default function ReflectionScreen() {
         goalId: task.id,
         body: body.trim() || null,
         rating: mood != null ? mood + 1 : null,
-        minutesSpent: duration != null ? DURATION_MINUTES[duration] ?? null : null,
+        // Таймер өлшеген уақыт болса — сол жазылады, чиптер сұралмайды
+        minutesSpent:
+          timerMinutes ?? (duration != null ? DURATION_MINUTES[duration] ?? null : null),
       },
       { onSuccess: close, onError: (e) => setError(errorText(e)) },
     );
@@ -144,24 +163,38 @@ export default function ReflectionScreen() {
             })}
           </View>
 
-          {/* ⚠ §7.5 — таймерсіз де фокус деректері жиналуы үшін */}
+          {/*
+            Таймермен істелсе — уақыт өлшеніп қойған, оны қайта сұрау артық.
+            Чиптер тек таймерсіз орындалған әрекетке шығады (§7.5).
+          */}
           <SectionLabel style={styles.label}>{kk.reflection.howLong}</SectionLabel>
-          <View style={styles.chips}>
-            {kk.reflection.durations.map((name, i) => {
-              const on = duration === i;
-              return (
-                <Pressable
-                  key={name}
-                  onPress={() => setDuration(on ? null : i)}
-                  style={[styles.chip, on && styles.chipOn]}
-                  accessibilityRole="button"
-                  accessibilityState={{ selected: on }}
-                >
-                  <Text style={[styles.chipText, on && { color: '#FFFFFF' }]}>{name}</Text>
-                </Pressable>
-              );
-            })}
-          </View>
+
+          {timerMinutes != null ? (
+            <View style={styles.measured}>
+              <View style={styles.measuredDot} />
+              <View style={{ flexGrow: 1, flexShrink: 1, minWidth: 0 }}>
+                <Text style={styles.measuredValue}>{humanMinutes(timerMinutes)}</Text>
+                <Text style={styles.measuredNote}>{kk.reflection.fromTimer}</Text>
+              </View>
+            </View>
+          ) : (
+            <View style={styles.chips}>
+              {kk.reflection.durations.map((name, i) => {
+                const on = duration === i;
+                return (
+                  <Pressable
+                    key={name}
+                    onPress={() => setDuration(on ? null : i)}
+                    style={[styles.chip, on && styles.chipOn]}
+                    accessibilityRole="button"
+                    accessibilityState={{ selected: on }}
+                  >
+                    <Text style={[styles.chipText, on && { color: '#FFFFFF' }]}>{name}</Text>
+                  </Pressable>
+                );
+              })}
+            </View>
+          )}
 
           {/* Коментарий */}
           <SectionLabel style={styles.label}>{kk.reflection.comment}</SectionLabel>
@@ -303,6 +336,20 @@ const styles = StyleSheet.create({
   },
   chipOn: { backgroundColor: C.accent, borderColor: C.accent },
   chipText: { fontFamily: font.bold, fontSize: 11.5, color: C.darkInk3 },
+
+  /** Таймер өлшеген уақыт — таңдау емес, факт. Сондықтан чип емес, жол. */
+  measured: {
+    flexDirection: 'row', alignItems: 'center', gap: 11,
+    backgroundColor: C.tintSoft, borderWidth: 1.5, borderColor: C.tintLine,
+    borderRadius: R.cardXs, paddingHorizontal: 14, paddingVertical: 12,
+  },
+  measuredDot: { width: 8, height: 8, borderRadius: 999, backgroundColor: C.accent },
+  measuredValue: {
+    fontFamily: font.bold, fontSize: 16, letterSpacing: -0.32, color: C.ink,
+  },
+  measuredNote: {
+    fontFamily: font.prose, fontSize: 11.5, color: C.inkMuted, marginTop: 3,
+  },
 
   textarea: {
     minHeight: 92,

@@ -147,7 +147,9 @@ export default function FocusScreen() {
     store.reset();
     store.attach(null, '');
     setCompleting(false);
-    router.replace(`/reflection?taskId=${id}` as never);
+    // Таймер өлшеген уақыт нәтижеге де жазылсын — қайта сұраудың мәні жоқ
+    const q = minutes >= 1 ? `&minutes=${minutes}` : '';
+    router.replace(`/reflection?taskId=${id}${q}` as never);
   };
 
   const finish = () => {

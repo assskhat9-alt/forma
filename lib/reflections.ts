@@ -152,6 +152,37 @@ export function useCreateReflection() {
 /** «30 мин» · «1 сағат» · «2 сағат» · «Өзім жазамын» → минут */
 export const DURATION_MINUTES: (number | null)[] = [30, 60, 120, null];
 
+/**
+ * Осы әрекетке таймермен жазылған жалпы уақыт.
+ *
+ * Бір әрекет бірнеше отырыста істелуі мүмкін: «Уақытты сақтау» әр
+ * жолы бөлек сессия жазады. Нәтижеде солардың ҚОСЫНДЫСЫ тұруы керек,
+ * соңғы отырыс емес.
+ */
+export function useTaskFocusMinutes(goalId: string | null) {
+  return useQuery({
+    queryKey: ['focusForGoal', goalId],
+    enabled: !!goalId,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('focus_sessions')
+        .select('minutes')
+        .eq('goal_id', goalId!);
+      if (error) throw error;
+      return (data ?? []).reduce((a, s) => a + (s.minutes ?? 0), 0);
+    },
+  });
+}
+
+/** 47 → «47 мин», 75 → «1 сағ 15 мин» */
+export function humanMinutes(n: number): string {
+  const h = Math.floor(n / 60);
+  const m = n % 60;
+  if (h === 0) return `${m} мин`;
+  if (m === 0) return `${h} сағ`;
+  return `${h} сағ ${m} мин`;
+}
+
 /** Бүгінгі күннің `HH:MM` пішіміндегі уақыты */
 export function nowTime(d: Date = new Date()): string {
   return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
