@@ -37,7 +37,7 @@ import { useHabitsForDay, useToggleHabit } from '../../lib/habits';
 import { useDueAction } from '../../lib/focus';
 import { DueBanner } from '../../components/focus/DueBanner';
 import {
-  Card, DarkCard, DashedCard, SectionLabel, Chip, CollapsibleSegments, HabitCell,
+  Card, DarkCard, DashedCard, SectionLabel, Chip, CollapsibleSegments, Checkbox,
 } from '../../components/ui';
 import {
   StatCard, WeekBars, WeekStrip, RingCard, TaskTable, LevelsCard,
@@ -75,7 +75,10 @@ export default function HomeScreen() {
 
   const done = tasks.filter((t) => t.done).length;
   const dayPct = tasks.length ? Math.round((done / tasks.length) * 100) : 0;
-  const habitsDone = habits.filter((h) => h.done).length;
+  // ⚠ Бүгінге жоспарланғаны ғана: аптасына үш рет жасалатын әдет
+  // қалған күндері тізімде тұрмауы керек — ол өткізіліп жатқан жоқ
+  const todayHabits = habits.filter((h) => h.planned);
+  const habitsDone = todayHabits.filter((h) => h.done).length;
 
   // ── Апта: дүйсенбіден басталады ──────────────────────────────────
   const weekStart = startOfWeek(selected, { weekStartsOn: 1 });
@@ -326,9 +329,9 @@ export default function HomeScreen() {
               style={styles.habLink}
               accessibilityRole="link"
             >
-              {habits.length > 0 && (
+              {todayHabits.length > 0 && (
                 <Text style={styles.habCount}>
-                  {habitsDone}/{habits.length}
+                  {habitsDone}/{todayHabits.length}
                 </Text>
               )}
               <ChevronRightIcon size={12} color={C.accent} strokeWidth={2.6} />
@@ -336,26 +339,33 @@ export default function HomeScreen() {
           </View>
 
           {habits.length === 0 ? (
-            <Text style={styles.habEmpty}>
-              Әдет қосылмаған. Әдет — жететін нәтиже емес, күнделікті рефлекс.
-            </Text>
+            <Text style={styles.habEmpty}>{kk.habits.emptyText}</Text>
+          ) : todayHabits.length === 0 ? (
+            <Text style={styles.habEmpty}>{kk.today.habitsNoneToday}</Text>
           ) : (
-            <View style={styles.habRow}>
-              {habits.map((h) => (
-                <View key={h.id} style={styles.habCol}>
-                  <HabitCell
-                    done={h.done}
-                    planned={h.planned}
-                    color={h.color}
+            <View style={styles.habList}>
+              {todayHabits.map((h) => (
+                <Pressable
+                  key={h.id}
+                  onPress={() => toggleHabit.mutate({ habitId: h.id, done: !h.done })}
+                  style={styles.habItem}
+                  accessibilityRole="button"
+                  accessibilityState={{ checked: h.done }}
+                  accessibilityLabel={h.title}
+                >
+                  <Checkbox
+                    checked={h.done}
                     onToggle={() => toggleHabit.mutate({ habitId: h.id, done: !h.done })}
+                    size={20}
+                    activeColor={h.color}
                   />
                   <Text
-                    style={[styles.habLabel, h.done && { color: C.accentDeep }]}
+                    style={[styles.habName, h.done && styles.habNameDone]}
                     numberOfLines={1}
                   >
                     {h.title}
                   </Text>
-                </View>
+                </Pressable>
               ))}
             </View>
           )}
@@ -457,7 +467,8 @@ const styles = StyleSheet.create({
   habLink: { flexDirection: 'row', alignItems: 'center', gap: 5, flexShrink: 0 },
   habCount: { fontFamily: font.bold, fontSize: 11, color: C.accent },
   habEmpty: { fontFamily: font.prose, fontSize: 11.5, lineHeight: 17, color: C.ink4, marginTop: 10 },
-  habRow: { flexDirection: 'row', gap: 7, marginTop: 10 },
-  habCol: { flexGrow: 1, flexShrink: 1, alignItems: 'center', gap: 5 },
-  habLabel: { fontFamily: font.bold, fontSize: 8, color: C.inkFaint },
+  habList: { marginTop: 6 },
+  habItem: { flexDirection: 'row', alignItems: 'center', gap: 11, paddingVertical: 8 },
+  habName: { fontFamily: font.title, fontSize: 13, color: C.ink, flexShrink: 1 },
+  habNameDone: { color: C.inkFaint, textDecorationLine: 'line-through' },
 });
