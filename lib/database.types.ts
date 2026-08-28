@@ -164,8 +164,13 @@ export type Database = {
       };
       /** Айларды ашады/жаңартады. Аралықтан шыққан бос айлар өшеді. */
       sync_months: { Args: { p_goal_id: string }; Returns: number };
-      /** Айға кіргенде апталарды ашады */
-      sync_weeks: { Args: { p_month_id: string }; Returns: number };
+      /** Айдың апталық статистикасы — апта енді құрылым емес, фон */
+      month_week_stats: {
+        Args: { p_month_id: string };
+        Returns: { week_start: string; week_end: string; total: number; done: number }[];
+      };
+      /** Күн қай айға түседі — «тек осы айға» шектеуі жоқ */
+      month_for_date: { Args: { p_goal_id: string; p_date: string }; Returns: string | null };
       action_counts: {
         Args: { p_goal_id: string };
         Returns: { total: number; done: number }[];

@@ -67,7 +67,7 @@ export default function CalendarScreen() {
     if (!parentId) return;
 
     createAction.mutate({
-      parentId,
+      goalId: parentId,
       title,
       date: selected,
       time: TIMES[draft.timeIndex] ?? null,

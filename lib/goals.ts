@@ -159,36 +159,33 @@ export function useMonths(goalId: string | null): Goal[] {
     .sort((a, b) => a.period_start.localeCompare(b.period_start));
 }
 
-/**
- * Айдың апталары.
- *
- * Апталар айға КІРГЕНДЕ ашылады — сондықтан хук `sync_weeks()` RPC-ін
- * бір рет шақырып, сосын тізімді қайтарады.
- */
-export function useWeeks(monthId: string | null) {
-  const qc = useQueryClient();
-  const { data: goals } = useGoals();
+export type WeekStat = {
+  start: string;
+  end: string;
+  total: number;
+  done: number;
+};
 
-  const sync = useQuery({
-    queryKey: ['syncWeeks', monthId ?? 'none'],
+/**
+ * Айдың апталық СТАТИСТИКАСЫ.
+ *
+ * ⚠ Апта енді құрылым емес. Ол — телефондағы «экран уақыты» сияқты фон:
+ * әрекеттердің күндерінен есептеліп шығады, ештеңені ұстап тұрмайды.
+ * Әрекеті жоқ апта да тізімде тұрады.
+ */
+export function useMonthWeekStats(monthId: string | null) {
+  return useQuery({
+    queryKey: ['weekStats', monthId ?? 'none'],
     enabled: !!monthId,
-    staleTime: Infinity,
-    queryFn: async () => {
-      const { data, error } = await supabase.rpc('sync_weeks', { p_month_id: monthId! });
+    queryFn: async (): Promise<WeekStat[]> => {
+      const { data, error } = await supabase.rpc('month_week_stats', {
+        p_month_id: monthId!,
+      });
       if (error) throw error;
-      // Жаңа апталар қосылса — тізімді жаңартамыз
-      if (typeof data === 'number' && data > 0) {
-        await qc.invalidateQueries({ queryKey: qk.goals.all });
-      }
-      return data ?? 0;
+      return ((data ?? []) as { week_start: string; week_end: string; total: number; done: number }[])
+        .map((r) => ({ start: r.week_start, end: r.week_end, total: r.total, done: r.done }));
     },
   });
-
-  const weeks = (goals ?? [])
-    .filter((g) => g.parent_id === monthId && g.level === 'week' && g.status !== 'dropped')
-    .sort((a, b) => a.period_start.localeCompare(b.period_start));
-
-  return { weeks, isSyncing: sync.isPending };
 }
 
 /** Бір контейнердің тікелей әрекеттері */
@@ -406,11 +403,16 @@ export function useCreateGoal() {
 }
 
 export type NewAction = {
-  /** Қай контейнерге — ай не апта */
-  parentId: string;
+  /**
+   * Қайдан қосылып жатыр — екеуінің бірі жеткілікті.
+   * Ай экранынан monthId, күнтізбеден goalId келеді.
+   * Айды бәрібір күн бойынша month_for_date() табады.
+   */
+  monthId?: string;
+  goalId?: string;
   title: string;
   date: Date;
-  /** `HH:MM` немесе null */
+  /** `HH:MM` немесе null — уақыт МІНДЕТТІ ЕМЕС */
   time: string | null;
   /** Неше рет қайталансын: 1 = бір рет */
   repeatWeeks?: number;
@@ -421,6 +423,11 @@ export type NewAction = {
  *
  * «Көлем» деген бөлек өріс жоқ: көлем дегеніміз — осылайша қосылған
  * әрекеттердің саны.
+ *
+ * ⚠ «Тек осы айға қоя аласыз» деген ШЕКТЕУ ЖОҚ. Күнтізбеден басқа
+ * айдың күнін таңдасаңыз, әрекет сол айға ӨЗІ көшеді — `month_for_date()`
+ * тиісті айды тауып береді. Қайталанатын әрекет айдан асып кетсе де
+ * әрқайсысы өз айына түседі.
  */
 export function useCreateAction() {
   const qc = useQueryClient();
@@ -431,13 +438,40 @@ export function useCreateAction() {
       const userId = session.session?.user.id;
       if (!userId) throw new Error('Сессия жоқ');
 
+      // Тамырдағы мақсатты табамыз — айларды сол ұстап тұр
+      let goalId = a.goalId ?? null;
+      if (!goalId && a.monthId) {
+        const { data: month, error: e1 } = await supabase
+          .from('goals')
+          .select('parent_id')
+          .eq('id', a.monthId)
+          .single();
+        if (e1) throw e1;
+        goalId = month.parent_id;
+      }
+      if (!goalId) throw new Error('Мақсат табылмады');
+
       const repeats = Math.max(a.repeatWeeks ?? 1, 1);
       const rows = [];
+      let skipped = 0;
 
       for (let i = 0; i < repeats; i++) {
         const d = new Date(a.date);
         d.setDate(d.getDate() + i * 7);
         const iso = toISODate(d);
+
+        // Күн қай айға түссе — сол айға тіркеледі
+        const { data: target, error: e2 } = await supabase.rpc('month_for_date', {
+          p_goal_id: goalId,
+          p_date: iso,
+        });
+        if (e2) throw e2;
+
+        // Мерзімнен тыс күн — тіркелмейді, бірақ қалғаны сақталады
+        if (!target) {
+          skipped += 1;
+          continue;
+        }
 
         let scheduled: string | null = null;
         if (a.time) {
@@ -449,7 +483,7 @@ export function useCreateAction() {
 
         rows.push({
           user_id: userId,
-          parent_id: a.parentId,
+          parent_id: target as string,
           level: 'day' as const,
           title: a.title,
           period_start: iso,
@@ -458,8 +492,14 @@ export function useCreateAction() {
         });
       }
 
+      if (rows.length === 0) {
+        throw new Error('Таңдалған күн мақсаттың мерзімінен тыс.');
+      }
+
       const { error } = await supabase.from('goals').insert(rows);
       if (error) throw error;
+
+      return { added: rows.length, skipped };
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: qk.goals.all }),
   });

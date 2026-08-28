@@ -198,7 +198,6 @@ export const kk = {
 
   /** Ай экраны — апталар автоматты тұрады */
   month: {
-    weeks: 'Апталар',
     weekRange: '{from} — {to}',
     newAction: 'Жаңа әрекет',
     actionName: 'Әрекеттің аты',
@@ -208,6 +207,15 @@ export const kk = {
     timeOptional: 'міндетті емес',
     repeat: 'Қайталау',
     repeatOptional: 'міндетті емес',
+    setTime: 'Уақыт қою',
+    hour: 'сағ',
+    minute: 'мин',
+    /** Күн басқа айға түссе — әрекет сол айға өзі көшеді */
+    movedTo: 'Әрекет «{month}» айына қосылды.',
+    outOfRange: 'Таңдалған күн мақсаттың мерзімінен тыс.',
+    /** Апта — статистикалық фон, құрылым емес */
+    weekStats: 'Апталар бойынша',
+    actions: 'Әрекеттер',
     repeatOnce: 'Бір рет',
     repeatWeeks: '{n} апта',
     add: 'Қосу',

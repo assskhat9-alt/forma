@@ -28,6 +28,7 @@ const FILES = [
   '0004_result.sql',
   '0005_rhythm.sql',
   '0006_time_skeleton.sql',
+  '0007_actions_on_month.sql',
 ];
 
 /** Supabase `auth` схемасының макеті */
@@ -183,37 +184,17 @@ try {
     'ішінде әрекеті бар ай ӨШІРІЛМЕЙДІ',
   );
 
-  // ── Апталар ──
-  console.log('\nАпталар автоматты ашылады:');
+  // ── Апта енді ҚҰРЫЛЫМ емес, тек статистика ──
+  console.log('\nАпта — статистикалық фон:');
   await client.query(`update goals set period_end = '2026-12-31' where id = $1`, [goal.id]);
+
+  const noWeeks = await one(`select count(*)::int n from goals where level='week'`);
+  eq(noWeeks.n, 0, 'апта жазбалары жойылды');
+
   const sep = await one(
     `select id from goals where parent_id=$1 and level='month'
        and period_start >= '2026-09-01' and period_start < '2026-10-01' limit 1`,
     [goal.id],
-  );
-  await client.query(`select sync_weeks($1)`, [sep.id]);
-  const weeks = await client.query(
-    `select period_start::text s, period_end::text e
-     from goals where parent_id=$1 and level='week' order by period_start`,
-    [sep.id],
-  );
-  eq(weeks.rows.length, 5, 'қыркүйек → 5 апта');
-  eq(weeks.rows[0].s, '2026-09-01', 'бірінші апта айдың басынан');
-  eq(weeks.rows[weeks.rows.length - 1].e, '2026-09-30', 'соңғы апта айдың соңында бітеді');
-
-  await client.query(`select sync_weeks($1)`, [sep.id]);
-  eq(
-    (await one(`select count(*)::int n from goals where parent_id=$1 and level='week'`, [sep.id])).n,
-    5,
-    'қайта шақырғанда қосарланбайды',
-  );
-
-  // ── Пайыз: салмақ жоқ, тек әрекет саны ──
-  console.log('\nПайыз — әрекет саны бойынша:');
-
-  const w1 = await one(
-    `select id from goals where parent_id=$1 and level='week' order by period_start limit 1`,
-    [sep.id],
   );
 
   const addAction = (parent, date, done = false) =>
@@ -223,12 +204,37 @@ try {
       [uid, parent, date, done ? 'done' : 'active'],
     );
 
-  await addAction(w1.id, '2026-09-01', true);
-  await addAction(w1.id, '2026-09-02', false);
-  await addAction(w1.id, '2026-09-03', false);
-  await addAction(w1.id, '2026-09-04', false);
+  // Әрекеттер ТІКЕЛЕЙ айға тіркеледі
+  await addAction(sep.id, '2026-09-01', true);
+  await addAction(sep.id, '2026-09-02', false);
+  await addAction(sep.id, '2026-09-03', false);
+  await addAction(sep.id, '2026-09-04', false);
+  await addAction(sep.id, '2026-09-14', false);
 
-  eq(Number((await one(`select progress($1) v`, [w1.id])).v), 25, 'аптада 4 әрекеттің 1-і → 25%');
+  const ws = await client.query(`select * from month_week_stats($1)`, [sep.id]);
+  eq(ws.rows.length, 5, 'қыркүйекте 5 апта — әрекеті жоғы да көрінеді');
+  // ⚠ toISOString() UTC-ге ауыстырады да, +5 белдеуде күнді бір тәулік
+  // артқа жылжытады. Жергілікті күнді сол күйінде оқимыз.
+  const localDate = (x) =>
+    `${x.getFullYear()}-${String(x.getMonth() + 1).padStart(2, '0')}-${String(x.getDate()).padStart(2, '0')}`;
+  eq(localDate(ws.rows[0].week_start), '2026-09-01', 'бірінші апта айдың басынан');
+  eq(`${ws.rows[0].done}/${ws.rows[0].total}`, '1/4', '1-аптада 4 әрекеттің 1-і');
+  eq(`${ws.rows[1].done}/${ws.rows[1].total}`, '0/0', '2-апта бос, бірақ тізімде тұр');
+  eq(`${ws.rows[2].done}/${ws.rows[2].total}`, '0/1', '3-аптада 1 әрекет');
+
+  // ── Күн бойынша тиісті айды табу ──
+  console.log('\nКүн бойынша ай табылады:');
+  const oct = await one(`select month_for_date($1, '2026-10-15'::date) as id`, [goal.id]);
+  const octMonth = await one(`select title from goals where id = $1`, [oct.id]);
+  eq(octMonth.title, 'Қазан 2026', '15 қазан → Қазан айы');
+
+  const outside = await one(`select month_for_date($1, '2027-06-01'::date) as id`, [goal.id]);
+  eq(outside.id, null, 'мерзімнен тыс күн → ай табылмайды');
+
+  // ── Пайыз: салмақ жоқ, тек әрекет саны ──
+  console.log('\nПайыз — әрекет саны бойынша:');
+
+  eq(Number((await one(`select progress($1) v`, [sep.id])).v), 20, 'қыркүйекте 5 әрекеттің 1-і → 20%');
 
   const aug = await one(
     `select id from goals where parent_id=$1 and level='month'
@@ -237,31 +243,31 @@ try {
   );
   await addAction(aug.id, '2026-08-29', true);
 
-  // Барлығы 6 (4 қыркүйек + 1 тамыз + 1 желтоқсан), орындалғаны 2
+  // Барлығы 7 (5 қыркүйек + 1 тамыз + 1 желтоқсан), орындалғаны 2
   eq(
     Number((await one(`select progress($1) v`, [goal.id])).v),
-    33.33,
-    'жылда 6 әрекеттің 2-і → 33,33% (салмақ жоқ)',
+    28.57,
+    'жылда 7 әрекеттің 2-і → 28,57% (салмақ жоқ)',
   );
 
   const counts = await one(`select * from action_counts($1)`, [goal.id]);
-  eq(`${counts.done}/${counts.total}`, '2/6', 'action_counts');
+  eq(`${counts.done}/${counts.total}`, '2/7', 'action_counts');
 
   // ── «Керек еді» — уақыт емес, жоспар ──
   console.log('\n«Керек еді» — жоспар бойынша:');
 
-  // 1 қазанда күні өткен әрекеттер: 29 тамыз + 1–4 қыркүйек = 5
+  // 1 қазанда күні өткен әрекеттер: 29 тамыз + 1,2,3,4,14 қыркүйек = 6
   eq(
     Number((await one(`select planned_progress($1, '2026-10-01'::date) v`, [goal.id])).v),
-    83.33,
-    '1 қазанда жоспар 83,33% (6-ның 5-і өтіп кеткен)',
+    85.71,
+    '1 қазанда жоспар 85,71% (7-нің 6-ы өтіп кеткен)',
   );
 
   const linear = Math.round(
     ((new Date('2026-10-01') - new Date('2026-08-28')) /
       (new Date('2026-12-31') - new Date('2026-08-28'))) * 100,
   );
-  if (linear !== 83) ok(`сызықтық есеп сол күні ${linear}% берер еді — жалған дабыл`);
+  if (linear !== 86) ok(`сызықтық есеп сол күні ${linear}% берер еді — жалған дабыл`);
   else fail('сызықтық есеп кездейсоқ сәйкес келді, тест мағынасыз');
 
   // ── Әдеттер араласпайды ──
@@ -278,7 +284,7 @@ try {
   }
   eq(
     Number((await one(`select progress($1) v`, [goal.id])).v),
-    33.33,
+    28.57,
     'әдет белгілері мақсат пайызын ҚОЗҒАМАДЫ',
   );
   eq(
