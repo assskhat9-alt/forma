@@ -154,8 +154,13 @@ export const kk = {
   goalNew: {
     title: 'ЖАҢА МАҚСАТ',
     what: 'Не істегім келеді',
-    deadline: 'Мерзім',
-    deadlineHint: 'Жыл соңы болуы міндетті емес',
+    deadline: 'Кезең',
+    deadlineHint: 'Күндерді өзіңіз таңдайсыз',
+    startLabel: 'Басталуы',
+    endLabel: 'Мерзімі',
+    quick: 'Жылдам таңдау',
+    /** «123 күн · 18 апта» */
+    span: '{days} күн · {weeks} апта',
     amount: 'Көлемі',
     distribution: 'Автоматты тарату',
     perWeek: 'АПТАСЫНА',

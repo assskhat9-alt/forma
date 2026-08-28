@@ -15,20 +15,24 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 
 import { color as C, radius as R, font, gutter } from '../../theme/tokens';
-import { kk, monthsShort, formatDayMonth, t as tpl } from '../../i18n/kk';
+import { kk, monthsShort, t as tpl } from '../../i18n/kk';
 import { buildPlan, summarize, termEndDate, type Curve, type TermKey } from '../../lib/plan';
 import { useCreateGoal } from '../../lib/goals';
-import { Card, SectionLabel } from '../../components/ui';
-import { CloseIcon, CalendarIcon, InfoIcon } from '../../components/icons';
+import { Card, SectionLabel, DateField } from '../../components/ui';
+import { CloseIcon, InfoIcon } from '../../components/icons';
 
 /** Бір дананың шамамен ұзақтығы — макеттегі мән */
 const MINUTES_PER_UNIT = 45;
 
+/**
+ * Жылдам нұсқалар — тек ыңғайлылық үшін.
+ * Нақты күндерді төмендегі екі өрістен таңдайды, сондықтан «Өз күнім»
+ * деген жеке чип керек емес: кез келген күнді қоюға болады.
+ */
 const TERMS: { key: TermKey; label: string }[] = [
   { key: 'm3', label: kk.goalNew.terms.m3 },
   { key: 'm6', label: kk.goalNew.terms.m6 },
   { key: 'yearEnd', label: kk.goalNew.terms.yearEnd },
-  { key: 'custom', label: kk.goalNew.terms.custom },
 ];
 
 const CURVES: { key: Curve; label: string; note: string }[] = [
@@ -42,7 +46,9 @@ export default function NewGoalScreen() {
   const today = useMemo(() => new Date(), []);
 
   const [title, setTitle] = useState('');
-  const [term, setTerm] = useState<TermKey>('yearEnd');
+  const [term, setTerm] = useState<TermKey | null>('yearEnd');
+  const [start, setStart] = useState(today);
+  const [end, setEnd] = useState(() => termEndDate('yearEnd', today));
   const [amountText, setAmountText] = useState('80');
   const [unit, setUnit] = useState('сабақ');
   const [curve, setCurve] = useState<Curve>('even');
@@ -50,10 +56,30 @@ export default function NewGoalScreen() {
 
   const create = useCreateGoal();
 
-  const end = termEndDate(term, today);
+  /** Жылдам нұсқа таңдалғанда мерзім соған теңеледі */
+  const pickTerm = (key: TermKey) => {
+    setTerm(key);
+    setEnd(termEndDate(key, start));
+  };
+
+  /** Күнді қолмен таңдағанда жылдам нұсқа белгісі алынады */
+  const pickEnd = (d: Date) => {
+    setTerm(null);
+    setEnd(d);
+  };
+
+  const pickStart = (d: Date) => {
+    setStart(d);
+    // Басталу мерзімнен кейін болып қалса — мерзімді ығыстырамыз
+    if (d.getTime() > end.getTime()) {
+      setTerm(null);
+      setEnd(d);
+    }
+  };
+
   const amount = Math.max(parseInt(amountText, 10) || 0, 0);
-  const sum = summarize(today, end, amount || 1, MINUTES_PER_UNIT);
-  const plan = buildPlan(today, end, amount || 1, curve);
+  const sum = summarize(start, end, amount || 1, MINUTES_PER_UNIT);
+  const plan = buildPlan(start, end, amount || 1, curve);
 
   const shown = plan.slice(0, 6);
   const maxAmount = Math.max(...shown.map((b) => b.amount), 1);
@@ -64,9 +90,12 @@ export default function NewGoalScreen() {
     const name = title.trim();
     if (!name) return setError('Мақсаттың атауын жазыңыз.');
     if (amount <= 0) return setError('Көлемін көрсетіңіз — қанша дана керек.');
+    if (end.getTime() < start.getTime()) {
+      return setError('Мерзім басталу күнінен бұрын бола алмайды.');
+    }
 
     create.mutate(
-      { title: name, start: today, end, targetAmount: amount, unit: unit.trim() || null, curve },
+      { title: name, start, end, targetAmount: amount, unit: unit.trim() || null, curve },
       {
         onSuccess: () => router.back(),
         onError: (e) => setError(e instanceof Error ? e.message : kk.common.loadError),
@@ -101,19 +130,37 @@ export default function NewGoalScreen() {
           />
         </View>
 
-        {/* мерзім */}
+        {/* кезең — күндерді қолданушы өзі таңдайды */}
         <View>
           <View style={styles.labelRow}>
             <SectionLabel>{kk.goalNew.deadline}</SectionLabel>
             <Text style={styles.hint}>{kk.goalNew.deadlineHint}</Text>
           </View>
+
+          <View style={styles.dates}>
+            <DateField
+              label={kk.goalNew.startLabel}
+              value={start}
+              onChange={pickStart}
+            />
+            <DateField
+              label={kk.goalNew.endLabel}
+              value={end}
+              onChange={pickEnd}
+              min={start}
+              hint={tpl(kk.goalNew.span, { days: sum.days, weeks: sum.weeks })}
+            />
+          </View>
+
+          {/* жылдам нұсқалар — мерзімді бір басумен қояды */}
+          <Text style={styles.quickLabel}>{kk.goalNew.quick}</Text>
           <View style={styles.chips}>
             {TERMS.map((t) => {
               const on = t.key === term;
               return (
                 <Pressable
                   key={t.key}
-                  onPress={() => setTerm(t.key)}
+                  onPress={() => pickTerm(t.key)}
                   style={[styles.chip, on && styles.chipOn]}
                   accessibilityRole="button"
                   accessibilityState={{ selected: on }}
@@ -122,18 +169,6 @@ export default function NewGoalScreen() {
                 </Pressable>
               );
             })}
-          </View>
-
-          <View style={styles.dateCard}>
-            <CalendarIcon size={17} color={C.accent} />
-            <View style={{ flexGrow: 1, flexShrink: 1 }}>
-              <Text style={styles.dateText}>
-                {formatDayMonth(end)} {end.getFullYear()}
-              </Text>
-              <Text style={styles.dateSub}>
-                {tpl(kk.goalNew.daysWeeksLeft, { days: sum.days, weeks: sum.weeks })}
-              </Text>
-            </View>
           </View>
         </View>
 
@@ -283,13 +318,12 @@ const styles = StyleSheet.create({
   chipOn: { backgroundColor: C.accent, borderColor: C.accent },
   chipText: { fontFamily: font.bold, fontSize: 11.5, color: C.darkInk3 },
 
-  dateCard: {
-    flexDirection: 'row', alignItems: 'center', gap: 12, marginTop: 9,
-    backgroundColor: C.card, borderRadius: R.field,
-    paddingHorizontal: 15, paddingVertical: 13,
+  dates: { gap: 8 },
+  quickLabel: {
+    fontFamily: font.bold, fontSize: 9, letterSpacing: 1.17,
+    textTransform: 'uppercase', color: C.ink4,
+    marginTop: 14, marginBottom: 8, paddingLeft: 4,
   },
-  dateText: { fontFamily: font.bold, fontSize: 13.5, color: C.ink },
-  dateSub: { fontFamily: font.body, fontSize: 10.5, color: C.inkMuted, marginTop: 2 },
 
   amountRow: {
     flexDirection: 'row', alignItems: 'center', gap: 8,
