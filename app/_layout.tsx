@@ -12,13 +12,13 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { QueryClientProvider } from '@tanstack/react-query';
 
 import {
-  Onest_400Regular,
-  Onest_500Medium,
-  Onest_600SemiBold,
-  Onest_700Bold,
-  Onest_800ExtraBold,
-} from '@expo-google-fonts/onest';
-import { Montserrat_700Bold, Montserrat_800ExtraBold } from '@expo-google-fonts/montserrat';
+  GolosText_400Regular,
+  GolosText_500Medium,
+  GolosText_600SemiBold,
+  GolosText_700Bold,
+  GolosText_800ExtraBold,
+  GolosText_900Black,
+} from '@expo-google-fonts/golos-text';
 import { Caveat_600SemiBold, Caveat_700Bold } from '@expo-google-fonts/caveat';
 
 import { queryClient } from '../lib/query';
@@ -31,13 +31,12 @@ SplashScreen.preventAutoHideAsync().catch(() => {
 
 export default function RootLayout() {
   const [loaded, error] = useFonts({
-    Onest_400Regular,
-    Onest_500Medium,
-    Onest_600SemiBold,
-    Onest_700Bold,
-    Onest_800ExtraBold,
-    Montserrat_700Bold,
-    Montserrat_800ExtraBold,
+    GolosText_400Regular,
+    GolosText_500Medium,
+    GolosText_600SemiBold,
+    GolosText_700Bold,
+    GolosText_800ExtraBold,
+    GolosText_900Black,
     Caveat_600SemiBold,
     Caveat_700Bold,
   });

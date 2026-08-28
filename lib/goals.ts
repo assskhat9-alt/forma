@@ -14,10 +14,8 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from './supabase';
 import { qk } from './query';
 import { toISODate } from './calendar';
-import { buildPlan, type Curve } from './plan';
-import { monthsUpper } from '../i18n/kk';
 import { color as C } from '../theme/tokens';
-import type { Goal, GoalStats } from './database.types';
+import type { Goal, GoalStats, GoalLevel } from './database.types';
 
 /** Тамырдағы жылдық мақсаттарға берілетін түс шкаласы */
 const SHADES = [C.accent, C.accent2, C.accent3, C.accent4, C.accent5];
@@ -197,10 +195,6 @@ export type NewGoal = {
   title: string;
   start: Date;
   end: Date;
-  /** ӘРЕКЕТ — пайыз тек осыдан есептеледі */
-  targetAmount: number | null;
-  unit: string | null;
-  curve: Curve;
   /** НӘТИЖЕ — міндетті емес, пайызға қатыспайды */
   resultFrom?: number | null;
   resultTo?: number | null;
@@ -208,12 +202,14 @@ export type NewGoal = {
 };
 
 /**
- * Жылдық мақсатты ЖӘНЕ оның айлық балаларын құрады.
+ * Жылдық мақсатты құрады — ТЕК ОНЫ.
  *
- * ⚠ Айлық балалар — сәндік емес. Дәл солардың `weight` мәні
- * planned_progress() есебінің негізі болады (CLAUDE.md §5.2).
- * Баласы жоқ мақсат сызықтық есепке түсіп қалады, ал ол — тыйым
- * салынған тәртіп.
+ * ⚠ CLAUDE.md §5.2a: ЖҮЙЕ ЖОСПАРДЫ ӨЗІ ҚҰРМАЙДЫ. Бұрын мұнда айлық
+ * балалар автоматты жасалатын — жүйе мерзім мен көлемнен қарқынды өзі
+ * шығаратын. Ол алынып тасталды: кезеңдерді адам өзі қосады.
+ *
+ * §5.2b: жылдық форма ҚЫСҚА — көлем мен ырғақ өрістері онда мүлде жоқ.
+ * «80 сабақ» деген сан кейін, кезеңге бөлген кезде туады.
  */
 export function useCreateGoal() {
   const qc = useQueryClient();
@@ -224,7 +220,7 @@ export function useCreateGoal() {
       const userId = session.session?.user.id;
       if (!userId) throw new Error('Сессия жоқ');
 
-      const { data: parent, error: e1 } = await supabase
+      const { data: created, error } = await supabase
         .from('goals')
         .insert({
           user_id: userId,
@@ -233,42 +229,90 @@ export function useCreateGoal() {
           title: g.title,
           period_start: toISODate(g.start),
           period_end: toISODate(g.end),
-          target_amount: g.targetAmount,
-          unit: g.unit,
-          // Нәтиже тек тамырдағы мақсатта тұрады — айлық балаларға
-          // көшірілмейді, себебі ол бөлінбейді.
+          // Нәтиже тек тамырдағы мақсатта тұрады — ол бөлінбейді
           result_from: g.resultFrom ?? null,
           result_to: g.resultTo ?? null,
           result_unit: g.resultUnit ?? null,
         })
         .select('id')
         .single();
-      if (e1) throw e1;
+      if (error) throw error;
 
-      const buckets = buildPlan(g.start, g.end, g.targetAmount ?? 100, g.curve);
-
-      const children = buckets.map((b, i) => ({
-        user_id: userId,
-        parent_id: parent.id,
-        level: 'month' as const,
-        title: `${monthsUpper[b.monthIndex]!.charAt(0)}${monthsUpper[b.monthIndex]!.slice(1).toLowerCase()} ${b.year}`,
-        period_start: toISODate(b.start),
-        period_end: toISODate(b.end),
-        weight: b.weight,
-        target_amount: g.targetAmount == null ? null : b.amount,
-        unit: g.unit,
-        sort_order: i,
-      }));
-
-      if (children.length > 0) {
-        const { error: e2 } = await supabase.from('goals').insert(children);
-        if (e2) throw e2;
-      }
-
-      return parent.id as string;
+      return created.id as string;
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: qk.goals.all }),
   });
+}
+
+export type NewStage = {
+  parentId: string;
+  /** 'stage' немесе 'month' */
+  level: Extract<GoalLevel, 'stage' | 'month'>;
+  title: string;
+  start: Date;
+  end: Date;
+  /** ӘРЕКЕТ — пайыз ТЕК осыдан есептеледі */
+  targetAmount: number;
+  unit: string | null;
+  /** ЫРҒАҚ — адам қояды, жүйе есептемейді */
+  perWeek: number | null;
+  /** ISO апта күндері 1..7 */
+  weekDays: number[] | null;
+  /** Ата-ана ішіндегі салмағы. Берілмесе 1 — бәрі тең. */
+  weight?: number;
+};
+
+/**
+ * Кезең немесе ай қосады.
+ *
+ * Дәл осы жолдардың `weight` мәні planned_progress() есебінің негізі
+ * болады (CLAUDE.md §5.2). Салмақ берілмесе бәрі тең — жүйе өз бетінше
+ * «мына кезең маңыздырақ» деп шешпейді.
+ */
+export function useCreateStage() {
+  const qc = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (s: NewStage) => {
+      const { data: session } = await supabase.auth.getSession();
+      const userId = session.session?.user.id;
+      if (!userId) throw new Error('Сессия жоқ');
+
+      const { data: created, error } = await supabase
+        .from('goals')
+        .insert({
+          user_id: userId,
+          parent_id: s.parentId,
+          level: s.level,
+          title: s.title,
+          period_start: toISODate(s.start),
+          period_end: toISODate(s.end),
+          target_amount: s.targetAmount,
+          unit: s.unit,
+          per_week: s.perWeek,
+          week_days: s.weekDays && s.weekDays.length > 0 ? s.weekDays : null,
+          weight: s.weight ?? 1,
+        })
+        .select('id')
+        .single();
+      if (error) throw error;
+
+      return created.id as string;
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: qk.goals.all }),
+  });
+}
+
+/**
+ * Мақсаттың балалары бар ма.
+ *
+ * ⚠ §5.2b: балалары жоқ жылдық мақсат 0% КӨРСЕТПЕЙДІ — ол қорқытады
+ * әрі жалған. Оның орнына «Бөлінбеген» күйі шығады.
+ */
+export function useHasChildren(goalId: string | null): boolean {
+  const { data: goals } = useGoals();
+  if (!goalId) return false;
+  return (goals ?? []).some((g) => g.parent_id === goalId && g.status !== 'dropped');
 }
 
 export type NewTask = {

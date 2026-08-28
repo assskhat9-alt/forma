@@ -5,7 +5,7 @@
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { color as C, font, gutter } from '../../theme/tokens';
+import { color as C, font, gutter, centered } from '../../theme/tokens';
 import { SectionLabel } from './SectionLabel';
 
 export function Placeholder({ title, mockup }: { title: string; mockup: string }) {
@@ -24,7 +24,7 @@ export function Placeholder({ title, mockup }: { title: string; mockup: string }
 }
 
 const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: C.bg, paddingHorizontal: gutter, gap: 8 },
+  root: { ...centered, flex: 1, backgroundColor: C.bg, paddingHorizontal: gutter, gap: 8 },
   title: { fontFamily: font.display, fontSize: 26, letterSpacing: -0.9, color: C.ink },
   note: {
     backgroundColor: C.tintSoft,

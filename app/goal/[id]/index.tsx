@@ -11,13 +11,13 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useLocalSearchParams, router } from 'expo-router';
 import { differenceInCalendarDays } from 'date-fns';
 
-import { color as C, radius as R, font, gutter, centered } from '../../theme/tokens';
-import { kk, formatDayMonth, t as tpl } from '../../i18n/kk';
-import { useGoals, useGoalStats, useChildStats } from '../../lib/goals';
-import { Card, DarkCard, SectionLabel, ProgressBar } from '../../components/ui';
+import { color as C, radius as R, font, gutter, centered } from '../../../theme/tokens';
+import { kk, formatDayMonth, t as tpl } from '../../../i18n/kk';
+import { useGoals, useGoalStats, useChildStats } from '../../../lib/goals';
+import { Card, DarkCard, SectionLabel, ProgressBar } from '../../../components/ui';
 import {
   ChevronLeftIcon, DotsIcon, CalendarChipIcon, ChatIcon,
-} from '../../components/icons';
+} from '../../../components/icons';
 
 export default function GoalDetail() {
   const insets = useSafeAreaInsets();
@@ -59,6 +59,9 @@ export default function GoalDetail() {
   const stages = (months ?? []).filter((m) => m.goal.level === 'stage');
   const monthList = (months ?? []).filter((m) => m.goal.level === 'month');
 
+  // ⚠ §5.2b: балалары жоқ мақсат 0% КӨРСЕТПЕЙДІ — ол қорқытады әрі жалған
+  const divided = stages.length > 0 || monthList.length > 0;
+
   return (
     <ScrollView
       style={styles.screen}
@@ -83,8 +86,10 @@ export default function GoalDetail() {
 
           <View style={styles.heroRow}>
             <View style={styles.heroPctRow}>
-              <Text style={styles.heroPct}>{actual}%</Text>
-              <Text style={styles.heroPctSub}>{kk.goal.completed}</Text>
+              <Text style={styles.heroPct}>{divided ? `${actual}%` : '—'}</Text>
+              <Text style={styles.heroPctSub}>
+                {divided ? kk.goal.completed : kk.goal.undivided}
+              </Text>
             </View>
 
             <View style={styles.dueBox}>
@@ -96,17 +101,19 @@ export default function GoalDetail() {
             </View>
           </View>
 
-          <ProgressBar
-            pct={actual}
-            plannedPct={planned}
-            height={8}
-            color={C.accentOnDark}
-            trackColor={C.darkTrack}
-            markerColor="#FFFFFF"
-            style={{ marginTop: 14 }}
-          />
+          {divided && (
+            <ProgressBar
+              pct={actual}
+              plannedPct={planned}
+              height={8}
+              color={C.accentOnDark}
+              trackColor={C.darkTrack}
+              markerColor="#FFFFFF"
+              style={{ marginTop: 14 }}
+            />
+          )}
 
-          <View style={styles.heroLegend}>
+          {divided && <View style={styles.heroLegend}>
             <Text style={styles.heroLegendText}>
               {tpl(kk.goal.needed, { planned })} ·{' '}
               <Text style={{ color: '#FFFFFF' }}>
@@ -117,7 +124,7 @@ export default function GoalDetail() {
                     : tpl(kk.goal.behind, { n: Math.abs(gap) })}
               </Text>
             </Text>
-          </View>
+          </View>}
         </DarkCard>
 
         {/* ӘРЕКЕТ пен НӘТИЖЕ — екеуі бөлек, шатастыруға болмайды */}
@@ -250,13 +257,30 @@ export default function GoalDetail() {
           </Card>
         )}
 
-        {monthList.length === 0 && stages.length === 0 && (
+        {/* ⚠ §5.2b: 0% емес — «Бөлінбеген» күйі мен келесі қадам */}
+        {!divided && (
           <Card style={styles.pad}>
-            <Text style={styles.noChildren}>
-              Бұл мақсат кезеңдерге бөлінбеген. Сондықтан «керек еді» мәні мерзім
-              бойынша сызықтық есептеледі — каскад толық жұмыс істемейді.
-            </Text>
+            <SectionLabel>{kk.goal.undivided}</SectionLabel>
+            <Text style={styles.undividedNote}>{kk.goal.undividedNote}</Text>
+            <Pressable
+              onPress={() => router.push(`/goal/${goal.id}/stage/new` as never)}
+              style={styles.addStage}
+              accessibilityRole="button"
+            >
+              <Text style={styles.addStageText}>{kk.goal.addStage}</Text>
+            </Pressable>
           </Card>
+        )}
+
+        {/* Бөлінген мақсатқа да кезең қосуға болады */}
+        {divided && (
+          <Pressable
+            onPress={() => router.push(`/goal/${goal.id}/stage/new` as never)}
+            style={styles.addStageGhost}
+            accessibilityRole="button"
+          >
+            <Text style={styles.addStageGhostText}>{kk.goal.addStage}</Text>
+          </Pressable>
         )}
       </View>
     </ScrollView>
@@ -361,5 +385,19 @@ const styles = StyleSheet.create({
   },
   excludedText: { fontFamily: font.bold, fontSize: 8.5, letterSpacing: 0.43, color: C.inkMuted },
 
-  noChildren: { fontFamily: font.prose, fontSize: 12.5, lineHeight: 19, color: C.inkProse },
+  undividedNote: {
+    fontFamily: font.prose, fontSize: 12.5, lineHeight: 19,
+    color: C.inkProse, marginTop: 8,
+  },
+  addStage: {
+    alignItems: 'center', justifyContent: 'center', paddingVertical: 14,
+    borderRadius: R.cardXs, backgroundColor: C.accent, marginTop: 16,
+  },
+  addStageText: { fontFamily: font.bold, fontSize: 13, color: '#FFFFFF' },
+  addStageGhost: {
+    alignItems: 'center', justifyContent: 'center', paddingVertical: 14,
+    borderRadius: R.cardXs, backgroundColor: C.card,
+    borderWidth: 1.5, borderStyle: 'dashed', borderColor: C.lineDash,
+  },
+  addStageGhostText: { fontFamily: font.bold, fontSize: 12.5, color: C.accentDeep },
 });

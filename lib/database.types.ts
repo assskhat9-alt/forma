@@ -42,6 +42,10 @@ export type Goal = {
   result_from: number | null;
   result_to: number | null;
   result_unit: string | null;
+  /** ЫРҒАҚ: пайдаланушы қояды, жүйе есептемейді. Пайызға кірмейді. */
+  per_week: number | null;
+  /** ISO апта күндері 1..7 — {1,3,5} = дс/ср/жм */
+  week_days: number[] | null;
   locked: boolean;
   status: GoalStatus;
   scheduled_at: string | null;

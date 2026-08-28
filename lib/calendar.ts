@@ -6,10 +6,10 @@
  * секірмеуі керек, әйтпесе §7.1-дегі жиырылу анимациясы бұзылады.
  */
 import {
+  addMonths,
   startOfMonth,
   startOfWeek,
   addDays,
-  addMonths,
   isSameDay,
   isSameMonth,
   getISOWeek,
@@ -85,3 +85,25 @@ export function toISODate(date: Date): string {
 
 /** Күндер бірдей ме — тізімді сүзу үшін */
 export { isSameDay };
+
+// ─────────────────────────────────────────────────────────────────────
+// Мерзім нұсқалары — жылдық мақсаттың ҚЫСҚА формасы үшін
+// ─────────────────────────────────────────────────────────────────────
+//
+// ⚠ Бұл жай ғана күн есептегіш. Ешқандай «ұсынылған қарқын» жоқ:
+// жүйе мерзімнен көлем де, ырғақ та шығармайды (CLAUDE.md §5.2a).
+
+export type TermKey = 'm3' | 'm6' | 'yearEnd' | 'custom';
+
+export function termEndDate(key: TermKey, from: Date, custom?: Date): Date {
+  switch (key) {
+    case 'm3':
+      return addMonths(from, 3);
+    case 'm6':
+      return addMonths(from, 6);
+    case 'yearEnd':
+      return new Date(from.getFullYear(), 11, 31);
+    case 'custom':
+      return custom ?? addMonths(from, 12);
+  }
+}

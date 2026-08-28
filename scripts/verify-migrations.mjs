@@ -93,14 +93,14 @@ try {
   await client.query(AUTH_STUB);
   ok('auth схемасының макеті');
 
-  for (const f of ['0001_schema.sql', '0002_rls.sql', '0003_progress.sql', '0004_result.sql']) {
+  for (const f of ['0001_schema.sql', '0002_rls.sql', '0003_progress.sql', '0004_result.sql', '0005_rhythm.sql']) {
     await client.query(sql(f));
     ok(f);
   }
 
   // ── Екінші рет: файлдар қайта іске қосуға төзімді ме ──
   console.log('\nҚайта іске қосу:');
-  for (const f of ['0001_schema.sql', '0002_rls.sql', '0003_progress.sql', '0004_result.sql']) {
+  for (const f of ['0001_schema.sql', '0002_rls.sql', '0003_progress.sql', '0004_result.sql', '0005_rhythm.sql']) {
     await client.query(sql(f));
     ok(`${f} — екінші рет те өтті`);
   }

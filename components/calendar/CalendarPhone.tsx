@@ -9,7 +9,7 @@ import React from 'react';
 import { View, Text, Pressable, ScrollView, StyleSheet } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { color as C, radius as R, font, gutter } from '../../theme/tokens';
+import { color as C, radius as R, font, gutter, centered } from '../../theme/tokens';
 import { kk, monthsUpper, formatDayMonthWeekday, t as tpl } from '../../i18n/kk';
 import { CollapsibleSegments, SectionLabel } from '../ui';
 import { MenuIcon, FilterIcon, ChevronLeftIcon, ChevronRightIcon, PlusIcon } from '../icons';
@@ -143,7 +143,7 @@ export function CalendarPhone(p: Props) {
 }
 
 const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: C.bg },
+  root: { ...centered, flex: 1, backgroundColor: C.bg },
   header: {
     flexDirection: 'row',
     alignItems: 'center',

@@ -11,7 +11,9 @@ import { router } from 'expo-router';
 
 import { color as C, radius as R, font, gutter, centered } from '../../theme/tokens';
 import { kk, formatDueShort, t as tpl } from '../../i18n/kk';
-import { useYearGoalsWithStats, useChildStats, type GoalWithStats } from '../../lib/goals';
+import {
+  useYearGoalsWithStats, useChildStats, useHasChildren, type GoalWithStats,
+} from '../../lib/goals';
 import {
   Card, SectionLabel, ProgressRing, ProgressBar, PaceBadge,
 } from '../../components/ui';
@@ -136,20 +138,29 @@ function GoalCard({
   const { data: months } = useChildStats(open ? goal.id : null, today);
   const due = new Date(goal.period_end + 'T00:00:00');
 
+  // ⚠ §5.2b: балалары жоқ мақсат 0% КӨРСЕТПЕЙДІ — «Бөлінбеген» деп тұрады
+  const divided = useHasChildren(goal.id);
+
   const maxPct = Math.max(...(months ?? []).map((m) => m.pct), 1);
 
   return (
     <Card level="cardSm" radius={R.cardSm} style={styles.goalCard}>
       <Pressable onPress={onToggle} style={styles.goalHead} accessibilityRole="button">
-        <ProgressRing
-          pct={actual}
-          size={44}
-          strokeWidth={5}
-          color={color}
-          trackColor={C.tintRing}
-          numberSize={11}
-          showPercentSign={false}
-        />
+        {divided ? (
+          <ProgressRing
+            pct={actual}
+            size={44}
+            strokeWidth={5}
+            color={color}
+            trackColor={C.tintRing}
+            numberSize={11}
+            showPercentSign={false}
+          />
+        ) : (
+          <View style={styles.undividedRing}>
+            <Text style={styles.undividedDash}>—</Text>
+          </View>
+        )}
 
         <View style={{ flexGrow: 1, flexShrink: 1, minWidth: 0 }}>
           <Text style={styles.goalTitle} numberOfLines={2}>{goal.title}</Text>
@@ -158,7 +169,13 @@ function GoalCard({
               <CalendarChipIcon size={9} color={C.inkMuted} />
               <Text style={styles.dueText}>{formatDueShort(due)}</Text>
             </View>
-            <PaceBadge gap={gap} />
+            {divided ? (
+              <PaceBadge gap={gap} />
+            ) : (
+              <View style={styles.undividedChip}>
+                <Text style={styles.undividedChipText}>{kk.goal.undivided}</Text>
+              </View>
+            )}
             {goal.target_amount != null && (
               <Text style={styles.goalSub}>
                 {goal.target_amount} {goal.unit ?? ''}
@@ -179,7 +196,13 @@ function GoalCard({
           {!months ? (
             <ActivityIndicator color={C.accent} />
           ) : months.length === 0 ? (
-            <Text style={styles.noMonths}>Айларға бөлінбеген.</Text>
+            <Pressable
+              onPress={() => router.push(`/goal/${goal.id}/stage/new` as never)}
+              style={styles.addStage}
+              accessibilityRole="button"
+            >
+              <Text style={styles.addStageText}>{kk.goal.addStage}</Text>
+            </Pressable>
           ) : (
             <View style={styles.monthBars}>
               {months.map((m) => (
@@ -284,7 +307,22 @@ const styles = StyleSheet.create({
   },
   monthFill: { width: '100%', borderRadius: R.micro },
   monthLabel: { fontFamily: font.bold, fontSize: 7, color: C.ink4 },
-  noMonths: { fontFamily: font.prose, fontSize: 11.5, color: C.ink4 },
+  undividedRing: {
+    width: 44, height: 44, borderRadius: R.pill,
+    alignItems: 'center', justifyContent: 'center',
+    backgroundColor: C.trackChip, flexShrink: 0,
+  },
+  undividedDash: { fontFamily: font.bold, fontSize: 16, color: C.ink4 },
+  undividedChip: {
+    backgroundColor: C.trackChip, borderRadius: R.pill,
+    paddingHorizontal: 8, paddingVertical: 3,
+  },
+  undividedChipText: { fontFamily: font.bold, fontSize: 10, color: C.inkMuted },
+  addStage: {
+    alignItems: 'center', justifyContent: 'center', paddingVertical: 12,
+    borderRadius: R.sm, backgroundColor: C.tint,
+  },
+  addStageText: { fontFamily: font.bold, fontSize: 12, color: C.accentDeep },
   more: { alignSelf: 'flex-end', paddingTop: 11 },
   moreText: { fontFamily: font.bold, fontSize: 11, color: C.accent },
 

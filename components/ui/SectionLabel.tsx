@@ -21,7 +21,7 @@ export function SectionLabel({
         {
           fontFamily: font.bold,
           fontSize: 10,
-          letterSpacing: 1.3,
+          letterSpacing: 1.2,
           textTransform: 'uppercase',
           color,
         },

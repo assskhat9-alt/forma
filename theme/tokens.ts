@@ -113,31 +113,37 @@ export const radius = {
 } as const;
 
 /**
- * Шрифттер.
+ * Шрифттер — CLAUDE.md §3.
  *
- * ⚠ CLAUDE.md §2-де Unbounded пен Manrope аталған, БІРАҚ екеуі де қазақ
- * тілін көтермейді. Google Fonts-тағы ТОЛЫҚ .ttf файлдарының cmap кестесі
- * тексерілді (субсет емес, шрифттің өзінде жоқ):
- *   Unbounded — Ә ә Ғ ғ Қ қ Ң ң Ө ө Ұ ұ Ү ү Һ һ жоқ (14 әріп)
- *   Manrope   — Ә ә Ғ ғ Қ қ Ң ң Ұ ұ және ₸ жоқ (8 әріп + валюта белгісі)
+ * ⚠ Макеттегі Manrope мен Unbounded ҚОЛДАНЫЛМАЙДЫ: екеуінде де қазақ
+ * әріптері жоқ. Бәрі бір отбасына — Golos Text-ке көшірілді, Caveat
+ * өзгеріссіз қалды.
  *
- * Ауыстырылды:
- *   Manrope   → Onest      (пропорциясы мен x-биіктігі ең жақыны)
- *   Unbounded → Montserrat (геометриялық, үлкен сандары мықты)
- *   Caveat    → өзгермеді  (қазақ әріптері толық бар)
+ * .ttf cmap кестесі бойынша тексерілген (npm run check:glyphs):
+ *   Golos Text 400–900 — Ә Ғ Қ Ң Ө Ұ Ү Һ І және ₸ ТОЛЫҚ бар
+ *   Caveat            — толық бар
  *
- * Тексерісті қайталау: `node scripts/check-glyphs.js <ttf бумасы>`
- * Жарамды басқа нұсқалар: Golos Text, Inter, Rubik, Commissioner, Nunito.
+ * Ескерту: CLAUDE.md §3 кестесінде Onest «жоқ» деп белгіленген, бірақ
+ * тексеріс оны жоққа шығарды — Onest-те де бәрі бар. Бәрібір Golos Text
+ * таңдалды: бір отбасы алты салмақты да береді, екі шрифт ұстаудың
+ * қажеті қалмайды.
+ *
+ * Golos Text Manrope-тан сәл кеңірек — сондықтан .lbl тақырыбының
+ * letterSpacing мәні 1.3-тен 1.2-ге түсірілді (§3 нұсқауы).
  */
 export const font = {
-  display: 'Montserrat_700Bold', // үлкен сандар, экран тақырыбы, FORMA
-  displayHeavy: 'Montserrat_800ExtraBold',
-  regular: 'Onest_400Regular',
-  prose: 'Onest_500Medium', // ұзын мәтін, рефлексия
-  body: 'Onest_600SemiBold',
-  title: 'Onest_700Bold', // карточка тақырыбы
-  bold: 'Onest_800ExtraBold', // .lbl, сан, түйме
+  // ── CLAUDE.md §3 канондық атаулары ──
+  display: 'GolosText_800ExtraBold', // үлкен сандар, тақырып, .lbl
+  body: 'GolosText_600SemiBold', // дене мәтіні (§3: weight 600)
+  semi: 'GolosText_600SemiBold',
+  bold: 'GolosText_800ExtraBold', // сан, түйме, бөлім тақырыбы
+  black: 'GolosText_900Black', // ең ауыр екпін
   hand: 'Caveat_600SemiBold', // тек «Менің ойларым» экраны
+
+  // ── Қосымша салмақтар ──
+  regular: 'GolosText_400Regular',
+  prose: 'GolosText_500Medium', // ұзын мәтін, рефлексия
+  title: 'GolosText_700Bold', // карточка тақырыбы
   handBold: 'Caveat_700Bold',
 } as const;
 
@@ -191,7 +197,7 @@ export const text = {
   lbl: {
     fontFamily: font.bold,
     fontSize: 10,
-    letterSpacing: 1.3,
+    letterSpacing: 1.2,
     textTransform: 'uppercase' as const,
     color: color.ink3,
   },
