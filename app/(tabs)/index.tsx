@@ -40,9 +40,10 @@ import {
   Card, DarkCard, DashedCard, SectionLabel, Chip, CollapsibleSegments, Checkbox,
 } from '../../components/ui';
 import {
-  StatCard, WeekBars, WeekStrip, RingCard, TaskTable, LevelsCard,
+  StatCard, WeekBars, WeekStrip, RingCard, TaskTable, LevelsCard, TimeCard,
   type Stat, type DayBar, type StripDay, type TableRow, type Level,
 } from '../../components/home';
+import { useTimeOverview } from '../../lib/report';
 import { MenuIcon, BellIcon, QuoteIcon, StarIcon, ChevronRightIcon } from '../../components/icons';
 import { TopBar } from '../../components/layout/TopBar';
 import { TaskRow } from '../../components/calendar/TaskRow';
@@ -67,6 +68,7 @@ export default function HomeScreen() {
   const { data: bars } = useTodayLevels(selected);
   const { data: yearGoals } = useYearGoalsWithStats(today);
   const loadOf = useLoadOf();
+  const timeRep = useTimeOverview(today);
   const { items: habits } = useHabitsForDay(selected);
   const toggleHabit = useToggleHabit(selected);
 
@@ -207,7 +209,14 @@ export default function HomeScreen() {
           ))}
         </View>
 
-        {/* ── 2. Апта серпіні + оң баған ── */}
+        {/* ── 2. Мақсаттарға кеткен уақыт — сандар қатарынан ірі ── */}
+        <TimeCard
+          total={timeRep.total}
+          goals={timeRep.goals}
+          onPress={() => router.navigate('/time' as never)}
+        />
+
+        {/* ── 3. Апта серпіні + оң баған ── */}
         <View style={[styles.mid, wide && styles.midWide]}>
           <WeekBars title={kk.home.weekTrend} days={weekDays} onPickDay={setSelected} />
 
@@ -250,7 +259,7 @@ export default function HomeScreen() {
         {/* Уақыты келген әрекет — ұсыныс, автоматты қосылу емес */}
         {dueAction && <DueBanner action={dueAction} />}
 
-        {/* ── 3. Таңдалған күннің әрекеттері ── */}
+        {/* ── 4. Таңдалған күннің әрекеттері ── */}
         <View style={styles.dateRow}>
           <View style={{ flexShrink: 1 }}>
             <Text style={styles.date}>{formatDayMonthWeekday(selected)}</Text>
@@ -316,7 +325,7 @@ export default function HomeScreen() {
           </Card>
         )}
 
-        {/* ── 4. ӘДЕТТЕР — әдейі бөлек, пайызға кірмейді ── */}
+        {/* ── 5. ӘДЕТТЕР — әдейі бөлек, пайызға кірмейді ── */}
         <DashedCard style={styles.padSm}>
           <View style={styles.habHead}>
             <View style={styles.habTitle}>
