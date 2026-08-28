@@ -15,7 +15,7 @@ import Svg, { Circle } from 'react-native-svg';
 
 import { color as C, radius as R, font, centered } from '../theme/tokens';
 import { kk, t as tpl } from '../i18n/kk';
-import { useGoals, useDayTasks, useToggleTask } from '../lib/goals';
+import { useGoals, useDayTasks, useToggleTask, useRootGoals } from '../lib/goals';
 import {
   useFocusStore, useSaveSession, useTodayFocus,
   PRESETS, formatClock, formatDuration,
@@ -54,6 +54,7 @@ export default function FocusScreen() {
 
   // Бүгінгі әрекеттер — таймердің ішінен таңдау үшін
   const { tasks: todayTasks } = useDayTasks(new Date());
+  const rootGoals = useRootGoals();
   const pending = todayTasks.filter((t) => !t.done);
   const toggle = useToggleTask();
 
@@ -92,7 +93,7 @@ export default function FocusScreen() {
   const circumference = 2 * Math.PI * r;
 
   /** Байланған тапсырманың тамырдағы мақсаты */
-  const attachedGoal = (() => {
+  const attached = (() => {
     if (!store.taskId) return null;
     const byId = new Map((goals ?? []).map((g) => [g.id, g]));
     let cur = byId.get(store.taskId);
@@ -101,8 +102,21 @@ export default function FocusScreen() {
       seen.add(cur.id);
       cur = byId.get(cur.parent_id);
     }
-    return cur?.title ?? null;
+    // Тамыры өзі болса — бұл жеке шаруа, мақсаты жоқ
+    if (!cur || cur.id === store.taskId) return null;
+    return { id: cur.id, title: cur.title };
   })();
+
+  const attachedGoal = attached?.title ?? null;
+
+  /**
+   * Сақина мақсаттың түсімен айналады.
+   *
+   * ⚠ Таймер бос айналып тұрмауы керек: сақина мен ішіндегі жазу дәл
+   * қай әрекетке тиесілі екенін көрсетеді. Мақсатсыз шаруада — бейтарап түс.
+   */
+  const ringColor =
+    (attached && rootGoals.find((g) => g.id === attached.id)?.color) || C.accent;
 
   /**
    * Әрекетті ОСЫ ЖЕРДЕ жабу.
@@ -172,7 +186,8 @@ export default function FocusScreen() {
           алып, осы жерде істеп, осы жерде жауып тастауға болады.
         */}
         {store.taskId ? (
-          <View style={styles.taskCard}>
+          // Сол жақтағы жіңішке жолақ сақинаның түсімен — екеуі бір нәрсе
+          <View style={[styles.taskCard, { borderLeftWidth: 3, borderLeftColor: ringColor }]}>
             <View style={styles.taskHead}>
               <Text style={styles.lbl}>{kk.focus.current}</Text>
               <Pressable
@@ -190,6 +205,7 @@ export default function FocusScreen() {
 
             {attachedGoal && (
               <View style={styles.goalChip}>
+                <View style={[styles.goalChipDot, { backgroundColor: ringColor }]} />
                 <Text style={styles.goalChipText}>{attachedGoal}</Text>
               </View>
             )}
@@ -269,7 +285,7 @@ export default function FocusScreen() {
             />
             <Circle
               cx={RING / 2} cy={RING / 2} r={r}
-              fill="none" stroke={C.accent} strokeWidth={STROKE} strokeLinecap="round"
+              fill="none" stroke={ringColor} strokeWidth={STROKE} strokeLinecap="round"
               strokeDasharray={circumference}
               strokeDashoffset={circumference * (1 - pct / 100)}
               transform={`rotate(-90 ${RING / 2} ${RING / 2})`}
@@ -277,6 +293,17 @@ export default function FocusScreen() {
           </Svg>
 
           <View style={styles.ringCenter} pointerEvents="none">
+            {/*
+              Сақинаның ішінде тапсырманың аты тұрады — таймер жалпы
+              уақыт емес, ДӘЛ ОСЫ әрекеттің уақытын санап тұрғаны көрінсін.
+            */}
+            <Text
+              style={[styles.ringTask, !store.taskId && styles.ringTaskEmpty]}
+              numberOfLines={2}
+            >
+              {store.taskId ? store.taskTitle : kk.focus.noTaskRing}
+            </Text>
+
             <Text style={styles.clock}>
               {over ? '+' : ''}{formatClock(left)}
             </Text>
@@ -290,8 +317,11 @@ export default function FocusScreen() {
                     : kk.focus.ready}
             </Text>
             <View style={styles.pctRow}>
-              <View style={styles.pctDot} />
-              <Text style={styles.pctText}>{tpl(kk.focus.passed, { pct })}</Text>
+              <View style={[styles.pctDot, { backgroundColor: ringColor }]} />
+              <Text style={styles.pctText}>
+                {attachedGoal ? attachedGoal + ' · ' : ''}
+                {tpl(kk.focus.passed, { pct })}
+              </Text>
             </View>
           </View>
         </View>
@@ -483,10 +513,12 @@ const styles = StyleSheet.create({
     color: '#FFFFFF', marginTop: 7,
   },
   goalChip: {
+    flexDirection: 'row', alignItems: 'center', gap: 6,
     alignSelf: 'flex-start', marginTop: 9,
     backgroundColor: 'rgba(122,108,240,0.16)', borderRadius: R.pill,
-    paddingHorizontal: 9, paddingVertical: 3,
+    paddingHorizontal: 9, paddingVertical: 4,
   },
+  goalChipDot: { width: 5, height: 5, borderRadius: 999 },
   goalChipText: { fontFamily: font.bold, fontSize: 10, color: C.accentOnDark },
 
   taskHead: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
@@ -525,14 +557,23 @@ const styles = StyleSheet.create({
     position: 'absolute', top: 0, left: 0, right: 0, bottom: 0,
     alignItems: 'center', justifyContent: 'center',
   },
+  ringTask: {
+    fontFamily: font.bold, fontSize: 12.5, lineHeight: 17,
+    color: '#FFFFFF', textAlign: 'center',
+    maxWidth: RING - 96, marginBottom: 6,
+  },
+  ringTaskEmpty: { fontFamily: font.body, color: C.darkInk3 },
   clock: {
-    fontFamily: font.display, fontSize: 46, letterSpacing: -2.3, color: '#FFFFFF',
+    fontFamily: font.display, fontSize: 44, letterSpacing: -2.2, color: '#FFFFFF',
   },
   state: {
     fontFamily: font.bold, fontSize: 10, letterSpacing: 1.6,
-    color: C.darkInk3, marginTop: 9,
+    color: C.darkInk3, marginTop: 7,
   },
-  pctRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 12 },
+  pctRow: {
+    flexDirection: 'row', alignItems: 'center', gap: 6,
+    marginTop: 10, maxWidth: RING - 90, paddingHorizontal: 8,
+  },
   pctDot: { width: 5, height: 5, borderRadius: 999, backgroundColor: C.accent },
   pctText: { fontFamily: font.title, fontSize: 11, color: C.darkInk2 },
 
