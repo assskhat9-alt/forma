@@ -17,8 +17,15 @@ import { toISODate } from './calendar';
 import { useGoals } from './goals';
 import type { Goal, FocusSession } from './database.types';
 
-/** Макеттегі төрт нұсқа */
+/**
+ * Жылдам нұсқалар. ⚠ ШЕКТЕУ ЕМЕС — кез келген ұзақтықты қолмен
+ * қоюға болады, ал таймер белгіленген уақыттан асып кетсе де
+ * тоқтамайды: артық уақыт бөлек саналады.
+ */
 export const PRESETS = [25, 45, 60, 90] as const;
+
+/** Қолмен қоюдың шегі — тәулік */
+export const MAX_MINUTES = 24 * 60;
 
 type FocusState = {
   /** Қай әрекетке — null болса таймер бос жүреді */
@@ -68,8 +75,10 @@ export const useFocusStore = create<FocusState>((set, get) => ({
     }
   },
 
+  // ⚠ Ұзақтықты өзгерту өткен уақытты ЖОЙМАЙДЫ. Отырған жерде
+  // «тағы 15 минут» деп ұзартуға болады.
   setPreset: (minutes) =>
-    set({ presetMinutes: minutes, running: false, startedAt: null, accumulated: 0 }),
+    set({ presetMinutes: Math.min(Math.max(minutes, 1), MAX_MINUTES) }),
 
   start: () =>
     set((s) => ({
@@ -90,7 +99,9 @@ export const useFocusStore = create<FocusState>((set, get) => ({
 
   elapsedMs: (now) => {
     const s = get();
-    return s.accumulated + (s.running && s.startedAt ? now - s.startedAt : 0);
+    const live = s.running && s.startedAt ? now - s.startedAt : 0;
+    // ⚠ Теріс болып кетпеуі керек: сағат артқа жүрсе де нөлден төмен емес
+    return Math.max(s.accumulated + Math.max(live, 0), 0);
   },
 }));
 

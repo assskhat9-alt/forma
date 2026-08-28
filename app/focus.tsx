@@ -8,7 +8,7 @@
  * Сессия аяқталғанда `focus_sessions` кестесіне жазылады.
  */
 import React, { useEffect, useState } from 'react';
-import { View, Text, Pressable, StyleSheet, ActivityIndicator } from 'react-native';
+import { View, Text, TextInput, Pressable, StyleSheet, ActivityIndicator } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useLocalSearchParams } from 'expo-router';
 import Svg, { Circle } from 'react-native-svg';
@@ -38,13 +38,22 @@ export default function FocusScreen() {
   const save = useSaveSession();
   const { data: today } = useTodayFocus(new Date());
 
-  const [now, setNow] = useState(Date.now());
+  const [, tick] = useState(0);
   const [note, setNote] = useState<string | null>(null);
+  const [customOpen, setCustomOpen] = useState(false);
+  const [customText, setCustomText] = useState('');
 
-  // Таймер жүріп тұрғанда ғана секунд сайын жаңартамыз
+  /**
+   * ⚠ Уақыт күйде САҚТАЛМАЙДЫ — әр рендерде `Date.now()` арқылы
+   * есептеледі. Бұрын сақталатын: кідірткенде интервал тоқтап, ескі
+   * мән қатып қалатын да, қайта қосқанда есеп теріс шығып, таймер
+   * нөлденгендей көрінетін.
+   *
+   * Интервал енді тек қайта сызуға түрткі болады.
+   */
   useEffect(() => {
     if (!store.running) return;
-    const t = setInterval(() => setNow(Date.now()), 1000);
+    const t = setInterval(() => tick((x) => x + 1), 250);
     return () => clearInterval(t);
   }, [store.running]);
 
@@ -54,9 +63,13 @@ export default function FocusScreen() {
   }, [task?.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const totalMs = store.presetMinutes * 60_000;
-  const elapsed = Math.min(store.elapsedMs(now), totalMs);
-  const left = totalMs - elapsed;
-  const pct = totalMs > 0 ? Math.round((elapsed / totalMs) * 100) : 0;
+  const elapsed = store.elapsedMs(Date.now());
+  // ⚠ Белгіленген уақыттан асып кетсе таймер ТОҚТАМАЙДЫ — артығы
+  // бөлек саналады. Шектеу қоюдың мәні жоқ: жұмыс ұзаққа кетуі мүмкін.
+  const over = elapsed > totalMs;
+  const left = over ? elapsed - totalMs : totalMs - elapsed;
+  const pct = totalMs > 0 ? Math.min(Math.round((elapsed / totalMs) * 100), 100) : 0;
+  const canReset = elapsed > 0 || store.running;
 
   const r = (RING - STROKE) / 2;
   const circumference = 2 * Math.PI * r;
@@ -134,9 +147,15 @@ export default function FocusScreen() {
           </Svg>
 
           <View style={styles.ringCenter} pointerEvents="none">
-            <Text style={styles.clock}>{formatClock(left)}</Text>
-            <Text style={styles.state}>
-              {store.running ? kk.focus.running : kk.focus.paused}
+            <Text style={styles.clock}>
+              {over ? '+' : ''}{formatClock(left)}
+            </Text>
+            <Text style={[styles.state, over && { color: C.accentOnDark }]}>
+              {over
+                ? kk.focus.overtime
+                : store.running
+                  ? kk.focus.running
+                  : kk.focus.paused}
             </Text>
             <View style={styles.pctRow}>
               <View style={styles.pctDot} />
@@ -145,28 +164,73 @@ export default function FocusScreen() {
           </View>
         </View>
 
-        {/* Ұзақтығы */}
-        <Text style={[styles.lbl, { marginTop: 22 }]}>{kk.focus.duration}</Text>
+        {/* Ұзақтығы — жылдам нұсқалар ШЕКТЕУ ЕМЕС */}
+        <View style={styles.durHead}>
+          <Text style={styles.lbl}>{kk.focus.duration}</Text>
+          <Text style={styles.durFree}>{kk.focus.durationFree}</Text>
+        </View>
+
         <View style={styles.presets}>
           {PRESETS.map((m) => {
-            const on = store.presetMinutes === m;
+            const on = store.presetMinutes === m && !customOpen;
             return (
               <Pressable
                 key={m}
-                onPress={() => store.setPreset(m)}
+                onPress={() => { setCustomOpen(false); store.setPreset(m); }}
                 style={[styles.preset, on && styles.presetOn]}
                 accessibilityRole="button"
                 accessibilityState={{ selected: on }}
               >
-                <Text style={[styles.presetText, on && { color: '#FFFFFF' }]}>{m} мин</Text>
+                <Text style={[styles.presetText, on && { color: '#FFFFFF' }]}>
+                  {m} {kk.focus.minutes}
+                </Text>
               </Pressable>
             );
           })}
+
+          <Pressable
+            onPress={() => {
+              setCustomOpen(true);
+              setCustomText(String(store.presetMinutes));
+            }}
+            style={[styles.preset, customOpen && styles.presetOn]}
+            accessibilityRole="button"
+            accessibilityState={{ selected: customOpen }}
+          >
+            <Text style={[styles.presetText, customOpen && { color: '#FFFFFF' }]}>
+              {kk.focus.custom}
+            </Text>
+          </Pressable>
         </View>
+
+        {customOpen && (
+          <View style={styles.customRow}>
+            <TextInput
+              value={customText}
+              onChangeText={(v) => {
+                const clean = v.replace(/[^0-9]/g, '').slice(0, 4);
+                setCustomText(clean);
+                const n = parseInt(clean, 10);
+                if (Number.isFinite(n) && n > 0) store.setPreset(n);
+              }}
+              keyboardType="number-pad"
+              inputMode="numeric"
+              style={styles.customInput}
+              autoFocus
+            />
+            <Text style={styles.customUnit}>{kk.focus.minutes}</Text>
+          </View>
+        )}
 
         {/* Басқару */}
         <View style={styles.controls}>
-          <Pressable onPress={store.reset} style={styles.sideBtn} accessibilityRole="button">
+          <Pressable
+            onPress={store.reset}
+            disabled={!canReset}
+            style={[styles.sideBtn, !canReset && { opacity: 0.35 }]}
+            accessibilityRole="button"
+            accessibilityLabel={kk.focus.resetHint}
+          >
             <ResetIcon size={19} color={C.darkInk2} />
           </Pressable>
 
@@ -309,9 +373,24 @@ const styles = StyleSheet.create({
   pctDot: { width: 5, height: 5, borderRadius: 999, backgroundColor: C.accent },
   pctText: { fontFamily: font.title, fontSize: 11, color: C.darkInk2 },
 
-  presets: { flexDirection: 'row', gap: 7, marginTop: 10 },
+  durHead: {
+    flexDirection: 'row', alignItems: 'baseline',
+    justifyContent: 'space-between', marginTop: 22, marginBottom: 10,
+  },
+  durFree: { fontFamily: font.title, fontSize: 10, color: C.darkInk3 },
+  presets: { flexDirection: 'row', flexWrap: 'wrap', gap: 7 },
+  customRow: {
+    flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 8,
+    backgroundColor: C.darkCard, borderWidth: 1.5, borderColor: C.accent,
+    borderRadius: R.chip, paddingHorizontal: 15, paddingVertical: 8,
+  },
+  customInput: {
+    fontFamily: font.display, fontSize: 22, letterSpacing: -0.66,
+    color: '#FFFFFF', minWidth: 60, paddingVertical: 2,
+  },
+  customUnit: { fontFamily: font.title, fontSize: 12, color: C.darkInk2 },
   preset: {
-    flexGrow: 1, flexBasis: 0, alignItems: 'center', paddingVertical: 12,
+    flexGrow: 1, alignItems: 'center', paddingVertical: 12, paddingHorizontal: 10,
     borderRadius: R.chip, backgroundColor: C.darkCard,
     borderWidth: 1.5, borderColor: C.darkLine,
   },

@@ -228,6 +228,12 @@ export const kk = {
     title: 'ФОКУС',
     current: 'Ағымдағы тапсырма',
     duration: 'Сессия ұзақтығы',
+    durationFree: 'кез келген уақыт',
+    custom: 'Басқа',
+    minutes: 'мин',
+    /** Белгіленген уақыттан асып кетсе — тоқтамайды, артығы саналады */
+    overtime: 'АСЫП КЕТТІ',
+    resetHint: 'Нөлдеу',
     running: 'ФОКУСТА',
     paused: 'КІДІРТІЛДІ',
     passed: '{pct}% өтті',
