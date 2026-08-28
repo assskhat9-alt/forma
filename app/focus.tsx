@@ -211,33 +211,10 @@ export default function FocusScreen() {
             )}
 
             {/*
-              Таңдалғаннан кейінгі келесі қадам — УАҚЫТ ҚОЮ. Сондықтан
-              мұнда нұсқау тұрады, ал жабу — астындағы кіші сілтеме.
+              ⚠ Мұнда АЯҚТАУ түймесі ЖОҚ. Бұрын осында тұрған да, тапсырманы
+              таңдау мен аяқтау шатасатын. Таңдағаннан кейінгі қадам — уақыт қою.
             */}
             <Text style={styles.nextStep}>{kk.focus.nextStep}</Text>
-
-            <Pressable
-              onPress={() => (confirmDone ? void complete() : setConfirmDone(true))}
-              disabled={completing}
-              style={styles.closeLink}
-              hitSlop={6}
-              accessibilityRole="button"
-            >
-              {completing ? (
-                <ActivityIndicator color={C.darkInk3} size="small" />
-              ) : (
-                <>
-                  <CheckIcon
-                    size={12}
-                    color={confirmDone ? C.accentOnDark : C.darkInk3}
-                    strokeWidth={3}
-                  />
-                  <Text style={[styles.closeText, confirmDone && styles.closeTextOn]}>
-                    {confirmDone ? kk.focus.closeConfirm : kk.focus.closeTask}
-                  </Text>
-                </>
-              )}
-            </Pressable>
           </View>
         ) : (
           <View style={styles.taskCard}>
@@ -408,16 +385,55 @@ export default function FocusScreen() {
             )}
           </Pressable>
 
+          <View style={styles.sideBtnGhost} />
+        </View>
+
+        {/*
+          Екі әрекет — екеуі де ЖАЗУЫМЕН тұрады, иконкамен емес.
+          Біреуі уақытты ғана сақтайды, екіншісі тапсырманы аяқтайды:
+          айырмасы көрініп тұруы керек.
+        */}
+        <View style={styles.actions}>
           <Pressable
             onPress={finish}
-            disabled={save.isPending}
-            style={styles.sideBtn}
+            disabled={save.isPending || elapsed < 60_000}
+            style={[
+              styles.actionBtn,
+              (save.isPending || elapsed < 60_000) && { opacity: 0.4 },
+            ]}
             accessibilityRole="button"
           >
             {save.isPending ? (
-              <ActivityIndicator color={C.darkInk2} />
+              <ActivityIndicator color={C.darkInk2} size="small" />
             ) : (
-              <CheckIcon size={19} color={C.darkInk2} strokeWidth={2.6} />
+              <Text style={styles.actionText}>{kk.focus.saveTime}</Text>
+            )}
+          </Pressable>
+
+          <Pressable
+            onPress={() => (confirmDone ? void complete() : setConfirmDone(true))}
+            disabled={!store.taskId || completing}
+            style={[
+              styles.actionBtn,
+              styles.finishBtn,
+              confirmDone && styles.finishBtnOn,
+              !store.taskId && { opacity: 0.4 },
+            ]}
+            accessibilityRole="button"
+          >
+            {completing ? (
+              <ActivityIndicator color={C.accentOnDark} size="small" />
+            ) : (
+              <>
+                <CheckIcon
+                  size={13}
+                  color={confirmDone ? '#FFFFFF' : C.accentOnDark}
+                  strokeWidth={3}
+                />
+                <Text style={[styles.finishText, confirmDone && { color: '#FFFFFF' }]}>
+                  {confirmDone ? kk.focus.finishConfirm : kk.focus.finishTask}
+                </Text>
+              </>
             )}
           </Pressable>
         </View>
@@ -539,18 +555,6 @@ const styles = StyleSheet.create({
     fontFamily: font.body, fontSize: 11.5, lineHeight: 17,
     color: C.darkInk2, marginTop: 12,
   },
-  /**
-   * Жабу — сілтеме, түйме емес. Толық енді басылатын түйме болса
-   * тапсырманы таңдаумен шатасады (солай болған да).
-   */
-  closeLink: {
-    flexDirection: 'row', alignItems: 'center', gap: 7,
-    alignSelf: 'flex-start', marginTop: 12,
-    paddingVertical: 6, paddingHorizontal: 10, marginHorizontal: -10,
-    borderRadius: R.chipSm,
-  },
-  closeText: { fontFamily: font.bold, fontSize: 11.5, color: C.darkInk3 },
-  closeTextOn: { color: C.accentOnDark },
 
   ringWrap: { alignItems: 'center', justifyContent: 'center', marginTop: 26 },
   ringCenter: {
@@ -616,6 +620,22 @@ const styles = StyleSheet.create({
     shadowColor: C.accent, shadowOpacity: 0.4, shadowRadius: 30,
     shadowOffset: { width: 0, height: 12 }, elevation: 8,
   },
+  /** Ойық — ойнату түймесі дәл ортада тұруы үшін */
+  sideBtnGhost: { width: 52, height: 52 },
+
+  actions: { flexDirection: 'row', gap: 10, marginTop: 20 },
+  actionBtn: {
+    flexGrow: 1, flexShrink: 1, flexBasis: 0,
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 7,
+    height: 46, borderRadius: R.sm,
+    backgroundColor: C.darkCard, borderWidth: 1, borderColor: C.darkLine,
+  },
+  actionText: { fontFamily: font.bold, fontSize: 12.5, color: C.darkInk2 },
+  /** Аяқтау — бөлек түс, бірақ ойнату түймесінен басым емес */
+  finishBtn: { backgroundColor: 'rgba(122,108,240,0.14)', borderColor: 'rgba(122,108,240,0.35)' },
+  finishBtnOn: { backgroundColor: C.accent, borderColor: C.accent },
+  finishText: { fontFamily: font.bold, fontSize: 12.5, color: C.accentOnDark },
+
   note: {
     fontFamily: font.title, fontSize: 12, color: C.accentOnDark,
     textAlign: 'center', marginTop: 14,
