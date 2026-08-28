@@ -144,7 +144,7 @@ export default function HomeScreen() {
     title: t.title,
     time: t.time,
     done: t.done,
-    // Мақсатсыз бір реттік әрекет — бос тұрмасын, солай деп аталсын
+    // Мақсатқа тіркелмеген іс — бос тұрмасын, солай деп аталсын
     goal: t.goal ?? { title: kk.calendar.noGoal, color: C.ink4 },
   }));
 

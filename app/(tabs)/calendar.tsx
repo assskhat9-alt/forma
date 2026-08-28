@@ -65,7 +65,7 @@ export default function CalendarScreen() {
     const title = draft.title.trim();
     if (!title) return;
 
-    // 0 = «Мақсатсыз»: goalId берілмейді, әрекет каскадқа кірмейді
+    // 0 = «Жеке шаруа»: goalId берілмейді, әрекет каскадқа кірмейді
     const parentId =
       draft.goalIndex === 0 ? undefined : rootGoals[draft.goalIndex - 1]?.id;
 
