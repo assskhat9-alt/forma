@@ -176,11 +176,9 @@ export const kk = {
     resultOptional: 'міндетті емес',
     resultFrom: 'Қазір',
     resultTo: 'Мақсат',
-    resultUnit: 'Бірлік',
-    /** Толтырғыштар да жалпы — нақты сан немесе өлшем жазылмайды */
+    /** ⚠ Бірлік өрісі ЖОҚ — нәтиже тек А нүктесі мен Б нүктесі */
     resultFromPlaceholder: 'мән',
     resultToPlaceholder: 'мән',
-    resultUnitPlaceholder: 'өлшем',
     resultNote: 'Нәтиже пайызға қатыспайды.',
     note: 'Мерзімді кейін де өзгертуге болады.',
     create: 'Мақсат құру',
