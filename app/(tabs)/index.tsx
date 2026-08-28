@@ -56,8 +56,6 @@ export default function HomeScreen() {
   const insets = useSafeAreaInsets();
   const bp = useBreakpoint();
   const wide = bp !== 'phone';
-  // Планшетте де үш баған тұрады — бағандар мен шеттер тарылады
-  const three = wide;
   const tablet = bp === 'tablet';
 
   const today = useMemo(() => new Date(), []);
@@ -213,6 +211,20 @@ export default function HomeScreen() {
           ))}
         </View>
 
+        {/*
+          Телефонда үшінші баған жоқ: шаршы сандар қатарының дәл
+          астында тұрады. Әйтпесе ол ең төменде қалып қояды да,
+          көрінбейді.
+        */}
+        {!wide && (
+          <TimeCard
+            total={timeRep.total}
+            goals={timeRep.goals}
+            onPress={() => router.navigate('/time' as never)}
+            compact={tablet}
+          />
+        )}
+
         {/* ── 2. Апта серпіні + оң баған ── */}
         <View style={[styles.mid, wide && styles.midWide, tablet && styles.midTablet]}>
           <WeekBars title={kk.home.weekTrend} days={weekDays} onPickDay={setSelected} />
@@ -250,14 +262,16 @@ export default function HomeScreen() {
             Апта серпіні мен деңгейлерден бөлек тұрады: бұл күндік
             көрсеткіш емес, жиналып отыратын еңбек.
           */}
-          <View style={[three && styles.timeColWide, tablet && styles.timeColTablet]}>
-            <TimeCard
-              total={timeRep.total}
-              goals={timeRep.goals}
-              onPress={() => router.navigate('/time' as never)}
-              compact={tablet}
-            />
-          </View>
+          {wide && (
+            <View style={[styles.timeColWide, tablet && styles.timeColTablet]}>
+              <TimeCard
+                total={timeRep.total}
+                goals={timeRep.goals}
+                onPress={() => router.navigate('/time' as never)}
+                compact={tablet}
+              />
+            </View>
+          )}
         </View>
 
         {/* мотивация — мақсат емес нәрсе қара карточкада */}
