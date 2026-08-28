@@ -22,6 +22,7 @@ import { useLocalSearchParams, router } from 'expo-router';
 import { color as C, radius as R, font, gutter, centered } from '../../../../theme/tokens';
 import { kk, weekdaysShort, formatDayMonth, t as tpl } from '../../../../i18n/kk';
 import { useGoals, useCreateStage } from '../../../../lib/goals';
+import { errorText } from '../../../../lib/errors';
 import { computeRhythm, weekDaysMatchRhythm } from '../../../../lib/rhythm';
 import { Card, SectionLabel, DateField } from '../../../../components/ui';
 import { CloseIcon, InfoIcon } from '../../../../components/icons';
@@ -88,7 +89,7 @@ export default function NewStageScreen() {
       },
       {
         onSuccess: () => router.back(),
-        onError: (e) => setError(e instanceof Error ? e.message : kk.common.loadError),
+        onError: (e) => setError(errorText(e)),
       },
     );
   };

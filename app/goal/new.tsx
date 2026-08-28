@@ -22,6 +22,7 @@ import { color as C, radius as R, font, gutter, centered } from '../../theme/tok
 import { kk, t as tpl } from '../../i18n/kk';
 import { termEndDate, type TermKey } from '../../lib/calendar';
 import { useCreateGoal } from '../../lib/goals';
+import { errorText } from '../../lib/errors';
 import { SectionLabel, DateField } from '../../components/ui';
 import { CloseIcon, InfoIcon } from '../../components/icons';
 
@@ -94,7 +95,7 @@ export default function NewGoalScreen() {
         // Құрылған соң бірден мақсат бетіне — ол жерде «Бөлінбеген»
         // күйі мен «+ Кезең қосу» батырмасы тұрады
         onSuccess: (id) => router.replace(`/goal/${id}` as never),
-        onError: (e) => setError(e instanceof Error ? e.message : kk.common.loadError),
+        onError: (e) => setError(errorText(e)),
       },
     );
   };
