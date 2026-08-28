@@ -1,10 +1,8 @@
 /**
  * Уақыт есебі — фокус сессияларының жиынтығы.
  *
- * Екі деңгей:
- *   1. Жалпы  — барлық мақсатқа кеткен уақыт, мақсат бойынша бөлінісі.
- *   2. Мақсат — сол мақсаттың апталары: күндік бағаналар, қай әрекетке
- *      қанша кеткені, өткен аптамен салыстыру.
+ * ⚠ Бөлек «уақыт есебі» экраны ЖОҚ. Есеп мақсаттың өз бетінде тұрады:
+ * уақыт — мақсаттың бір қыры, бөлек бөлім емес.
  *
  * ⚠ Мұндағы бірде-бір сан ойдан шықпайды. Салыстыру да нақты: өткен
  * аптаның дәл сол ұзындықтағы сессиялары есептеледі. Дерек болмаса
@@ -25,10 +23,8 @@ export const OTHER = { id: '__other__', title: 'Жеке шаруа', color: C.i
 
 const DAY_MS = 86_400_000;
 
-/** «Бәрі» кезеңінің басы — қолданба бұдан бұрын болған жоқ */
+/** Санақтың басы — қолданба бұдан бұрын болған жоқ */
 const EPOCH = new Date('2020-01-01T00:00:00');
-
-export type Range = 'week' | 'month' | 'all';
 
 export function startOfDay(d: Date): Date {
   const x = new Date(d);
@@ -114,66 +110,8 @@ function useRootIndex() {
   return { rootOf, actionOf };
 }
 
-function rangeBounds(range: Range, now: Date): { from: Date; to: Date } {
-  const to = addDays(now, 1);
-  if (range === 'all') return { from: EPOCH, to };
-  return { from: addDays(to, range === 'week' ? -7 : -30), to };
-}
-
 // ─────────────────────────────────────────────────────────────────────
-// 1-деңгей: жалпы уақыт және мақсат бойынша бөлінісі
-// ─────────────────────────────────────────────────────────────────────
-
-export type GoalTime = {
-  id: string;
-  title: string;
-  color: string;
-  minutes: number;
-  /** Жалпы уақыттағы үлесі */
-  pct: number;
-};
-
-export function useTimeOverview(range: Range, now: Date) {
-  const { from, to } = rangeBounds(range, now);
-  const q = useSessions(from, to);
-  const { rootOf } = useRootIndex();
-
-  const rows = q.data ?? [];
-  const total = rows.reduce((a, r) => a + (r.minutes ?? 0), 0);
-
-  const byGoal = new Map<string, GoalTime>();
-  for (const r of rows) {
-    const root = rootOf(r.goal_id);
-    const cur = byGoal.get(root.id);
-    if (cur) cur.minutes += r.minutes ?? 0;
-    else
-      byGoal.set(root.id, {
-        id: root.id,
-        title: root.title,
-        color: root.color,
-        minutes: r.minutes ?? 0,
-        pct: 0,
-      });
-  }
-
-  const goals = [...byGoal.values()]
-    .map((g) => ({ ...g, pct: total ? Math.round((g.minutes / total) * 100) : 0 }))
-    .sort((a, b) => b.minutes - a.minutes);
-
-  return {
-    isLoading: q.isLoading,
-    isError: q.isError,
-    error: q.error,
-    from,
-    to: addDays(to, -1),
-    total,
-    sessions: rows.length,
-    goals,
-  };
-}
-
-// ─────────────────────────────────────────────────────────────────────
-// 2-деңгей: бір мақсаттың бір аптасы
+// Бір мақсаттың бір аптасы
 // ─────────────────────────────────────────────────────────────────────
 
 export type DayTime = { date: Date; short: string; minutes: number; today: boolean };
