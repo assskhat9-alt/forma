@@ -162,6 +162,8 @@ export const kk = {
   goalNew: {
     title: 'ЖАҢА МАҚСАТ',
     what: 'Не істегім келеді',
+    /** ⚠ Мысал сөйлем ЕМЕС — жалпы шаблон. Адамға өз мақсатын жаздырамыз. */
+    whatPlaceholder: 'Мақсаттың атауы',
     deadline: 'Кезең',
     deadlineHint: 'Күндерді өзіңіз таңдайсыз',
     startLabel: 'Басталуы',
@@ -175,6 +177,10 @@ export const kk = {
     resultFrom: 'Қазір',
     resultTo: 'Мақсат',
     resultUnit: 'Бірлік',
+    /** Толтырғыштар да жалпы — нақты сан немесе өлшем жазылмайды */
+    resultFromPlaceholder: 'мән',
+    resultToPlaceholder: 'мән',
+    resultUnitPlaceholder: 'өлшем',
     resultNote: 'Нәтиже пайызға қатыспайды.',
     note: 'Мерзімді кейін де өзгертуге болады.',
     create: 'Мақсат құру',
@@ -193,7 +199,8 @@ export const kk = {
   stageNew: {
     title: 'ЖАҢА КЕЗЕҢ',
     what: 'Кезеңнің аты',
-    placeholder: 'Курс · Дайындық · Емтихан',
+    /** ⚠ Мысал ЕМЕС — жалпы шаблон */
+    placeholder: 'Кезеңнің атауы',
     dates: 'Күндері',
     startLabel: 'Басталуы',
     endLabel: 'Аяқталуы',
@@ -205,6 +212,7 @@ export const kk = {
     rhythmHint: 'Өзіңіз қоясыз',
     perWeekLabel: 'Аптасына',
     times: 'рет',
+    unitPlaceholder: 'өлшем',
     weekDays: 'Апта күндері',
     weekDaysHint: 'міндетті емес',
 

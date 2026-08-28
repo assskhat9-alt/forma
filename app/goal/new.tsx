@@ -37,6 +37,7 @@ export default function NewGoalScreen() {
 
   const [title, setTitle] = useState('');
   const [term, setTerm] = useState<TermKey | null>('yearEnd');
+  const [start, setStart] = useState(today);
   const [end, setEnd] = useState(() => termEndDate('yearEnd', today));
 
   // Нәтиже — мәтін күйінде: «84,2» деп үтірмен жазуға да болады
@@ -47,12 +48,21 @@ export default function NewGoalScreen() {
   const [error, setError] = useState<string | null>(null);
   const create = useCreateGoal();
 
-  const days = Math.max(differenceInCalendarDays(end, today) + 1, 0);
+  const days = Math.max(differenceInCalendarDays(end, start) + 1, 0);
   const weeks = Math.max(Math.ceil(days / 7), 0);
 
   const pickTerm = (key: TermKey) => {
     setTerm(key);
-    setEnd(termEndDate(key, today));
+    setEnd(termEndDate(key, start));
+  };
+
+  /** Басталу мерзімнен кейінге кетсе — мерзім соған ығысады */
+  const pickStart = (d: Date) => {
+    setStart(d);
+    if (d.getTime() > end.getTime()) {
+      setTerm(null);
+      setEnd(d);
+    }
   };
 
   /** Күнді қолмен таңдағанда жылдам нұсқа белгісі алынады */
@@ -65,14 +75,14 @@ export default function NewGoalScreen() {
     setError(null);
     const name = title.trim();
     if (!name) return setError('Мақсаттың атауын жазыңыз.');
-    if (end.getTime() < today.getTime()) {
-      return setError('Мерзім бүгіннен бұрын бола алмайды.');
+    if (end.getTime() < start.getTime()) {
+      return setError('Мерзім басталу күнінен бұрын бола алмайды.');
     }
 
     create.mutate(
       {
         title: name,
-        start: today,
+        start,
         end,
         resultFrom: parseDecimal(resultFrom),
         resultTo: parseDecimal(resultTo),
@@ -113,7 +123,7 @@ export default function NewGoalScreen() {
           <TextInput
             value={title}
             onChangeText={setTitle}
-            placeholder="Ағылшын тілін C1 деңгейіне жеткізу"
+            placeholder={kk.goalNew.whatPlaceholder}
             placeholderTextColor={C.ink4}
             style={styles.titleInput}
           />
@@ -153,12 +163,17 @@ export default function NewGoalScreen() {
             </Pressable>
           </View>
 
-          <View style={{ marginTop: 9 }}>
+          <View style={styles.dates}>
+            <DateField
+              label={kk.goalNew.startLabel}
+              value={start}
+              onChange={pickStart}
+            />
             <DateField
               label={kk.goalNew.endLabel}
               value={end}
               onChange={pickEnd}
-              min={today}
+              min={start}
               hint={tpl(kk.goalNew.span, { days, weeks })}
             />
           </View>
@@ -177,7 +192,7 @@ export default function NewGoalScreen() {
               <TextInput
                 value={resultFrom}
                 onChangeText={setResultFrom}
-                placeholder="84,2"
+                placeholder={kk.goalNew.resultFromPlaceholder}
                 placeholderTextColor={C.ink4}
                 keyboardType="decimal-pad"
                 inputMode="decimal"
@@ -192,7 +207,7 @@ export default function NewGoalScreen() {
               <TextInput
                 value={resultTo}
                 onChangeText={setResultTo}
-                placeholder="78"
+                placeholder={kk.goalNew.resultToPlaceholder}
                 placeholderTextColor={C.ink4}
                 keyboardType="decimal-pad"
                 inputMode="decimal"
@@ -205,7 +220,7 @@ export default function NewGoalScreen() {
               <TextInput
                 value={resultUnit}
                 onChangeText={setResultUnit}
-                placeholder="кг"
+                placeholder={kk.goalNew.resultUnitPlaceholder}
                 placeholderTextColor={C.ink4}
                 style={styles.resultInput}
               />
@@ -278,6 +293,7 @@ const styles = StyleSheet.create({
     fontFamily: font.title, fontSize: 13.5, color: C.ink,
   },
 
+  dates: { gap: 8, marginTop: 9 },
   chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
   chip: {
     flexGrow: 1, alignItems: 'center', paddingVertical: 11, paddingHorizontal: 12,

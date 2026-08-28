@@ -165,7 +165,7 @@ export default function NewStageScreen() {
             <TextInput
               value={unit}
               onChangeText={setUnit}
-              placeholder={UNITS[0]}
+              placeholder={kk.stageNew.unitPlaceholder}
               placeholderTextColor={C.ink4}
               style={styles.unitInput}
             />
