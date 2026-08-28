@@ -10,12 +10,12 @@
 import React, { useEffect, useState } from 'react';
 import { View, Text, TextInput, Pressable, StyleSheet, ActivityIndicator } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useLocalSearchParams } from 'expo-router';
+import { useLocalSearchParams, router } from 'expo-router';
 import Svg, { Circle } from 'react-native-svg';
 
 import { color as C, radius as R, font, centered } from '../theme/tokens';
 import { kk, t as tpl } from '../i18n/kk';
-import { useGoals } from '../lib/goals';
+import { useGoals, useDayTasks, useToggleTask } from '../lib/goals';
 import {
   useFocusStore, useSaveSession, useTodayFocus,
   PRESETS, formatClock, formatDuration,
@@ -42,6 +42,12 @@ export default function FocusScreen() {
   const [note, setNote] = useState<string | null>(null);
   const [customOpen, setCustomOpen] = useState(false);
   const [customText, setCustomText] = useState('');
+  const [completing, setCompleting] = useState(false);
+
+  // Бүгінгі әрекеттер — таймердің ішінен таңдау үшін
+  const { tasks: todayTasks } = useDayTasks(new Date());
+  const pending = todayTasks.filter((t) => !t.done);
+  const toggle = useToggleTask();
 
   /**
    * ⚠ Уақыт күйде САҚТАЛМАЙДЫ — әр рендерде `Date.now()` арқылы
@@ -74,11 +80,11 @@ export default function FocusScreen() {
   const r = (RING - STROKE) / 2;
   const circumference = 2 * Math.PI * r;
 
-  /** Тамырдағы мақсаттың атауы — «қай мақсатқа жазылады» */
-  const rootTitle = (() => {
-    if (!task) return null;
+  /** Байланған тапсырманың тамырдағы мақсаты */
+  const attachedGoal = (() => {
+    if (!store.taskId) return null;
     const byId = new Map((goals ?? []).map((g) => [g.id, g]));
-    let cur = byId.get(task.id);
+    let cur = byId.get(store.taskId);
     const seen = new Set<string>();
     while (cur?.parent_id && !seen.has(cur.id)) {
       seen.add(cur.id);
@@ -86,6 +92,38 @@ export default function FocusScreen() {
     }
     return cur?.title ?? null;
   })();
+
+  /**
+   * Әрекетті ОСЫ ЖЕРДЕ жабу.
+   *
+   * Күнтізбедегі кезегін күтудің қажеті жоқ: бос уақыт шыға қалса
+   * істеп, осында белгілей саласыз. Жиналған уақыт болса ол да
+   * сессия ретінде жазылады, сосын рефлексия ашылады.
+   */
+  const complete = async () => {
+    const id = store.taskId;
+    if (!id) return;
+    setCompleting(true);
+
+    const minutes = Math.round(store.elapsedMs(Date.now()) / 60_000);
+    if (minutes >= 1) {
+      try {
+        await save.mutateAsync({
+          goalId: id,
+          minutes,
+          startedAt: store.sessionStart,
+        });
+      } catch (e) {
+        setNote(errorText(e));
+      }
+    }
+
+    toggle.mutate({ id, done: true });
+    store.reset();
+    store.attach(null, '');
+    setCompleting(false);
+    router.replace(`/reflection?taskId=${id}` as never);
+  };
 
   const finish = () => {
     const minutes = Math.round(store.elapsedMs(Date.now()) / 60_000);
@@ -117,18 +155,86 @@ export default function FocusScreen() {
           <View style={{ width: 30 }} />
         </View>
 
-        {/* Ағымдағы тапсырма */}
-        <View style={styles.taskCard}>
-          <Text style={styles.lbl}>{kk.focus.current}</Text>
-          <Text style={styles.taskTitle} numberOfLines={2}>
-            {store.taskTitle || kk.focus.noTask}
-          </Text>
-          {rootTitle && (
-            <View style={styles.goalChip}>
-              <Text style={styles.goalChipText}>{rootTitle}</Text>
+        {/*
+          Тапсырма таңдалмаса — бүгінгі әрекеттер тізімі шығады.
+          Бос уақыт шыға қалса, күнтізбедегі кезегін күтпей-ақ біреуін
+          алып, осы жерде істеп, осы жерде жауып тастауға болады.
+        */}
+        {store.taskId ? (
+          <View style={styles.taskCard}>
+            <View style={styles.taskHead}>
+              <Text style={styles.lbl}>{kk.focus.current}</Text>
+              <Pressable
+                onPress={() => store.attach(null, '')}
+                hitSlop={8}
+                accessibilityRole="button"
+              >
+                <Text style={styles.change}>{kk.focus.change}</Text>
+              </Pressable>
             </View>
-          )}
-        </View>
+
+            <Text style={styles.taskTitle} numberOfLines={2}>
+              {store.taskTitle}
+            </Text>
+
+            {attachedGoal && (
+              <View style={styles.goalChip}>
+                <Text style={styles.goalChipText}>{attachedGoal}</Text>
+              </View>
+            )}
+
+            <Pressable
+              onPress={complete}
+              disabled={completing}
+              style={[styles.doneBtn, completing && { opacity: 0.6 }]}
+              accessibilityRole="button"
+            >
+              {completing ? (
+                <ActivityIndicator color={C.accentOnDark} />
+              ) : (
+                <>
+                  <CheckIcon size={14} color={C.accentOnDark} strokeWidth={3} />
+                  <Text style={styles.doneText}>{kk.focus.markDone}</Text>
+                </>
+              )}
+            </Pressable>
+          </View>
+        ) : (
+          <View style={styles.taskCard}>
+            <View style={styles.taskHead}>
+              <Text style={styles.lbl}>{kk.focus.pickTask}</Text>
+              <Text style={styles.pickHint}>{kk.focus.pickHint}</Text>
+            </View>
+
+            {pending.length === 0 ? (
+              <Text style={styles.pickEmpty}>
+                {todayTasks.length === 0 ? kk.focus.noTasksToday : kk.focus.allDoneToday}
+              </Text>
+            ) : (
+              <View style={styles.pickList}>
+                {pending.map((t) => (
+                  <Pressable
+                    key={t.id}
+                    onPress={() => store.attach(t.id, t.title)}
+                    style={styles.pickRow}
+                    accessibilityRole="button"
+                  >
+                    <View style={{ flexGrow: 1, flexShrink: 1, minWidth: 0 }}>
+                      <Text style={styles.pickTitle} numberOfLines={1}>
+                        {t.title}
+                      </Text>
+                      <Text style={styles.pickMeta}>
+                        {t.time ?? kk.focus.noTime}
+                        {t.goal ? ` · ${t.goal.title}` : ''}
+                      </Text>
+                    </View>
+                    <ChevronRightIcon size={14} color={C.darkInk3} />
+                  </Pressable>
+                ))}
+              </View>
+            )}
+          </View>
+        )}
 
         {/* Сақина */}
         <View style={styles.ringWrap}>
@@ -311,8 +417,8 @@ export default function FocusScreen() {
           )}
         </View>
 
-        {rootTitle && (
-          <Text style={styles.footer}>{tpl(kk.focus.savedTo, { goal: rootTitle })}</Text>
+        {attachedGoal && (
+          <Text style={styles.footer}>{tpl(kk.focus.savedTo, { goal: attachedGoal })}</Text>
         )}
       </View>
     </View>
@@ -356,6 +462,27 @@ const styles = StyleSheet.create({
     paddingHorizontal: 9, paddingVertical: 3,
   },
   goalChipText: { fontFamily: font.bold, fontSize: 10, color: C.accentOnDark },
+
+  taskHead: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  change: { fontFamily: font.bold, fontSize: 11, color: C.accentOnDark },
+  pickHint: { fontFamily: font.title, fontSize: 10, color: C.darkInk3 },
+  pickEmpty: {
+    fontFamily: font.prose, fontSize: 12, color: C.darkInk3, marginTop: 10,
+  },
+  pickList: { marginTop: 8 },
+  pickRow: {
+    flexDirection: 'row', alignItems: 'center', gap: 10,
+    paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: C.darkLine,
+  },
+  pickTitle: { fontFamily: font.title, fontSize: 13, color: '#FFFFFF' },
+  pickMeta: { fontFamily: font.body, fontSize: 10.5, color: C.darkInk3, marginTop: 2 },
+
+  doneBtn: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 7,
+    marginTop: 13, paddingVertical: 11, borderRadius: R.sm,
+    backgroundColor: 'rgba(122,108,240,0.16)',
+  },
+  doneText: { fontFamily: font.bold, fontSize: 12.5, color: C.accentOnDark },
 
   ringWrap: { alignItems: 'center', justifyContent: 'center', marginTop: 26 },
   ringCenter: {
