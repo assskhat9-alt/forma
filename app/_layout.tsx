@@ -27,6 +27,7 @@ import { color as C } from '../theme/tokens';
 import { useBreakpoint } from '../lib/breakpoints';
 import { Sidebar } from '../components/layout/Sidebar';
 import { useActiveMotto } from '../lib/mottos';
+import { useReminders } from '../lib/reminders';
 
 SplashScreen.preventAutoHideAsync().catch(() => {
   /* splash әлдеқашан жабылған болуы мүмкін — елемейміз */
@@ -71,6 +72,8 @@ function RootNavigator() {
   const bp = useBreakpoint();
   const segments = useSegments();
   const motto = useActiveMotto();
+  // Хабарламаларды әрекеттер өзгерген сайын қайта жоспарлайды (вебте бос)
+  useReminders();
 
   /**
    * Панель — қосымшаның тұрақты бөлігі.
