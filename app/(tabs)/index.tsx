@@ -38,7 +38,7 @@ import { useDueAction } from '../../lib/focus';
 import { useActiveMotto } from '../../lib/mottos';
 import { DueBanner } from '../../components/focus/DueBanner';
 import {
-  Card, DarkCard, DashedCard, SectionLabel, Chip, CollapsibleSegments, Checkbox,
+  Card, DarkCard, DashedCard, SectionLabel, Chip, Checkbox,
 } from '../../components/ui';
 import {
   StatCard, WeekBars, WeekStrip, RingCard, TaskTable, LevelsCard, TimeCard,
@@ -49,8 +49,6 @@ import { MenuIcon, BellIcon, QuoteIcon, StarIcon, ChevronRightIcon } from '../..
 import { TopBar } from '../../components/layout/TopBar';
 import { TaskRow } from '../../components/calendar/TaskRow';
 
-const PERIODS = [kk.period.day, kk.period.week, kk.period.month, kk.period.year] as const;
-
 export default function HomeScreen() {
   const insets = useSafeAreaInsets();
   const bp = useBreakpoint();
@@ -60,9 +58,6 @@ export default function HomeScreen() {
   const today = useMemo(() => new Date(), []);
   /** Панель қай күнді көрсетіп тұр — апта жолағы мен кесте осыған қарайды */
   const [selected, setSelected] = useState(today);
-
-  const [period, setPeriod] = useState(0);
-  const [segOpen, setSegOpen] = useState(true);
 
   const { tasks, isLoading, isError } = useDayTasks(selected);
   const toggleTask = useToggleTask();
@@ -163,17 +158,6 @@ export default function HomeScreen() {
     if (next) router.push(`/reflection?taskId=${id}` as never);
   };
 
-  const segments = (
-    <CollapsibleSegments
-      items={PERIODS}
-      index={period}
-      onChange={setPeriod}
-      open={segOpen}
-      onToggleOpen={() => setSegOpen((v) => !v)}
-      maxWidth={250}
-    />
-  );
-
   const stripTitle = `${cap(monthsUpper[selected.getMonth()]!)} ${selected.getFullYear()}`;
 
   return (
@@ -187,16 +171,13 @@ export default function HomeScreen() {
       showsVerticalScrollIndicator={false}
     >
       {wide ? (
-        <TopBar title={kk.nav.home} right={segments} />
+        <TopBar title={kk.nav.home} />
       ) : (
-        <>
-          <View style={styles.header}>
-            <MenuIcon size={22} />
-            <Text style={styles.wordmark}>{kk.app.name}</Text>
-            <BellIcon size={22} />
-          </View>
-          <View style={styles.segWrap}>{segments}</View>
-        </>
+        <View style={styles.header}>
+          <MenuIcon size={22} />
+          <Text style={styles.wordmark}>{kk.app.name}</Text>
+          <BellIcon size={22} />
+        </View>
       )}
 
       <View style={[styles.body, wide && styles.bodyWide, tablet && styles.bodyTablet]}>
@@ -456,7 +437,6 @@ const styles = StyleSheet.create({
     paddingBottom: 6,
   },
   wordmark: { fontFamily: font.display, fontSize: 13, letterSpacing: 2.08, color: C.ink },
-  segWrap: { paddingHorizontal: gutter, paddingTop: 4 },
 
   body: { paddingHorizontal: gutter, gap: 10, marginTop: 10 },
   bodyWide: { paddingHorizontal: 26, gap: 14, marginTop: 0 },
