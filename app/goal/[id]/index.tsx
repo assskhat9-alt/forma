@@ -8,7 +8,7 @@
  * ⚠ Пайыз әрекет САНЫМЕН есептеледі, салмақ жоқ. Көп әрекет тұрған ай
  * үлесті өзі көп алады.
  */
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import { View, Text, Pressable, ScrollView, StyleSheet, ActivityIndicator } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useLocalSearchParams, router } from 'expo-router';
@@ -16,12 +16,17 @@ import { differenceInCalendarDays } from 'date-fns';
 
 import { color as C, radius as R, font, gutter, centered } from '../../../theme/tokens';
 import { kk, formatDayMonth, t as tpl } from '../../../i18n/kk';
-import { useGoals, useMonths, useNodeStats, useChildrenStats } from '../../../lib/goals';
+import {
+  useGoals, useMonths, useNodeStats, useChildrenStats, useCompleteGoal,
+} from '../../../lib/goals';
 import { goBack } from '../../../lib/nav';
 import { Card, DarkCard, SectionLabel, ProgressBar } from '../../../components/ui';
+import { CheckIcon } from '../../../components/icons';
 import { ChevronLeftIcon, DotsIcon, CalendarChipIcon, ChevronRightIcon } from '../../../components/icons';
 
 export default function GoalDetail() {
+  const complete = useCompleteGoal();
+  const [confirmDone, setConfirmDone] = useState(false);
   const insets = useSafeAreaInsets();
   const { id } = useLocalSearchParams<{ id: string }>();
   const today = useMemo(() => new Date(), []);
@@ -216,6 +221,37 @@ export default function GoalDetail() {
             </Pressable>
           );
         })}
+        {/*
+          Мақсатты аяқтау — АДАМНЫҢ шешімі. Жүйе оны 100%-ке жеткенде де
+          өзі жаппайды: мақсаттың бітті-бітпегенін пайыз емес, адам біледі.
+        */}
+        <Pressable
+          onPress={() =>
+            goal.status === 'done'
+              ? complete.mutate({ id: goal.id, done: false })
+              : confirmDone
+                ? complete.mutate({ id: goal.id, done: true })
+                : setConfirmDone(true)
+          }
+          disabled={complete.isPending}
+          style={[styles.finish, goal.status === 'done' && styles.finishOn]}
+          accessibilityRole="button"
+        >
+          <CheckIcon
+            size={13}
+            color={goal.status === 'done' ? C.accentDeep : C.ink3}
+            strokeWidth={3}
+          />
+          <Text
+            style={[styles.finishText, goal.status === 'done' && { color: C.accentDeep }]}
+          >
+            {goal.status === 'done'
+              ? kk.goal.reopen
+              : confirmDone
+                ? kk.goal.finishConfirm
+                : kk.goal.finish}
+          </Text>
+        </Pressable>
       </View>
     </ScrollView>
   );
@@ -243,6 +279,13 @@ const styles = StyleSheet.create({
   },
   headerTitle: { fontFamily: font.display, fontSize: 12, letterSpacing: 1.92, color: C.ink },
   body: { paddingHorizontal: gutter, gap: 10 },
+  finish: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
+    height: 46, borderRadius: R.sm, marginTop: 6,
+    backgroundColor: C.card, borderWidth: 1.5, borderColor: C.line,
+  },
+  finishOn: { backgroundColor: C.tintSoft, borderColor: C.tintLine },
+  finishText: { fontFamily: font.bold, fontSize: 12.5, color: C.ink3 },
 
   hero: { padding: 20 },
   heroLabel: {

@@ -518,6 +518,31 @@ export function useCreateAction() {
   });
 }
 
+/**
+ * Жылдық мақсатты аяқтау.
+ *
+ * ⚠ Пайызға әсер етпейді: пайыз бәрібір орындалған әрекеттерден
+ * есептеледі. Бұл — «мен бұл мақсатты жауып, архивке салдым» деген
+ * шешім. Сондықтан жүйе оны 100%-ке жеткенде де ӨЗІ жаппайды.
+ */
+export function useCompleteGoal() {
+  const qc = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ id, done }: { id: string; done: boolean }) => {
+      const { error } = await supabase
+        .from('goals')
+        .update({
+          status: done ? 'done' : 'active',
+          completed_at: done ? new Date().toISOString() : null,
+        })
+        .eq('id', id);
+      if (error) throw error;
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: qk.goals.all }),
+  });
+}
+
 export function useDeleteAction() {
   const qc = useQueryClient();
   return useMutation({

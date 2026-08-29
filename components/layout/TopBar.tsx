@@ -2,8 +2,11 @@
  * Кең экранның жоғарғы жолағы — планшет пен ПК.
  *
  * Сол жақта беттің аты (сөзбелгі емес: сөзбелгі бүйір мәзірде тұр),
- * оң жақта іздеу, хабарлама және аккаунт. Астына `right` арқылы период
- * ауыстырғышы сияқты нәрсе қоюға болады.
+ * оң жақта аккаунт. Астына `right` арқылы қосымша қатар қоюға болады.
+ *
+ * ⚠ Мұнда хабарлама қоңырауы ЖОҚ. Ол бұрын тұрған да, басқанда ештеңе
+ * болмайтын: хабарлама орталығы деген экран жоқ. Істемейтін түйме —
+ * жоқ түймеден жаман.
  *
  * ⚠ Телефонда бұл қолданылмайды: онда әр экранның өз ықшам хедері бар.
  */
@@ -13,7 +16,7 @@ import { router } from 'expo-router';
 
 import { color as C, radius as R, font } from '../../theme/tokens';
 import { useSession } from '../../lib/auth';
-import { SearchIcon, BellIcon } from '../icons';
+import { SearchIcon } from '../icons';
 
 export function TopBar({
   title,
@@ -25,7 +28,7 @@ export function TopBar({
   title: string;
   /** Тақырыптың астындағы қосымша қатар — период ауыстырғышы, күн аралығы */
   right?: React.ReactNode;
-  /** Беттің өз батырмалары — қоңыраудың сол жағында тұрады */
+  /** Беттің өз батырмалары — аватардың сол жағында тұрады */
   actions?: React.ReactNode;
   /** Берілмесе іздеу өрісі мүлде шықпайды — жұмыс істемейтін өріс қоймаймыз */
   onSearch?: (q: string) => void;
@@ -59,10 +62,6 @@ export function TopBar({
         ) : null}
 
         {actions}
-
-        <Pressable style={styles.round} accessibilityRole="button" hitSlop={6}>
-          <BellIcon size={17} color={C.ink2} />
-        </Pressable>
 
         <Pressable
           onPress={() => router.navigate('/profile' as never)}
@@ -118,16 +117,6 @@ const styles = StyleSheet.create({
     outlineStyle: 'none' as never,
   },
 
-  round: {
-    width: 40,
-    height: 40,
-    borderRadius: R.pill,
-    backgroundColor: C.card,
-    borderWidth: 1,
-    borderColor: C.line,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
   avatar: {
     width: 40,
     height: 40,

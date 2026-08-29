@@ -102,7 +102,9 @@ export function useArchive(kind: ArchiveKind, now: Date) {
       : kind === 'action'
         ? done.filter((g) => g.level === 'day')
         : kind === 'goal'
-          ? done.filter((g) => g.level !== 'day')
+          // ⚠ Тек 'year'. Айларды жүйе ашады да, оларды ешкім аяқталды деп
+          // белгілемейді — оларды тізімге қосу сүзгіні бос көрсететін.
+          ? done.filter((g) => g.level === 'year')
           : [...done, ...dropped];
 
   const entries = pool

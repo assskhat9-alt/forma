@@ -45,7 +45,7 @@ import {
   type Stat, type DayBar, type StripDay, type TableRow, type Level,
 } from '../../components/home';
 import { useTimeOverview } from '../../lib/report';
-import { MenuIcon, BellIcon, QuoteIcon, StarIcon, ChevronRightIcon } from '../../components/icons';
+import { QuoteIcon, StarIcon, ChevronRightIcon } from '../../components/icons';
 import { TopBar } from '../../components/layout/TopBar';
 import { TaskRow } from '../../components/calendar/TaskRow';
 
@@ -173,10 +173,10 @@ export default function HomeScreen() {
       {wide ? (
         <TopBar title={kk.nav.home} />
       ) : (
+        // ⚠ ☰ мен 🔔 алынды: екеуі де жай сурет болатын, басуға
+        // келмейтін. Телефондағы навигация — төменгі жолақ.
         <View style={styles.header}>
-          <MenuIcon size={22} />
           <Text style={styles.wordmark}>{kk.app.name}</Text>
-          <BellIcon size={22} />
         </View>
       )}
 
@@ -429,13 +429,7 @@ const cap = (s: string) => s.charAt(0) + s.slice(1).toLowerCase();
 
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: C.bg },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: gutter,
-    paddingBottom: 6,
-  },
+  header: { alignItems: 'center', paddingHorizontal: gutter, paddingBottom: 6 },
   wordmark: { fontFamily: font.display, fontSize: 13, letterSpacing: 2.08, color: C.ink },
 
   body: { paddingHorizontal: gutter, gap: 10, marginTop: 10 },

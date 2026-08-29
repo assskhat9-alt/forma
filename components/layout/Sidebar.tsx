@@ -11,24 +11,16 @@
  *
  * Телефонда бұның орнына төменгі жолақ тұрады (BottomNav).
  */
-import React, { useEffect, useState } from 'react';
+import React from 'react';
 import { View, Text, Pressable, StyleSheet } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { usePathname, router } from 'expo-router';
-import Animated, {
-  useSharedValue,
-  useAnimatedStyle,
-  withTiming,
-  Easing,
-} from 'react-native-reanimated';
-
 import { color as C, radius as R, font } from '../../theme/tokens';
 import { kk } from '../../i18n/kk';
 import { signOut } from '../../lib/supabase';
 import {
   DiamondIcon,
   QuoteIcon,
-  ChevronUpIcon,
   HomeIcon,
   CalendarIcon,
   ClockIcon,
@@ -49,7 +41,7 @@ type Item = {
   Icon: (p: IconProps) => React.ReactElement;
 };
 
-/** Топ ішіндегі бір жолдың биіктігі — жиналу анимациясы осыған сүйенеді */
+/** Бір жолдың биіктігі */
 const ITEM_H = 40;
 const ITEM_GAP = 2;
 
@@ -61,19 +53,28 @@ const HOME: Item = { name: kk.nav.home, href: '/', Icon: HomeIcon };
  * иллюстрация еді. Бүйір мәзір — навигация, есеп тақтасы емес:
  * жалған сан көрсеткеннен ештеңе көрсетпеген артық.
  */
-const PLAN_ITEMS: Item[] = [
-  { name: kk.nav.year, href: '/goals', Icon: DiamondIcon },
-];
-
-const TOOL_ITEMS: Item[] = [
-  { name: kk.nav.calendar, href: '/calendar', Icon: CalendarIcon },
-  { name: kk.nav.focus, href: '/focus', Icon: ClockIcon },
-  { name: kk.nav.habits, href: '/habits', Icon: CheckIcon },
-  { name: kk.nav.weekly, href: '/week', Icon: FilterIcon },
-  { name: kk.nav.time, href: '/time', Icon: BarChartIcon },
-  { name: kk.nav.archive, href: '/archive', Icon: BookmarkIcon },
-  { name: kk.nav.motivation, href: '/motivation', Icon: QuoteNav },
-  { name: kk.nav.myNotes, href: '/notes', Icon: PencilIcon },
+const GROUPS: { label: string; items: Item[] }[] = [
+  {
+    // Жоспар — не істеймін деген сұрақ
+    label: kk.nav.plans,
+    items: [
+      { name: kk.nav.year, href: '/goals', Icon: DiamondIcon },
+      { name: kk.nav.calendar, href: '/calendar', Icon: CalendarIcon },
+      { name: kk.nav.weekly, href: '/week', Icon: FilterIcon },
+    ],
+  },
+  {
+    // Құрал — қалай істеймін деген сұрақ
+    label: kk.nav.tools,
+    items: [
+      { name: kk.nav.focus, href: '/focus', Icon: ClockIcon },
+      { name: kk.nav.habits, href: '/habits', Icon: CheckIcon },
+      { name: kk.nav.time, href: '/time', Icon: BarChartIcon },
+      { name: kk.nav.motivation, href: '/motivation', Icon: QuoteNav },
+      { name: kk.nav.myNotes, href: '/notes', Icon: PencilIcon },
+      { name: kk.nav.archive, href: '/archive', Icon: BookmarkIcon },
+    ],
+  },
 ];
 
 /** Төменгі тұрақты топ — навигация емес, аккаунт */
@@ -81,36 +82,12 @@ const FOOT_ITEMS: Item[] = [
   { name: kk.nav.profile, href: '/profile', Icon: UserIcon },
 ];
 
-const GROUP_H = PLAN_ITEMS.length * ITEM_H + (PLAN_ITEMS.length - 1) * ITEM_GAP;
-
 export function Sidebar({ width = 232, motto }: { width?: number; motto?: string }) {
   const insets = useSafeAreaInsets();
   const pathname = usePathname();
-  const [open, setOpen] = useState(true);
-
-  const t = useSharedValue(1);
-
-  useEffect(() => {
-    t.value = withTiming(open ? 1 : 0, {
-      duration: 260,
-      easing: Easing.bezier(0.4, 0, 0.2, 1),
-    });
-  }, [open, t]);
-
-  const group = useAnimatedStyle(() => ({
-    height: t.value * GROUP_H,
-    opacity: t.value,
-  }));
-
-  const chevron = useAnimatedStyle(() => ({
-    transform: [{ rotate: `${(1 - t.value) * 180}deg` }],
-  }));
 
   const isOn = (href: string) =>
     href === '/' ? pathname === '/' : pathname.startsWith(href);
-
-  /** Топ ішіндегі бір деңгей активті ме — жиналған күйде де көрінсін */
-  const activeLevel = PLAN_ITEMS.find((i) => isOn(i.href));
 
   return (
     <View
@@ -128,37 +105,21 @@ export function Sidebar({ width = 232, motto }: { width?: number; motto?: string
         <NavRow item={HOME} active={isOn(HOME.href)} />
       </View>
 
-      {/* ── ЖОСПАРЛАР тобы ── */}
-      <Pressable
-        onPress={() => setOpen((v) => !v)}
-        style={styles.groupHead}
-        accessibilityRole="button"
-        accessibilityState={{ expanded: open }}
-      >
-        <Text style={styles.groupLabel}>{kk.nav.plans}</Text>
-        {!open && activeLevel ? (
-          <Text style={styles.groupHint}>{activeLevel.name}</Text>
-        ) : null}
-        <View style={{ flexGrow: 1 }} />
-        <Animated.View style={chevron}>
-          <ChevronUpIcon size={12} color={C.ink4} />
-        </Animated.View>
-      </Pressable>
-
-      <Animated.View style={[styles.groupClip, group]}>
-        <View style={styles.groupBody}>
-          {PLAN_ITEMS.map((it) => (
-            <NavRow key={it.href} item={it} active={isOn(it.href)} />
-          ))}
+      {/*
+        ⚠ Топтар ЖИНАЛМАЙДЫ. Бұрын жиналатын, бірақ ішінде бір ғана жол
+        болатын — жинаудың да, ашудың да мәні жоқ еді. Енді әр топта
+        бірнеше жол бар да, олар әрқашан көрініп тұрады.
+      */}
+      {GROUPS.map((g) => (
+        <View key={g.label}>
+          <Text style={styles.groupLabel}>{g.label}</Text>
+          <View style={styles.groupBody}>
+            {g.items.map((it) => (
+              <NavRow key={it.href} item={it} active={isOn(it.href)} />
+            ))}
+          </View>
         </View>
-      </Animated.View>
-
-      {/* ── Бөлек құралдар ── */}
-      <View style={styles.tools}>
-        {TOOL_ITEMS.map((it) => (
-          <NavRow key={it.href} item={it} active={isOn(it.href)} />
-        ))}
-      </View>
+      ))}
 
       <View style={{ flexGrow: 1, minHeight: 16 }} />
 
@@ -166,7 +127,9 @@ export function Sidebar({ width = 232, motto }: { width?: number; motto?: string
         <View style={styles.motto}>
           <QuoteIcon size={16} color={C.accent2} />
           <Text style={styles.mottoLabel}>{kk.today.motto}</Text>
-          <Text style={styles.mottoText}>{motto}</Text>
+          <Text style={styles.mottoText} numberOfLines={3}>
+            {motto}
+          </Text>
         </View>
       ) : null}
 
@@ -230,28 +193,19 @@ const styles = StyleSheet.create({
   brand: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingHorizontal: 6 },
   wordmark: { fontFamily: font.display, fontSize: 15, letterSpacing: 2.4, color: C.ink },
 
-  groupHead: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    marginTop: 10,
+  groupLabel: {
+    marginTop: 16,
     marginBottom: 6,
     paddingHorizontal: 12,
-    minHeight: 24,
-  },
-  groupLabel: {
     fontFamily: font.bold,
     fontSize: 10,
     letterSpacing: 1.3,
     textTransform: 'uppercase',
     color: C.ink3,
   },
-  groupHint: { fontFamily: font.title, fontSize: 11, color: C.accent },
-  groupClip: { overflow: 'hidden' },
   groupBody: { gap: ITEM_GAP },
 
   home: { marginTop: 22 },
-  tools: { gap: ITEM_GAP, marginTop: ITEM_GAP },
   foot: { gap: ITEM_GAP },
   divider: { height: 1, backgroundColor: C.lineSoft, marginVertical: 12, marginHorizontal: 6 },
 

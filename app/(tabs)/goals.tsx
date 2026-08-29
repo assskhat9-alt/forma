@@ -18,7 +18,7 @@ import {
   useYearGoalsWithStats, useMonths, useChildrenStats, type NodeStats,
 } from '../../lib/goals';
 import { Card, SectionLabel, ProgressRing, ProgressBar, PaceBadge } from '../../components/ui';
-import { MenuIcon, PlusIcon, CalendarChipIcon, ChevronRightIcon } from '../../components/icons';
+import { PlusIcon, CalendarChipIcon, ChevronRightIcon } from '../../components/icons';
 import { TopBar } from '../../components/layout/TopBar';
 import { useBreakpoint } from '../../lib/breakpoints';
 
@@ -62,11 +62,10 @@ export default function GoalsScreen() {
           }
         />
       ) : (
+        // ⚠ ☰ алынды: жай сурет болатын. + те жоқ — телефонда
+        // төменгі жолақтағы ◆ дәл сол істі істейді.
         <View style={styles.header}>
-          <MenuIcon size={22} />
           <Text style={styles.headerTitle}>{today.getFullYear()} ЖЫЛ</Text>
-          {/* ⚠ Мұнда + жоқ: телефонда төменгі жолақтағы ◆ дәл сол істі істейді */}
-          <View style={{ width: 22 }} />
         </View>
       )}
 
@@ -252,10 +251,7 @@ function EmptyGoals() {
 
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: C.bg },
-  header: {
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-    paddingHorizontal: gutter, paddingBottom: 10,
-  },
+  header: { alignItems: 'center', paddingHorizontal: gutter, paddingBottom: 10 },
   addBtn: {
     width: 40, height: 40, borderRadius: 999,
     backgroundColor: C.accent, alignItems: 'center', justifyContent: 'center',

@@ -140,8 +140,13 @@ export function useToggleHabit(date: Date) {
 // Серия мен тұрақтылық
 // ─────────────────────────────────────────────────────────────────────
 
-/** Есеп жүргізілетін терезе — серия осыдан ұзын болса қиылады */
-const WINDOW_DAYS = 60;
+/**
+ * Есеп жүргізілетін терезе.
+ *
+ * ⚠ Рекорд осы терезенің ІШІНДЕ ізделеді. Бір жыл алынған себебі:
+ * қысқа терезеде «рекорд» деген сөз өтірік болып шығады.
+ */
+const WINDOW_DAYS = 365;
 
 export type HabitStat = {
   id: string;
@@ -152,6 +157,8 @@ export type HabitStat = {
   week: { date: Date; short: string; planned: boolean; done: boolean; future: boolean }[];
   /** Бүгінге дейінгі үзіліссіз серия */
   streak: number;
+  /** Терезе ішіндегі ең ұзын үзіліссіз серия */
+  best: number;
   /** Соңғы 30 күндегі орындалу: орындалған ÷ жоспарланған */
   pct: number;
   doneToday: boolean;
@@ -209,6 +216,28 @@ export function useHabitStats(today: Date) {
       streak += 1;
     }
 
+    /**
+     * ── Рекорд ──
+     *
+     * Терезені кері қарай аралап, ең ұзын үзіліссіз тізбекті табамыз.
+     * ⚠ Жоспарланбаған күн тізбекті ҮЗБЕЙДІ: аптасына үш рет жасалатын
+     * әдет қалған төрт күні үзілген болып саналмауы керек.
+     */
+    let best = 0;
+    let run = 0;
+    for (let i = WINDOW_DAYS - 1; i >= 0; i--) {
+      const d = shiftDays(today, -i);
+      if (!plannedOn(h.schedule, d)) continue;
+      // Бүгін әлі бітпеген — оны үзілді деп санамаймыз
+      if (i === 0 && !isDone(h.id, d)) break;
+      if (isDone(h.id, d)) {
+        run += 1;
+        if (run > best) best = run;
+      } else {
+        run = 0;
+      }
+    }
+
     // ── 30 күндік тұрақтылық ──
     let planned30 = 0;
     let done30 = 0;
@@ -226,6 +255,7 @@ export function useHabitStats(today: Date) {
       schedule: h.schedule,
       week,
       streak,
+      best,
       pct: planned30 ? Math.round((done30 / planned30) * 100) : 0,
       doneToday: isDone(h.id, today),
       plannedToday: plannedOn(h.schedule, today),
@@ -252,8 +282,10 @@ export function useHabitStats(today: Date) {
     items,
     doneToday,
     plannedToday: plannedToday.length,
-    /** Ағымдағы сериялардың ең ұзыны */
-    bestStreak: items.reduce((a, i) => Math.max(a, i.streak), 0),
+    /** Қазір жүріп жатқан сериялардың ең ұзыны */
+    currentStreak: items.reduce((a, i) => Math.max(a, i.streak), 0),
+    /** Жыл ішіндегі ең ұзын серия — рекорд */
+    bestStreak: items.reduce((a, i) => Math.max(a, i.best), 0),
     monthPct: mPlanned ? Math.round((mDone / mPlanned) * 100) : 0,
   };
 }

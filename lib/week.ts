@@ -165,6 +165,65 @@ export function useWeekSummary(weekStart: Date, now: Date) {
 }
 
 // ─────────────────────────────────────────────────────────────────────
+// Аптаның сабағы
+// ─────────────────────────────────────────────────────────────────────
+
+/**
+ * Осы аптаға жазылған сабақ.
+ *
+ * ⚠ Бір аптаға БІР ғана жазба. Бұрын әр «Сақтау» жаңа жазба қосатын да,
+ * бір аптада үш жазба пайда болатын. Енді бар болса — сол жаңартылады.
+ */
+export function useWeekLesson(from: Date, to: Date) {
+  return useQuery({
+    queryKey: ['weekLesson', from.toISOString()],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('reflections')
+        .select('*')
+        .is('goal_id', null)
+        .gte('created_at', from.toISOString())
+        .lt('created_at', addDays(to, 1).toISOString())
+        .order('created_at', { ascending: false })
+        .limit(1);
+      if (error) throw error;
+      return (data ?? [])[0] ?? null;
+    },
+  });
+}
+
+export function useSaveWeekLesson() {
+  const qc = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ id, body }: { id: string | null; body: string }) => {
+      const { data: session } = await supabase.auth.getSession();
+      const userId = session.session?.user.id;
+      if (!userId) throw new Error('Сессия жоқ');
+
+      if (id) {
+        const { error } = await supabase.from('reflections').update({ body }).eq('id', id);
+        if (error) throw error;
+        return;
+      }
+
+      const { error } = await supabase.from('reflections').insert({
+        user_id: userId,
+        goal_id: null,
+        body,
+        rating: null,
+        minutes_spent: null,
+      });
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['weekLesson'] });
+      qc.invalidateQueries({ queryKey: ['reflections', 'all'] });
+    },
+  });
+}
+
+// ─────────────────────────────────────────────────────────────────────
 // Қалып қойған әрекетті не істейміз
 // ─────────────────────────────────────────────────────────────────────
 

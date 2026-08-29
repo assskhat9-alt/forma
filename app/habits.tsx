@@ -103,10 +103,20 @@ export default function HabitsScreen() {
           Қара карточка — «мұнда пайызға қатысты ештеңе жоқ» деген белгі.
         */}
         <DarkCard style={styles.hero}>
-          <Text style={styles.heroLabel}>{kk.habits.longestStreak}</Text>
+          {/*
+            ⚠ Басты сан — ҚАЗІРГІ серия, рекорд емес. Бұрын «ең ұзақ»
+            деп тұрған да, шын мәнінде ағымдағы күй көрсетілетін: 30 күн
+            жүріп бір күн үзілсе, «ең ұзақ» нөл болып қалатын.
+          */}
+          <Text style={styles.heroLabel}>{kk.habits.currentStreak}</Text>
           <View style={styles.heroRow}>
-            <Text style={styles.heroValue}>{stats.bestStreak}</Text>
+            <Text style={styles.heroValue}>{stats.currentStreak}</Text>
             <Text style={styles.heroUnit}>{kk.habits.daysInRow}</Text>
+            {stats.bestStreak > stats.currentStreak && (
+              <Text style={styles.heroBest}>
+                {tpl(kk.habits.record, { n: stats.bestStreak })}
+              </Text>
+            )}
           </View>
 
           <View style={styles.heroFoot}>
@@ -307,6 +317,7 @@ const styles = StyleSheet.create({
     fontFamily: font.display, fontSize: 36, letterSpacing: -1.8, color: '#FFFFFF',
   },
   heroUnit: { fontFamily: font.title, fontSize: 12, color: C.darkInk2 },
+  heroBest: { fontFamily: font.bold, fontSize: 11, color: C.accent2 },
   heroFoot: {
     flexDirection: 'row', alignItems: 'flex-end',
     justifyContent: 'space-between', gap: 12, marginTop: 16,

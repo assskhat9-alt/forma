@@ -12,7 +12,7 @@
  * ‹ › арқылы өткен апталарды қарауға болады, болашақ аптаға өтуге
  * болмайды: әлі болмаған нәрсенің қорытындысы жоқ.
  */
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { View, Text, ScrollView, Pressable, TextInput, StyleSheet, ActivityIndicator } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -23,8 +23,10 @@ import { errorText } from '../lib/errors';
 import { useBreakpoint } from '../lib/breakpoints';
 import { weekNumber } from '../lib/calendar';
 import { fmtMinutes, startOfWeek, addDays } from '../lib/report';
-import { useWeekSummary, useMoveAction, useDropAction, useRootIdOf } from '../lib/week';
-import { useCreateReflection } from '../lib/reflections';
+import {
+  useWeekSummary, useMoveAction, useDropAction, useRootIdOf,
+  useWeekLesson, useSaveWeekLesson,
+} from '../lib/week';
 import { Card, DarkCard, SectionLabel } from '../components/ui';
 import { ChevronLeftIcon, ChevronRightIcon, CheckIcon, ClockIcon } from '../components/icons';
 
@@ -39,10 +41,17 @@ export default function WeekScreen() {
   const [saved, setSaved] = useState(false);
 
   const rep = useWeekSummary(weekStart, now);
+  const { data: lesson } = useWeekLesson(rep.from, rep.to);
   const rootIdOf = useRootIdOf();
   const move = useMoveAction();
   const drop = useDropAction();
-  const create = useCreateReflection();
+  const saveLesson = useSaveWeekLesson();
+
+  // Апта ауысқанда сол аптаның сабағы өріске түседі
+  useEffect(() => {
+    setNote(lesson?.body ?? '');
+    setSaved(false);
+  }, [lesson?.id, rep.from.getTime()]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const current = startOfWeek(now).getTime() === rep.from.getTime();
   const peak = Math.max(1, ...rep.trend.map((t) => t.pct));
@@ -62,16 +71,10 @@ export default function WeekScreen() {
     if (!body) return;
     setError(null);
 
-    create.mutate(
-      // ⚠ goalId жоқ: бұл апта туралы жазба, бір мақсат туралы емес
-      { goalId: null, body, rating: null, minutesSpent: null },
-      {
-        onSuccess: () => {
-          setNote('');
-          setSaved(true);
-        },
-        onError: (e) => setError(errorText(e)),
-      },
+    // ⚠ Бар болса ЖАҢАРТЫЛАДЫ: бір аптаға бір ғана сабақ
+    saveLesson.mutate(
+      { id: lesson?.id ?? null, body },
+      { onSuccess: () => setSaved(true), onError: (e) => setError(errorText(e)) },
     );
   };
 
@@ -294,14 +297,14 @@ export default function WeekScreen() {
 
               <Pressable
                 onPress={saveNote}
-                disabled={!note.trim() || create.isPending}
+                disabled={!note.trim() || saveLesson.isPending}
                 style={[
                   styles.save,
-                  (!note.trim() || create.isPending) && { opacity: 0.45 },
+                  (!note.trim() || saveLesson.isPending) && { opacity: 0.45 },
                 ]}
                 accessibilityRole="button"
               >
-                {create.isPending ? (
+                {saveLesson.isPending ? (
                   <ActivityIndicator color="#FFFFFF" size="small" />
                 ) : (
                   <Text style={styles.saveText}>{kk.week.saveLesson}</Text>
