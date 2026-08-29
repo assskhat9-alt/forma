@@ -26,8 +26,7 @@ import { SessionProvider, useSession, useProtectedRoute } from '../lib/auth';
 import { color as C } from '../theme/tokens';
 import { useBreakpoint } from '../lib/breakpoints';
 import { Sidebar } from '../components/layout/Sidebar';
-
-const MOTTO = '«Мен армандаған адам — бүгін тұрып жасайтын адам.»';
+import { useActiveMotto } from '../lib/mottos';
 
 SplashScreen.preventAutoHideAsync().catch(() => {
   /* splash әлдеқашан жабылған болуы мүмкін — елемейміз */
@@ -71,6 +70,7 @@ function RootNavigator() {
   const { ready, session } = useSession();
   const bp = useBreakpoint();
   const segments = useSegments();
+  const motto = useActiveMotto();
 
   /**
    * Панель — қосымшаның тұрақты бөлігі.
@@ -97,7 +97,7 @@ function RootNavigator() {
   return (
     <View style={{ flex: 1, flexDirection: 'row', backgroundColor: C.bg }}>
       {showSidebar && (
-        <Sidebar width={bp === 'desktop' ? 260 : 232} motto={MOTTO} />
+        <Sidebar width={bp === 'desktop' ? 260 : 232} motto={motto?.text} />
       )}
 
       <View style={{ flex: 1, minWidth: 0 }}>

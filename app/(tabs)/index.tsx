@@ -35,6 +35,7 @@ import {
 } from '../../lib/goals';
 import { useHabitsForDay, useToggleHabit } from '../../lib/habits';
 import { useDueAction } from '../../lib/focus';
+import { useActiveMotto } from '../../lib/mottos';
 import { DueBanner } from '../../components/focus/DueBanner';
 import {
   Card, DarkCard, DashedCard, SectionLabel, Chip, CollapsibleSegments, Checkbox,
@@ -49,8 +50,6 @@ import { TopBar } from '../../components/layout/TopBar';
 import { TaskRow } from '../../components/calendar/TaskRow';
 
 const PERIODS = [kk.period.day, kk.period.week, kk.period.month, kk.period.year] as const;
-
-const MOTTO = '«Мен армандаған адам — бүгін тұрып жасайтын адам.»';
 
 export default function HomeScreen() {
   const insets = useSafeAreaInsets();
@@ -71,6 +70,8 @@ export default function HomeScreen() {
   const { data: yearGoals } = useYearGoalsWithStats(today);
   const loadOf = useLoadOf();
   const timeRep = useTimeOverview(today);
+  // Сөз базадан келеді — Мотивация экранында таңдалады
+  const motto = useActiveMotto(today);
   const { items: habits } = useHabitsForDay(selected);
   const toggleHabit = useToggleHabit(selected);
 
@@ -279,12 +280,22 @@ export default function HomeScreen() {
           )}
         </View>
 
-        {/* мотивация — мақсат емес нәрсе қара карточкада */}
-        <DarkCard style={styles.motto} radius={R.cardXs}>
-          <QuoteIcon size={18} color={C.accent2} />
-          <Text style={styles.mottoLabel}>{kk.today.motto}</Text>
-          <Text style={styles.mottoText}>{MOTTO}</Text>
-        </DarkCard>
+        {/*
+          Мотивация — мақсат емес нәрсе қара карточкада.
+          Сөз таңдалмаса блок мүлде шықпайды: жүйе өз сөзін ойлап таппайды.
+        */}
+        {motto && (
+          <Pressable
+            onPress={() => router.navigate('/motivation' as never)}
+            accessibilityRole="link"
+          >
+            <DarkCard style={styles.motto} radius={R.cardXs}>
+              <QuoteIcon size={18} color={C.accent2} />
+              <Text style={styles.mottoLabel}>{kk.today.motto}</Text>
+              <Text style={styles.mottoText}>{motto.text}</Text>
+            </DarkCard>
+          </Pressable>
+        )}
 
         {/* Уақыты келген әрекет — ұсыныс, автоматты қосылу емес */}
         {dueAction && <DueBanner action={dueAction} />}

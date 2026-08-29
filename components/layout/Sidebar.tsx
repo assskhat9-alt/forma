@@ -36,6 +36,8 @@ import {
   CheckIcon,
   FilterIcon,
   BookmarkIcon,
+  QuoteIcon as QuoteNav,
+  PencilIcon,
   UserIcon,
   LogOutIcon,
   type IconProps,
@@ -70,6 +72,8 @@ const TOOL_ITEMS: Item[] = [
   { name: kk.nav.weekly, href: '/week', Icon: FilterIcon },
   { name: kk.nav.time, href: '/time', Icon: BarChartIcon },
   { name: kk.nav.archive, href: '/archive', Icon: BookmarkIcon },
+  { name: kk.nav.motivation, href: '/motivation', Icon: QuoteNav },
+  { name: kk.nav.myNotes, href: '/notes', Icon: PencilIcon },
 ];
 
 /** Төменгі тұрақты топ — навигация емес, аккаунт */
