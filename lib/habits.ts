@@ -10,7 +10,13 @@ import { supabase } from './supabase';
 import { qk } from './query';
 import { toISODate } from './calendar';
 import { isDemoSessionActive } from './auth';
-import { INITIAL_DEMO_HABITS, INITIAL_DEMO_HABIT_LOGS } from './demoData';
+import {
+  getDemoHabits,
+  getDemoHabitLogs,
+  addDemoHabit,
+  removeDemoHabit,
+  DEMO_USER_ID,
+} from './demoData';
 import type { Habit, HabitLog, HabitSchedule } from './database.types';
 
 export type HabitToday = {
@@ -35,7 +41,7 @@ export function useHabits() {
   return useQuery({
     queryKey: qk.habits.all,
     queryFn: async (): Promise<Habit[]> => {
-      if (isDemoSessionActive()) return INITIAL_DEMO_HABITS;
+      if (isDemoSessionActive()) return getDemoHabits();
       const { data, error } = await supabase
         .from('habits')
         .select('*')
@@ -54,7 +60,7 @@ export function useHabitLogs(from: Date, to: Date) {
   return useQuery({
     queryKey: qk.habits.logs(a, b),
     queryFn: async (): Promise<HabitLog[]> => {
-      if (isDemoSessionActive()) return INITIAL_DEMO_HABIT_LOGS;
+      if (isDemoSessionActive()) return getDemoHabitLogs();
       const { data, error } = await supabase
         .from('habit_logs')
         .select('*')
@@ -307,6 +313,20 @@ export function useCreateHabit() {
 
   return useMutation({
     mutationFn: async (h: { title: string; schedule: HabitSchedule; index: number }) => {
+      if (isDemoSessionActive()) {
+        addDemoHabit({
+          id: `demo-habit-${Date.now()}`,
+          user_id: DEMO_USER_ID,
+          title: h.title,
+          schedule: h.schedule,
+          color: HABIT_COLORS[h.index % HABIT_COLORS.length]!,
+          archived_at: null,
+          sort_order: h.index,
+          created_at: new Date().toISOString(),
+        });
+        return;
+      }
+
       const { data: session } = await supabase.auth.getSession();
       const userId = session.session?.user.id;
       if (!userId) throw new Error('Сессия жоқ');
@@ -326,19 +346,42 @@ export function useCreateHabit() {
 
 /**
  * Әдетті мұрағаттау.
- *
- * ⚠ Жойылмайды: жазбалары қалады, әйтпесе өткен айдың тұрақтылығы
- * кейін өзгеріп кетер еді.
  */
 export function useArchiveHabit() {
   const qc = useQueryClient();
 
   return useMutation({
     mutationFn: async (id: string) => {
+      if (isDemoSessionActive()) {
+        removeDemoHabit(id);
+        return;
+      }
+
       const { error } = await supabase
         .from('habits')
         .update({ archived_at: new Date().toISOString() })
         .eq('id', id);
+      if (error) throw error;
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: qk.habits.all }),
+  });
+}
+
+/**
+ * Әдетті толық өшіру.
+ */
+export function useDeleteHabit() {
+  const qc = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (id: string) => {
+      if (isDemoSessionActive()) {
+        removeDemoHabit(id);
+        return;
+      }
+
+      await supabase.from('habit_logs').delete().eq('habit_id', id);
+      const { error } = await supabase.from('habits').delete().eq('id', id);
       if (error) throw error;
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: qk.habits.all }),

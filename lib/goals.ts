@@ -19,7 +19,12 @@ import { supabase } from './supabase';
 import { qk } from './query';
 import { toISODate } from './calendar';
 import { isDemoSessionActive } from './auth';
-import { INITIAL_DEMO_GOALS } from './demoData';
+import {
+  getDemoGoals,
+  removeDemoGoal,
+  addDemoGoal,
+  DEMO_USER_ID,
+} from './demoData';
 import { color as C } from '../theme/tokens';
 import type { Goal, GoalStats } from './database.types';
 
@@ -49,7 +54,7 @@ export type DayLoad = {
 
 async function fetchGoals(): Promise<Goal[]> {
   if (isDemoSessionActive()) {
-    return INITIAL_DEMO_GOALS;
+    return getDemoGoals();
   }
   const { data, error } = await supabase
     .from('goals')
@@ -58,7 +63,7 @@ async function fetchGoals(): Promise<Goal[]> {
     .order('sort_order', { ascending: true });
   if (error) throw error;
   if (!data || data.length === 0) {
-    if (isDemoSessionActive()) return INITIAL_DEMO_GOALS;
+    if (isDemoSessionActive()) return getDemoGoals();
   }
   return data ?? [];
 }
@@ -400,6 +405,30 @@ export function useCreateGoal() {
 
   return useMutation({
     mutationFn: async (g: NewGoal) => {
+      if (isDemoSessionActive()) {
+        const newId = `demo-goal-${Date.now()}`;
+        addDemoGoal({
+          id: newId,
+          user_id: DEMO_USER_ID,
+          parent_id: null,
+          level: 'year',
+          title: g.title,
+          note: null,
+          period_start: toISODate(g.start),
+          period_end: toISODate(g.end),
+          result_from: g.resultFrom ?? null,
+          result_to: g.resultTo ?? null,
+          result_unit: g.resultUnit ?? null,
+          locked: false,
+          status: 'active',
+          scheduled_at: null,
+          completed_at: null,
+          sort_order: 0,
+          created_at: new Date().toISOString(),
+        });
+        return newId;
+      }
+
       const { data: session } = await supabase.auth.getSession();
       const userId = session.session?.user.id;
       if (!userId) throw new Error('Сессия жоқ');
@@ -570,6 +599,31 @@ export function useDeleteAction() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async (id: string) => {
+      if (isDemoSessionActive()) {
+        removeDemoGoal(id);
+        return;
+      }
+      const { error } = await supabase.from('goals').delete().eq('id', id);
+      if (error) throw error;
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: qk.goals.all }),
+  });
+}
+
+/**
+ * Жылдық мақсатты өшіру.
+ *
+ * ⚠ Каскадты түрде өшеді: базада `on delete cascade` бар, сондықтан
+ * оған тиесілі барлық айлар мен күндік әрекеттер де бірге өшеді.
+ */
+export function useDeleteGoal() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (id: string) => {
+      if (isDemoSessionActive()) {
+        removeDemoGoal(id);
+        return;
+      }
       const { error } = await supabase.from('goals').delete().eq('id', id);
       if (error) throw error;
     },

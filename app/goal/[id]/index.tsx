@@ -17,16 +17,24 @@ import { differenceInCalendarDays } from 'date-fns';
 import { color as C, radius as R, font, gutter, centered } from '../../../theme/tokens';
 import { kk, formatDayMonth, t as tpl } from '../../../i18n/kk';
 import {
-  useGoals, useMonths, useNodeStats, useChildrenStats, useCompleteGoal,
+  useGoals, useMonths, useNodeStats, useChildrenStats, useCompleteGoal, useDeleteGoal,
 } from '../../../lib/goals';
 import { goBack } from '../../../lib/nav';
 import { Card, DarkCard, SectionLabel, ProgressBar } from '../../../components/ui';
-import { CheckIcon } from '../../../components/icons';
-import { ChevronLeftIcon, DotsIcon, CalendarChipIcon, ChevronRightIcon } from '../../../components/icons';
+import {
+  CheckIcon,
+  TrashIcon,
+  ChevronLeftIcon,
+  DotsIcon,
+  CalendarChipIcon,
+  ChevronRightIcon,
+} from '../../../components/icons';
 
 export default function GoalDetail() {
   const complete = useCompleteGoal();
+  const deleteGoal = useDeleteGoal();
   const [confirmDone, setConfirmDone] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState(false);
   const insets = useSafeAreaInsets();
   const { id } = useLocalSearchParams<{ id: string }>();
   const today = useMemo(() => new Date(), []);
@@ -89,7 +97,14 @@ export default function GoalDetail() {
           <ChevronLeftIcon size={22} />
         </Pressable>
         <Text style={styles.headerTitle}>{kk.goal.title}</Text>
-        <DotsIcon size={22} />
+        <Pressable
+          onPress={() => setConfirmDelete((v) => !v)}
+          hitSlop={10}
+          accessibilityRole="button"
+          accessibilityLabel={kk.goal.delete}
+        >
+          <TrashIcon size={18} color={confirmDelete ? C.accent : C.ink4} />
+        </Pressable>
       </View>
 
       <View style={styles.body}>
@@ -255,6 +270,42 @@ export default function GoalDetail() {
                 : kk.goal.finish}
           </Text>
         </Pressable>
+
+        {/* Мақсатты өшіру */}
+        <Pressable
+          onPress={() => {
+            if (confirmDelete) {
+              deleteGoal.mutate(goal.id, {
+                onSuccess: () => {
+                  goBack('/goals');
+                },
+              });
+            } else {
+              setConfirmDelete(true);
+            }
+          }}
+          disabled={deleteGoal.isPending}
+          style={[styles.deleteBtn, confirmDelete && styles.deleteBtnConfirm]}
+          accessibilityRole="button"
+          accessibilityLabel={confirmDelete ? kk.goal.deleteConfirm : kk.goal.delete}
+        >
+          {deleteGoal.isPending ? (
+            <ActivityIndicator color={confirmDelete ? '#FFFFFF' : C.ink3} size="small" />
+          ) : (
+            <>
+              <TrashIcon
+                size={14}
+                color={confirmDelete ? '#FFFFFF' : C.ink3}
+                strokeWidth={2.2}
+              />
+              <Text
+                style={[styles.deleteBtnText, confirmDelete && { color: '#FFFFFF' }]}
+              >
+                {confirmDelete ? kk.goal.deleteConfirm : kk.goal.delete}
+              </Text>
+            </>
+          )}
+        </Pressable>
       </View>
     </ScrollView>
   );
@@ -289,6 +340,18 @@ const styles = StyleSheet.create({
   },
   finishOn: { backgroundColor: C.tintSoft, borderColor: C.tintLine },
   finishText: { fontFamily: font.bold, fontSize: 12.5, color: C.ink3 },
+
+  deleteBtn: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
+    height: 44, borderRadius: R.sm, marginTop: 4,
+    backgroundColor: C.card, borderWidth: 1.5, borderColor: C.lineField,
+  },
+  deleteBtnConfirm: {
+    backgroundColor: C.accent, borderColor: C.accent,
+  },
+  deleteBtnText: {
+    fontFamily: font.bold, fontSize: 12.5, color: C.ink3,
+  },
 
   hero: { padding: 20 },
   heroLabel: {

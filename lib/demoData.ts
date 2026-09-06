@@ -239,3 +239,36 @@ export const INITIAL_DEMO_MOTTOS: Motto[] = [
     created_at: '2026-01-01T00:00:00Z',
   },
 ];
+
+let gDemoGoals: Goal[] = [...INITIAL_DEMO_GOALS];
+let gDemoHabits: Habit[] = [...INITIAL_DEMO_HABITS];
+let gDemoHabitLogs: HabitLog[] = [...INITIAL_DEMO_HABIT_LOGS];
+
+export function getDemoGoals(): Goal[] {
+  return gDemoGoals;
+}
+
+export function addDemoGoal(g: Goal) {
+  gDemoGoals = [g, ...gDemoGoals];
+}
+
+export function removeDemoGoal(id: string) {
+  gDemoGoals = gDemoGoals.filter((g) => g.id !== id && g.parent_id !== id);
+}
+
+export function getDemoHabits(): Habit[] {
+  return gDemoHabits;
+}
+
+export function addDemoHabit(h: Habit) {
+  gDemoHabits = [...gDemoHabits, h];
+}
+
+export function removeDemoHabit(id: string) {
+  gDemoHabits = gDemoHabits.filter((h) => h.id !== id);
+  gDemoHabitLogs = gDemoHabitLogs.filter((l) => l.habit_id !== id);
+}
+
+export function getDemoHabitLogs(): HabitLog[] {
+  return gDemoHabitLogs;
+}

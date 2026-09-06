@@ -20,11 +20,11 @@ import { goBack } from '../lib/nav';
 import { errorText } from '../lib/errors';
 import { useBreakpoint } from '../lib/breakpoints';
 import {
-  useHabitStats, useToggleHabit, useCreateHabit, useArchiveHabit,
+  useHabitStats, useToggleHabit, useCreateHabit, useArchiveHabit, useDeleteHabit,
 } from '../lib/habits';
 import { Card, DarkCard, SectionLabel, AddButton } from '../components/ui';
 import {
-  ChevronLeftIcon, CloseIcon, CheckIcon, StarIcon,
+  ChevronLeftIcon, CloseIcon, CheckIcon, StarIcon, TrashIcon,
 } from '../components/icons';
 import type { HabitSchedule } from '../lib/database.types';
 import { KeyboardFrame } from '../components/layout/KeyboardFrame';
@@ -49,6 +49,7 @@ export default function HabitsScreen() {
   const toggle = useToggleHabit(today);
   const create = useCreateHabit();
   const archive = useArchiveHabit();
+  const deleteHabit = useDeleteHabit();
 
   const [adding, setAdding] = useState(false);
   const [title, setTitle] = useState('');
@@ -235,12 +236,13 @@ export default function HabitsScreen() {
                   )}
 
                   <Pressable
-                    onPress={() => archive.mutate(h.id)}
-                    hitSlop={8}
+                    onPress={() => deleteHabit.mutate(h.id)}
+                    hitSlop={10}
+                    style={styles.deleteHabitBtn}
                     accessibilityRole="button"
-                    accessibilityLabel={kk.habits.archive}
+                    accessibilityLabel={kk.habits.delete}
                   >
-                    <CloseIcon size={12} color={C.ink4} />
+                    <TrashIcon size={14} color={C.ink4} />
                   </Pressable>
                 </View>
 
@@ -382,6 +384,10 @@ const styles = StyleSheet.create({
     flexDirection: 'row', alignItems: 'center', gap: 4, flexShrink: 0,
   },
   streakText: { fontFamily: font.bold, fontSize: 11.5, color: C.accentDeep },
+  deleteHabitBtn: {
+    padding: 4,
+    borderRadius: R.micro,
+  },
 
   weekRow: { flexDirection: 'row', alignItems: 'center', gap: 9, marginTop: 11 },
   week: { flexDirection: 'row', gap: 5, flexGrow: 1, flexShrink: 1 },
