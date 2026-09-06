@@ -27,6 +27,7 @@ import { errorText } from '../lib/errors';
 import { goBack } from '../lib/nav';
 import { SectionLabel } from '../components/ui';
 import { CheckIcon } from '../components/icons';
+import { KeyboardFrame } from '../components/layout/KeyboardFrame';
 
 export default function ReflectionScreen() {
   const insets = useSafeAreaInsets();
@@ -79,6 +80,8 @@ export default function ReflectionScreen() {
   const completedAt = task?.completed_at ? new Date(task.completed_at) : new Date();
 
   return (
+    // ⚠ Ой жазатын өріс парақтың төменгі жағында — пернетақта оны жабады
+    <KeyboardFrame>
     <View style={styles.root}>
       {/* Артқы фонды басу — жабады */}
       <Pressable style={styles.backdrop} onPress={close} />
@@ -89,6 +92,8 @@ export default function ReflectionScreen() {
         <ScrollView
           contentContainerStyle={styles.scroll}
           keyboardShouldPersistTaps="handled"
+          // ⚠ Сан пернетақтасында «Дайын» түймесі жоқ — тізімді сүйреп жабады
+          keyboardDismissMode="on-drag"
           showsVerticalScrollIndicator={false}
         >
           {/* Растау */}
@@ -247,6 +252,7 @@ export default function ReflectionScreen() {
         </View>
       </View>
     </View>
+    </KeyboardFrame>
   );
 }
 

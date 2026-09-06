@@ -169,6 +169,9 @@ export default function HomeScreen() {
         paddingBottom: 32,
       }}
       showsVerticalScrollIndicator={false}
+      keyboardShouldPersistTaps="handled"
+      // ⚠ Сан пернетақтасында «Дайын» түймесі жоқ — тізімді сүйреп жабады
+      keyboardDismissMode="on-drag"
     >
       {wide ? (
         <TopBar title={kk.nav.home} />

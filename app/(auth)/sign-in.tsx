@@ -8,7 +8,7 @@
  * Apple Developer баптауы). Веб пен Expo Go-да жұмыс істемейді, сондықтан
  * түйме жалған үміт бермей, түсіндірме көрсетеді.
  */
-import React, { useState } from 'react';
+import React, { useRef, useState } from 'react';
 import {
   View,
   Text,
@@ -25,6 +25,7 @@ import { kk } from '../../i18n/kk';
 import { supabase } from '../../lib/supabase';
 import { Atmosphere } from '../../components/auth/Atmosphere';
 import { CascadeMark, AppleIcon, MailIcon, PhoneIcon, ChevronLeftIcon } from '../../components/icons';
+import { KeyboardFrame } from '../../components/layout/KeyboardFrame';
 
 /** Каскад жолағы — жүйенің мәнін бір қарағанда түсіндіреді */
 const CHAIN = [
@@ -45,6 +46,9 @@ export default function SignIn() {
   const [busy, setBusy] = useState(false);
   const [note, setNote] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+
+  // Поштадан кейін «Келесі» басқанда құпиясөзге өзі көшеді
+  const passwordRef = useRef<TextInput>(null);
 
   const submit = async () => {
     setError(null);
@@ -83,136 +87,144 @@ export default function SignIn() {
     <View style={styles.root}>
       <Atmosphere />
 
-      <ScrollView
-        contentContainerStyle={[
-          styles.scroll,
-          { paddingTop: insets.top + (mode === 'hero' ? 24 : 12), paddingBottom: insets.bottom + 30 },
-        ]}
-        keyboardShouldPersistTaps="handled"
-        showsVerticalScrollIndicator={false}
-      >
-        {/* каскад белгісі */}
-        <View style={styles.hero}>
-          <CascadeMark size={mode === 'hero' ? 240 : 120} />
-        </View>
-
-        <Text style={styles.wordmark}>{kk.app.name}</Text>
-        <Text style={styles.tagline}>{kk.app.tagline}</Text>
-
-        {mode === 'hero' ? (
-          <>
-            <Text style={styles.headline}>{kk.signIn.headline}</Text>
-
-            <View style={styles.chain}>
-              {CHAIN.map((c, i) => {
-                const last = i === CHAIN.length - 1;
-                return (
-                  <View key={c.n} style={styles.chainItem}>
-                    <View style={styles.chainCol}>
-                      <View style={[styles.chainBox, last && styles.chainBoxOn]}>
-                        <Text style={[styles.chainPct, last && { color: '#FFFFFF' }]}>{c.pct}</Text>
-                      </View>
-                      <Text style={styles.chainName}>{c.n}</Text>
-                    </View>
-                    {!last && <View style={styles.chainLine} />}
-                  </View>
-                );
-              })}
-            </View>
-
-            <View style={styles.actions}>
-              <Pressable
-                style={[styles.btn, styles.btnDark]}
-                onPress={() => setNote(kk.signIn.appleSoon)}
-                accessibilityRole="button"
-              >
-                <AppleIcon size={17} color="#FFFFFF" />
-                <Text style={styles.btnDarkText}>{kk.signIn.apple}</Text>
-              </Pressable>
-
-              <Pressable
-                style={[styles.btn, styles.btnLight]}
-                onPress={() => { setMode('email'); setNote(null); }}
-                accessibilityRole="button"
-              >
-                <MailIcon size={17} color={C.ink} />
-                <Text style={styles.btnLightText}>{kk.signIn.email}</Text>
-              </Pressable>
-
-              <View style={styles.sync}>
-                <PhoneIcon size={13} color={C.inkFaint} />
-                <Text style={styles.syncText}>{kk.signIn.sync}</Text>
-              </View>
-            </View>
-          </>
-        ) : (
-          <View style={styles.form}>
-            <Pressable
-              onPress={() => { setMode('hero'); setError(null); setNote(null); }}
-              style={styles.back}
-              accessibilityRole="button"
-            >
-              <ChevronLeftIcon size={15} color={C.inkMuted} />
-              <Text style={styles.backText}>{kk.signIn.back}</Text>
-            </Pressable>
-
-            <Text style={styles.label}>{kk.signIn.emailLabel}</Text>
-            <TextInput
-              value={email}
-              onChangeText={setEmail}
-              placeholder={kk.signIn.emailPlaceholder}
-              placeholderTextColor={C.ink4}
-              autoCapitalize="none"
-              autoComplete="email"
-              keyboardType="email-address"
-              inputMode="email"
-              style={styles.input}
-            />
-
-            <Text style={[styles.label, { marginTop: 14 }]}>{kk.signIn.passwordLabel}</Text>
-            <TextInput
-              value={password}
-              onChangeText={setPassword}
-              placeholder={kk.signIn.passwordPlaceholder}
-              placeholderTextColor={C.ink4}
-              autoCapitalize="none"
-              autoComplete={register ? 'new-password' : 'current-password'}
-              secureTextEntry
-              onSubmitEditing={submit}
-              returnKeyType="go"
-              style={styles.input}
-            />
-
-            {error && <Text style={styles.error}>{error}</Text>}
-            {note && <Text style={styles.note}>{note}</Text>}
-
-            <Pressable
-              style={[styles.btn, styles.btnAccent, busy && { opacity: 0.6 }]}
-              onPress={submit}
-              disabled={busy}
-              accessibilityRole="button"
-            >
-              {busy ? (
-                <ActivityIndicator color="#FFFFFF" />
-              ) : (
-                <Text style={styles.btnDarkText}>
-                  {register ? kk.signIn.register : kk.signIn.enter}
-                </Text>
-              )}
-            </Pressable>
-
-            <Pressable
-              onPress={() => { setRegister((v) => !v); setError(null); setNote(null); }}
-              style={styles.switch}
-              accessibilityRole="button"
-            >
-              <Text style={styles.switchText}>
-                {register ? kk.signIn.toSignIn : kk.signIn.toRegister}
-              </Text>
-            </Pressable>
+      <KeyboardFrame>
+        <ScrollView
+          contentContainerStyle={[
+            styles.scroll,
+            { paddingTop: insets.top + (mode === 'hero' ? 24 : 12), paddingBottom: insets.bottom + 30 },
+          ]}
+          keyboardShouldPersistTaps="handled"
+          // ⚠ Сан пернетақтасында «Дайын» түймесі жоқ — тізімді сүйреп жабады
+          keyboardDismissMode="on-drag"
+          showsVerticalScrollIndicator={false}
+        >
+          {/* каскад белгісі */}
+          <View style={styles.hero}>
+            <CascadeMark size={mode === 'hero' ? 240 : 120} />
           </View>
-        )}
-      </ScrollView>
+
+          <Text style={styles.wordmark}>{kk.app.name}</Text>
+          <Text style={styles.tagline}>{kk.app.tagline}</Text>
+
+          {mode === 'hero' ? (
+            <>
+              <Text style={styles.headline}>{kk.signIn.headline}</Text>
+
+              <View style={styles.chain}>
+                {CHAIN.map((c, i) => {
+                  const last = i === CHAIN.length - 1;
+                  return (
+                    <View key={c.n} style={styles.chainItem}>
+                      <View style={styles.chainCol}>
+                        <View style={[styles.chainBox, last && styles.chainBoxOn]}>
+                          <Text style={[styles.chainPct, last && { color: '#FFFFFF' }]}>{c.pct}</Text>
+                        </View>
+                        <Text style={styles.chainName}>{c.n}</Text>
+                      </View>
+                      {!last && <View style={styles.chainLine} />}
+                    </View>
+                  );
+                })}
+              </View>
+
+              <View style={styles.actions}>
+                <Pressable
+                  style={[styles.btn, styles.btnDark]}
+                  onPress={() => setNote(kk.signIn.appleSoon)}
+                  accessibilityRole="button"
+                >
+                  <AppleIcon size={17} color="#FFFFFF" />
+                  <Text style={styles.btnDarkText}>{kk.signIn.apple}</Text>
+                </Pressable>
+
+                <Pressable
+                  style={[styles.btn, styles.btnLight]}
+                  onPress={() => { setMode('email'); setNote(null); }}
+                  accessibilityRole="button"
+                >
+                  <MailIcon size={17} color={C.ink} />
+                  <Text style={styles.btnLightText}>{kk.signIn.email}</Text>
+                </Pressable>
+
+                <View style={styles.sync}>
+                  <PhoneIcon size={13} color={C.inkFaint} />
+                  <Text style={styles.syncText}>{kk.signIn.sync}</Text>
+                </View>
+              </View>
+            </>
+          ) : (
+            <View style={styles.form}>
+              <Pressable
+                onPress={() => { setMode('hero'); setError(null); setNote(null); }}
+                style={styles.back}
+                accessibilityRole="button"
+              >
+                <ChevronLeftIcon size={15} color={C.inkMuted} />
+                <Text style={styles.backText}>{kk.signIn.back}</Text>
+              </Pressable>
+
+              <Text style={styles.label}>{kk.signIn.emailLabel}</Text>
+              <TextInput
+                value={email}
+                onChangeText={setEmail}
+                placeholder={kk.signIn.emailPlaceholder}
+                placeholderTextColor={C.ink4}
+                autoCapitalize="none"
+                autoComplete="email"
+                keyboardType="email-address"
+                inputMode="email"
+                style={styles.input}
+                returnKeyType="next"
+                submitBehavior="submit"
+                onSubmitEditing={() => passwordRef.current?.focus()}
+              />
+
+              <Text style={[styles.label, { marginTop: 14 }]}>{kk.signIn.passwordLabel}</Text>
+              <TextInput
+                ref={passwordRef}
+                value={password}
+                onChangeText={setPassword}
+                placeholder={kk.signIn.passwordPlaceholder}
+                placeholderTextColor={C.ink4}
+                autoCapitalize="none"
+                autoComplete={register ? 'new-password' : 'current-password'}
+                secureTextEntry
+                onSubmitEditing={submit}
+                returnKeyType="go"
+                style={styles.input}
+              />
+
+              {error && <Text style={styles.error}>{error}</Text>}
+              {note && <Text style={styles.note}>{note}</Text>}
+
+              <Pressable
+                style={[styles.btn, styles.btnAccent, busy && { opacity: 0.6 }]}
+                onPress={submit}
+                disabled={busy}
+                accessibilityRole="button"
+              >
+                {busy ? (
+                  <ActivityIndicator color="#FFFFFF" />
+                ) : (
+                  <Text style={styles.btnDarkText}>
+                    {register ? kk.signIn.register : kk.signIn.enter}
+                  </Text>
+                )}
+              </Pressable>
+
+              <Pressable
+                onPress={() => { setRegister((v) => !v); setError(null); setNote(null); }}
+                style={styles.switch}
+                accessibilityRole="button"
+              >
+                <Text style={styles.switchText}>
+                  {register ? kk.signIn.toSignIn : kk.signIn.toRegister}
+                </Text>
+              </Pressable>
+            </View>
+          )}
+        </ScrollView>
+      </KeyboardFrame>
     </View>
   );
 }

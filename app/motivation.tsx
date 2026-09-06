@@ -22,6 +22,7 @@ import {
 } from '../lib/mottos';
 import { Card, DarkCard, SectionLabel, Toggle, AddButton } from '../components/ui';
 import { ChevronLeftIcon, QuoteIcon, CloseIcon } from '../components/icons';
+import { KeyboardFrame } from '../components/layout/KeyboardFrame';
 
 export default function MotivationScreen() {
   const insets = useSafeAreaInsets();
@@ -57,148 +58,153 @@ export default function MotivationScreen() {
   };
 
   return (
-    <ScrollView
-      style={styles.screen}
-      contentContainerStyle={{
-        ...centered,
-        paddingTop: insets.top + (wide ? 18 : 12),
-        paddingBottom: insets.bottom + 28,
-      }}
-      showsVerticalScrollIndicator={false}
-    >
-      <View style={styles.header}>
-        <Pressable onPress={() => goBack('/')} hitSlop={10} accessibilityRole="button">
-          <ChevronLeftIcon size={20} color={C.ink} strokeWidth={2.2} />
-        </Pressable>
-        <Text style={styles.headerTitle}>{kk.motto.title}</Text>
-        <View style={{ width: 20 }} />
-      </View>
+    <KeyboardFrame>
+      <ScrollView
+        style={styles.screen}
+        contentContainerStyle={{
+          ...centered,
+          paddingTop: insets.top + (wide ? 18 : 12),
+          paddingBottom: insets.bottom + 28,
+        }}
+        showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
+        // ⚠ Сан пернетақтасында «Дайын» түймесі жоқ — тізімді сүйреп жабады
+        keyboardDismissMode="on-drag"
+      >
+        <View style={styles.header}>
+          <Pressable onPress={() => goBack('/')} hitSlop={10} accessibilityRole="button">
+            <ChevronLeftIcon size={20} color={C.ink} strokeWidth={2.2} />
+          </Pressable>
+          <Text style={styles.headerTitle}>{kk.motto.title}</Text>
+          <View style={{ width: 20 }} />
+        </View>
 
-      <View style={styles.body}>
-        {/* ── Басты беттегі көрінісі ── */}
-        <SectionLabel style={{ paddingLeft: 4 }}>{kk.motto.preview}</SectionLabel>
+        <View style={styles.body}>
+          {/* ── Басты беттегі көрінісі ── */}
+          <SectionLabel style={{ paddingLeft: 4 }}>{kk.motto.preview}</SectionLabel>
 
-        <DarkCard style={styles.preview}>
-          <QuoteIcon size={20} color={C.accent2} />
-          <Text style={styles.previewText}>
-            {active ? active.text : kk.motto.previewEmpty}
-          </Text>
-          <View style={styles.previewFoot}>
-            <View style={styles.dot} />
-            <Text style={styles.previewLabel}>
-              {rotate ? kk.motto.rotating : kk.motto.everyOpen}
+          <DarkCard style={styles.preview}>
+            <QuoteIcon size={20} color={C.accent2} />
+            <Text style={styles.previewText}>
+              {active ? active.text : kk.motto.previewEmpty}
             </Text>
-          </View>
-        </DarkCard>
-
-        {/* ── Кезекпен ауысу ── */}
-        <Card style={styles.rotate}>
-          <View style={{ flexGrow: 1, flexShrink: 1, minWidth: 0 }}>
-            <Text style={styles.rotateTitle}>{kk.motto.rotate}</Text>
-            <Text style={styles.rotateHint}>{kk.motto.rotateHint}</Text>
-          </View>
-          <Toggle value={!!rotate} onChange={(v) => toggleRotate.mutate(v)} />
-        </Card>
-
-        <SectionLabel style={{ paddingLeft: 4 }}>{kk.motto.mine}</SectionLabel>
-
-        {isError ? (
-          <Card style={styles.pad}>
-            <Text style={styles.error}>{errorText(error)}</Text>
-          </Card>
-        ) : isLoading ? (
-          <Card style={styles.pad}>
-            <View style={styles.center}>
-              <ActivityIndicator color={C.accent} />
+            <View style={styles.previewFoot}>
+              <View style={styles.dot} />
+              <Text style={styles.previewLabel}>
+                {rotate ? kk.motto.rotating : kk.motto.everyOpen}
+              </Text>
             </View>
-          </Card>
-        ) : list.length === 0 ? (
-          <Card style={styles.pad}>
-            <Text style={styles.emptyTitle}>{kk.motto.emptyTitle}</Text>
-            <Text style={styles.emptyText}>{kk.motto.emptyText}</Text>
-          </Card>
-        ) : (
-          list.map((m) => {
-            // Кезекпен ауысу қосулы кезде қолмен таңдау мағынасын жоғалтады
-            const on = rotate ? active?.id === m.id : m.is_active;
+          </DarkCard>
 
-            return (
-              <Pressable
-                key={m.id}
-                onPress={rotate ? undefined : () => setActive.mutate(m.id)}
-                accessibilityRole={rotate ? undefined : 'button'}
-                accessibilityState={{ selected: !!on }}
-              >
-                <Card
-                  level="cardSm"
-                  radius={R.cardSm}
-                  style={[styles.item, on && styles.itemOn]}
+          {/* ── Кезекпен ауысу ── */}
+          <Card style={styles.rotate}>
+            <View style={{ flexGrow: 1, flexShrink: 1, minWidth: 0 }}>
+              <Text style={styles.rotateTitle}>{kk.motto.rotate}</Text>
+              <Text style={styles.rotateHint}>{kk.motto.rotateHint}</Text>
+            </View>
+            <Toggle value={!!rotate} onChange={(v) => toggleRotate.mutate(v)} />
+          </Card>
+
+          <SectionLabel style={{ paddingLeft: 4 }}>{kk.motto.mine}</SectionLabel>
+
+          {isError ? (
+            <Card style={styles.pad}>
+              <Text style={styles.error}>{errorText(error)}</Text>
+            </Card>
+          ) : isLoading ? (
+            <Card style={styles.pad}>
+              <View style={styles.center}>
+                <ActivityIndicator color={C.accent} />
+              </View>
+            </Card>
+          ) : list.length === 0 ? (
+            <Card style={styles.pad}>
+              <Text style={styles.emptyTitle}>{kk.motto.emptyTitle}</Text>
+              <Text style={styles.emptyText}>{kk.motto.emptyText}</Text>
+            </Card>
+          ) : (
+            list.map((m) => {
+              // Кезекпен ауысу қосулы кезде қолмен таңдау мағынасын жоғалтады
+              const on = rotate ? active?.id === m.id : m.is_active;
+
+              return (
+                <Pressable
+                  key={m.id}
+                  onPress={rotate ? undefined : () => setActive.mutate(m.id)}
+                  accessibilityRole={rotate ? undefined : 'button'}
+                  accessibilityState={{ selected: !!on }}
                 >
-                  <View style={[styles.radio, on && styles.radioOn]}>
-                    {on && <View style={styles.radioDot} />}
-                  </View>
-
-                  <View style={{ flexGrow: 1, flexShrink: 1, minWidth: 0 }}>
-                    <Text style={styles.itemText}>{m.text}</Text>
-                    {on && (
-                      <View style={styles.onChip}>
-                        <Text style={styles.onChipText}>{kk.motto.onHome}</Text>
-                      </View>
-                    )}
-                  </View>
-
-                  <Pressable
-                    onPress={() => remove.mutate(m.id)}
-                    hitSlop={10}
-                    accessibilityRole="button"
-                    accessibilityLabel={kk.common.delete}
+                  <Card
+                    level="cardSm"
+                    radius={R.cardSm}
+                    style={[styles.item, on && styles.itemOn]}
                   >
-                    <CloseIcon size={12} color={C.ink4} />
-                  </Pressable>
-                </Card>
+                    <View style={[styles.radio, on && styles.radioOn]}>
+                      {on && <View style={styles.radioDot} />}
+                    </View>
+
+                    <View style={{ flexGrow: 1, flexShrink: 1, minWidth: 0 }}>
+                      <Text style={styles.itemText}>{m.text}</Text>
+                      {on && (
+                        <View style={styles.onChip}>
+                          <Text style={styles.onChipText}>{kk.motto.onHome}</Text>
+                        </View>
+                      )}
+                    </View>
+
+                    <Pressable
+                      onPress={() => remove.mutate(m.id)}
+                      hitSlop={10}
+                      accessibilityRole="button"
+                      accessibilityLabel={kk.common.delete}
+                    >
+                      <CloseIcon size={12} color={C.ink4} />
+                    </Pressable>
+                  </Card>
+                </Pressable>
+              );
+            })
+          )}
+
+          {/* ── Қосу ── */}
+          {adding && (
+            <Card style={styles.pad}>
+              <TextInput
+                value={text}
+                onChangeText={setText}
+                placeholder={kk.motto.placeholder}
+                placeholderTextColor={C.ink4}
+                multiline
+                textAlignVertical="top"
+                style={styles.input}
+                autoFocus
+              />
+
+              <Pressable
+                onPress={submit}
+                disabled={!text.trim() || create.isPending}
+                style={[styles.save, (!text.trim() || create.isPending) && { opacity: 0.45 }]}
+                accessibilityRole="button"
+              >
+                {create.isPending ? (
+                  <ActivityIndicator color="#FFFFFF" size="small" />
+                ) : (
+                  <Text style={styles.saveText}>{kk.common.add}</Text>
+                )}
               </Pressable>
-            );
-          })
-        )}
 
-        {/* ── Қосу ── */}
-        {adding && (
-          <Card style={styles.pad}>
-            <TextInput
-              value={text}
-              onChangeText={setText}
-              placeholder={kk.motto.placeholder}
-              placeholderTextColor={C.ink4}
-              multiline
-              textAlignVertical="top"
-              style={styles.input}
-              autoFocus
-            />
+              {note && <Text style={styles.error}>{note}</Text>}
+            </Card>
+          )}
 
-            <Pressable
-              onPress={submit}
-              disabled={!text.trim() || create.isPending}
-              style={[styles.save, (!text.trim() || create.isPending) && { opacity: 0.45 }]}
-              accessibilityRole="button"
-            >
-              {create.isPending ? (
-                <ActivityIndicator color="#FFFFFF" size="small" />
-              ) : (
-                <Text style={styles.saveText}>{kk.common.add}</Text>
-              )}
-            </Pressable>
-
-            {note && <Text style={styles.error}>{note}</Text>}
-          </Card>
-        )}
-
-        <AddButton
-          label={adding ? kk.common.cancel : kk.motto.add}
-          active={adding}
-          onPress={() => setAdding((v) => !v)}
-        />
-      </View>
-    </ScrollView>
+          <AddButton
+            label={adding ? kk.common.cancel : kk.motto.add}
+            active={adding}
+            onPress={() => setAdding((v) => !v)}
+          />
+        </View>
+      </ScrollView>
+    </KeyboardFrame>
   );
 }
 

@@ -192,11 +192,49 @@ export function useWeekLesson(from: Date, to: Date) {
   });
 }
 
+/**
+ * Аптаның сабағын сақтау.
+ *
+ * ⚠ Бар болса ЖАҢАРТЫЛАДЫ: бір аптаға бір ғана сабақ.
+ *
+ * ⚠ `at` — жаңа жазбаның УАҚЫТ таңбасы. Ол керек, өйткені жазба
+ * қай аптаға тиесілі екені `created_at` арқылы ғана табылады. Оны
+ * қоймасақ, өткен аптаның қорытындысын жазғанда жазба ОСЫ аптаға
+ * түсіп кетер еді де, өзі жазған адам оны қайтып таба алмас еді.
+ *
+ * ⚠ Жаңа жазбаның id-і қайтарылады: автосақтауда келесі басылған әріп
+ * сол id-ті пайдаланып ЖАҢАРТУЫ керек, әйтпесе әр әріп сайын жаңа
+ * жазба қосылып кетеді.
+ */
+/**
+ * Барлық апта сабақтары — тізімге.
+ *
+ * ⚠ Мұнда мақсатқа байланған рефлексиялар КІРМЕЙДІ (`goal_id` бос
+ * болуы шарт): олар басқа нәрсе, аптаның қорытындысы емес.
+ */
+export function useWeekLessons(limit = 60) {
+  return useQuery({
+    queryKey: ['weekLessons', limit],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('reflections')
+        .select('id, body, created_at')
+        .is('goal_id', null)
+        .order('created_at', { ascending: false })
+        .limit(limit);
+      if (error) throw error;
+      return (data ?? []) as { id: string; body: string | null; created_at: string }[];
+    },
+  });
+}
+
 export function useSaveWeekLesson() {
   const qc = useQueryClient();
 
   return useMutation({
-    mutationFn: async ({ id, body }: { id: string | null; body: string }) => {
+    mutationFn: async (
+      { id, body, at }: { id: string | null; body: string; at: Date },
+    ): Promise<{ id: string }> => {
       const { data: session } = await supabase.auth.getSession();
       const userId = session.session?.user.id;
       if (!userId) throw new Error('Сессия жоқ');
@@ -204,20 +242,50 @@ export function useSaveWeekLesson() {
       if (id) {
         const { error } = await supabase.from('reflections').update({ body }).eq('id', id);
         if (error) throw error;
-        return;
+        return { id };
       }
 
-      const { error } = await supabase.from('reflections').insert({
-        user_id: userId,
-        goal_id: null,
-        body,
-        rating: null,
-        minutes_spent: null,
-      });
+      const { data, error } = await supabase
+        .from('reflections')
+        .insert({
+          user_id: userId,
+          goal_id: null,
+          body,
+          rating: null,
+          minutes_spent: null,
+          created_at: at.toISOString(),
+        })
+        .select('id')
+        .single();
+      if (error) throw error;
+      return { id: data.id as string };
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['weekLesson'] });
+      qc.invalidateQueries({ queryKey: ['weekLessons'] });
+      qc.invalidateQueries({ queryKey: ['reflections', 'all'] });
+    },
+  });
+}
+
+/**
+ * Сабақты өшіру — мәтінді толық тазалағанда.
+ *
+ * ⚠ Бос жазба қалдырмаймыз: телефондағы «Заметкидегідей» мәтінді
+ * өшірсең, жазбаның өзі де қалмайды. Әйтпесе базада мәні жоқ бос
+ * жолдар жиналар еді.
+ */
+export function useDeleteWeekLesson() {
+  const qc = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase.from('reflections').delete().eq('id', id);
       if (error) throw error;
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['weekLesson'] });
+      qc.invalidateQueries({ queryKey: ['weekLessons'] });
       qc.invalidateQueries({ queryKey: ['reflections', 'all'] });
     },
   });

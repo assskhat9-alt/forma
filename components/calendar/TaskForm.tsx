@@ -62,9 +62,17 @@ export function TaskForm({ date, draft, onChange, onClose, onSubmit, variant, wi
         </View>
       </View>
 
-      <ScrollView showsVerticalScrollIndicator={false} style={{ flexGrow: 1 }}>
+      <ScrollView
+        showsVerticalScrollIndicator={false}
+        style={{ flexGrow: 1 }}
+        keyboardShouldPersistTaps="handled"
+        // ⚠ Сан пернетақтасында «Дайын» жоқ — тізімді сүйресең жабылады
+        keyboardDismissMode="on-drag"
+      >
         <Field label={kk.calendar.taskLabel}>
           <TextInput
+            returnKeyType="done"
+            onSubmitEditing={onSubmit}
             value={draft.title}
             onChangeText={(title) => onChange({ ...draft, title })}
             placeholder={kk.calendar.taskPlaceholder}

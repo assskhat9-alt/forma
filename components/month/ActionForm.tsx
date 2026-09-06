@@ -22,6 +22,7 @@ import { kk, formatDayMonth, t as tpl } from '../../i18n/kk';
 import { DateField } from '../ui/DatePicker';
 import { Toggle } from '../ui/Toggle';
 import { CloseIcon } from '../icons';
+import { KeyboardFrame } from '../layout/KeyboardFrame';
 
 /** Жиі кездесетін уақыттар — тек жылдам таңдау, шектеу емес */
 const QUICK_TIMES = ['06:00', '08:00', '12:00', '18:00', '21:00'];
@@ -63,6 +64,10 @@ export function ActionForm({
 
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
+      {/* ⚠ KeyboardAvoidingView Modal-дың СЫРТЫНАН әсер етпейді —
+          сондықтан оны терезенің ішіне қоямыз, әйтпесе пернетақта
+          ашылғанда «Аты» өрісі мен «Қосу» түймесі жабылып қалады. */}
+      <KeyboardFrame>
       <Pressable style={styles.backdrop} onPress={onClose}>
         <Pressable style={styles.sheet} onPress={(e) => e.stopPropagation()}>
           <View style={styles.head}>
@@ -72,7 +77,12 @@ export function ActionForm({
             </Pressable>
           </View>
 
-          <ScrollView keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
+          <ScrollView
+            keyboardShouldPersistTaps="handled"
+            // ⚠ Сағат/минут өрістері сан пернетақтасын ашады, оны сүйреп жабамыз
+            keyboardDismissMode="on-drag"
+            showsVerticalScrollIndicator={false}
+          >
             {/* Аты */}
             <Text style={styles.label}>{kk.month.actionName}</Text>
             <TextInput
@@ -82,6 +92,8 @@ export function ActionForm({
               placeholderTextColor={C.ink4}
               style={styles.input}
               autoFocus
+              returnKeyType="done"
+              onSubmitEditing={onSubmit}
             />
 
             {/* Күні — кез келген айға түсуі мүмкін */}
@@ -200,6 +212,7 @@ export function ActionForm({
           </Pressable>
         </Pressable>
       </Pressable>
+      </KeyboardFrame>
     </Modal>
   );
 }

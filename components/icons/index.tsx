@@ -191,6 +191,12 @@ export const PencilIcon = (p: IconProps) => (
   </Base>
 );
 
+export const TrashIcon = (p: IconProps) => (
+  <Base {...p} sw={2}>
+    <Path d="M4 6.5h16M9.5 6.5V4.5h5v2M6.5 6.5l1 13h9l1-13M10.5 10v6M13.5 10v6" />
+  </Base>
+);
+
 export const InfoIcon = (p: IconProps) => (
   <Base {...p} sw={2.2}>
     <Circle cx="12" cy="12" r="9" />

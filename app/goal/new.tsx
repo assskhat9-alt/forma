@@ -26,6 +26,7 @@ import { goBack } from '../../lib/nav';
 import { errorText } from '../../lib/errors';
 import { SectionLabel, DateField } from '../../components/ui';
 import { CloseIcon, InfoIcon } from '../../components/icons';
+import { KeyboardFrame } from '../../components/layout/KeyboardFrame';
 
 const TERMS: { key: TermKey; label: string }[] = [
   { key: 'm3', label: kk.goalNew.terms.m3 },
@@ -111,152 +112,157 @@ export default function NewGoalScreen() {
         <View style={{ width: 28 }} />
       </View>
 
-      <ScrollView
-        contentContainerStyle={{
-          ...centered,
-          paddingHorizontal: gutter,
-          paddingBottom: insets.bottom + 30,
-          gap: 16,
-        }}
-        keyboardShouldPersistTaps="handled"
-        showsVerticalScrollIndicator={false}
-      >
-        {/* 1. Аты */}
-        <View>
-          <SectionLabel style={styles.fieldLabel}>{kk.goalNew.what}</SectionLabel>
-          <TextInput
-            value={title}
-            onChangeText={setTitle}
-            placeholder={kk.goalNew.whatPlaceholder}
-            placeholderTextColor={C.ink4}
-            style={styles.titleInput}
-          />
-        </View>
-
-        {/* 2. Мерзім */}
-        <View>
-          <View style={styles.labelRow}>
-            <SectionLabel>{kk.goalNew.deadline}</SectionLabel>
-            <Text style={styles.hint}>{kk.goalNew.deadlineHint}</Text>
-          </View>
-
-          <View style={styles.chips}>
-            {TERMS.map((t) => {
-              const on = t.key === term;
-              return (
-                <Pressable
-                  key={t.key}
-                  onPress={() => pickTerm(t.key)}
-                  style={[styles.chip, on && styles.chipOn]}
-                  accessibilityRole="button"
-                  accessibilityState={{ selected: on }}
-                >
-                  <Text style={[styles.chipText, on && { color: '#FFFFFF' }]}>{t.label}</Text>
-                </Pressable>
-              );
-            })}
-            <Pressable
-              onPress={() => setTerm(null)}
-              style={[styles.chip, term === null && styles.chipOn]}
-              accessibilityRole="button"
-              accessibilityState={{ selected: term === null }}
-            >
-              <Text style={[styles.chipText, term === null && { color: '#FFFFFF' }]}>
-                {kk.goalNew.terms.custom}
-              </Text>
-            </Pressable>
-          </View>
-
-          <View style={styles.dates}>
-            <DateField
-              label={kk.goalNew.startLabel}
-              value={start}
-              onChange={pickStart}
-            />
-            <DateField
-              label={kk.goalNew.endLabel}
-              value={end}
-              onChange={pickEnd}
-              min={start}
-              hint={tpl(kk.goalNew.span, { days, weeks })}
-            />
-          </View>
-        </View>
-
-        {/* 3. Нәтиже — міндетті емес, пайызға ҚАТЫСПАЙДЫ */}
-        <View>
-          <View style={styles.labelRow}>
-            <SectionLabel>{kk.goalNew.result}</SectionLabel>
-            <Text style={styles.hint}>{kk.goalNew.resultOptional}</Text>
-          </View>
-
-          <View style={styles.resultRow}>
-            <View style={styles.resultCell}>
-              <Text style={styles.resultLabel}>{kk.goalNew.resultFrom}</Text>
-              <TextInput
-                value={resultFrom}
-                onChangeText={setResultFrom}
-                placeholder={kk.goalNew.resultFromPlaceholder}
-                placeholderTextColor={C.ink4}
-                keyboardType="decimal-pad"
-                inputMode="decimal"
-                style={styles.resultInput}
-              />
-            </View>
-
-            <Text style={styles.resultArrow}>→</Text>
-
-            <View style={styles.resultCell}>
-              <Text style={styles.resultLabel}>{kk.goalNew.resultTo}</Text>
-              <TextInput
-                value={resultTo}
-                onChangeText={setResultTo}
-                placeholder={kk.goalNew.resultToPlaceholder}
-                placeholderTextColor={C.ink4}
-                keyboardType="decimal-pad"
-                inputMode="decimal"
-                style={styles.resultInput}
-              />
-            </View>
-
-            <View style={[styles.resultCell, { flexGrow: 0.7 }]}>
-              <Text style={styles.resultLabel}>{kk.goalNew.resultUnit}</Text>
-              <TextInput
-                value={resultUnit}
-                onChangeText={setResultUnit}
-                placeholder={kk.goalNew.resultUnitPlaceholder}
-                placeholderTextColor={C.ink4}
-                style={styles.resultInput}
-              />
-            </View>
-          </View>
-
-          <Text style={styles.resultNote}>{kk.goalNew.resultNote}</Text>
-        </View>
-
-        {/* Келесі қадам — көлем мен ырғақ кезеңде сұралады */}
-        <View style={styles.note}>
-          <InfoIcon size={15} color={C.accentDeep} strokeWidth={2.2} />
-          <Text style={styles.noteText}>
-            {kk.goalNew.createdNext}. {kk.goalNew.note}
-          </Text>
-        </View>
-
-        {error && <Text style={styles.error}>{error}</Text>}
-
-        <Pressable
-          onPress={submit}
-          disabled={create.isPending}
-          style={[styles.submit, create.isPending && { opacity: 0.6 }]}
-          accessibilityRole="button"
+      <KeyboardFrame>
+        <ScrollView
+          contentContainerStyle={{
+            ...centered,
+            paddingHorizontal: gutter,
+            paddingBottom: insets.bottom + 30,
+            gap: 16,
+          }}
+          keyboardShouldPersistTaps="handled"
+          // ⚠ Сан пернетақтасында «Дайын» түймесі жоқ — тізімді сүйреп жабады
+          keyboardDismissMode="on-drag"
+          showsVerticalScrollIndicator={false}
         >
-          {create.isPending ? (
-            <ActivityIndicator color="#FFFFFF" />
-          ) : (
-            <Text style={styles.submitText}>{kk.goalNew.create}</Text>
-          )}
-        </Pressable>
-      </ScrollView>
+          {/* 1. Аты */}
+          <View>
+            <SectionLabel style={styles.fieldLabel}>{kk.goalNew.what}</SectionLabel>
+            <TextInput
+              value={title}
+              onChangeText={setTitle}
+              placeholder={kk.goalNew.whatPlaceholder}
+              placeholderTextColor={C.ink4}
+              style={styles.titleInput}
+              returnKeyType="done"
+            />
+          </View>
+
+          {/* 2. Мерзім */}
+          <View>
+            <View style={styles.labelRow}>
+              <SectionLabel>{kk.goalNew.deadline}</SectionLabel>
+              <Text style={styles.hint}>{kk.goalNew.deadlineHint}</Text>
+            </View>
+
+            <View style={styles.chips}>
+              {TERMS.map((t) => {
+                const on = t.key === term;
+                return (
+                  <Pressable
+                    key={t.key}
+                    onPress={() => pickTerm(t.key)}
+                    style={[styles.chip, on && styles.chipOn]}
+                    accessibilityRole="button"
+                    accessibilityState={{ selected: on }}
+                  >
+                    <Text style={[styles.chipText, on && { color: '#FFFFFF' }]}>{t.label}</Text>
+                  </Pressable>
+                );
+              })}
+              <Pressable
+                onPress={() => setTerm(null)}
+                style={[styles.chip, term === null && styles.chipOn]}
+                accessibilityRole="button"
+                accessibilityState={{ selected: term === null }}
+              >
+                <Text style={[styles.chipText, term === null && { color: '#FFFFFF' }]}>
+                  {kk.goalNew.terms.custom}
+                </Text>
+              </Pressable>
+            </View>
+
+            <View style={styles.dates}>
+              <DateField
+                label={kk.goalNew.startLabel}
+                value={start}
+                onChange={pickStart}
+              />
+              <DateField
+                label={kk.goalNew.endLabel}
+                value={end}
+                onChange={pickEnd}
+                min={start}
+                hint={tpl(kk.goalNew.span, { days, weeks })}
+              />
+            </View>
+          </View>
+
+          {/* 3. Нәтиже — міндетті емес, пайызға ҚАТЫСПАЙДЫ */}
+          <View>
+            <View style={styles.labelRow}>
+              <SectionLabel>{kk.goalNew.result}</SectionLabel>
+              <Text style={styles.hint}>{kk.goalNew.resultOptional}</Text>
+            </View>
+
+            <View style={styles.resultRow}>
+              <View style={styles.resultCell}>
+                <Text style={styles.resultLabel}>{kk.goalNew.resultFrom}</Text>
+                <TextInput
+                  value={resultFrom}
+                  onChangeText={setResultFrom}
+                  placeholder={kk.goalNew.resultFromPlaceholder}
+                  placeholderTextColor={C.ink4}
+                  keyboardType="decimal-pad"
+                  inputMode="decimal"
+                  style={styles.resultInput}
+                />
+              </View>
+
+              <Text style={styles.resultArrow}>→</Text>
+
+              <View style={styles.resultCell}>
+                <Text style={styles.resultLabel}>{kk.goalNew.resultTo}</Text>
+                <TextInput
+                  value={resultTo}
+                  onChangeText={setResultTo}
+                  placeholder={kk.goalNew.resultToPlaceholder}
+                  placeholderTextColor={C.ink4}
+                  keyboardType="decimal-pad"
+                  inputMode="decimal"
+                  style={styles.resultInput}
+                />
+              </View>
+
+              <View style={[styles.resultCell, { flexGrow: 0.7 }]}>
+                <Text style={styles.resultLabel}>{kk.goalNew.resultUnit}</Text>
+                <TextInput
+                  value={resultUnit}
+                  onChangeText={setResultUnit}
+                  placeholder={kk.goalNew.resultUnitPlaceholder}
+                  placeholderTextColor={C.ink4}
+                  style={styles.resultInput}
+                />
+              </View>
+            </View>
+
+            <Text style={styles.resultNote}>{kk.goalNew.resultNote}</Text>
+          </View>
+
+          {/* Келесі қадам — көлем мен ырғақ кезеңде сұралады */}
+          <View style={styles.note}>
+            <InfoIcon size={15} color={C.accentDeep} strokeWidth={2.2} />
+            <Text style={styles.noteText}>
+              {kk.goalNew.createdNext}. {kk.goalNew.note}
+            </Text>
+          </View>
+
+          {error && <Text style={styles.error}>{error}</Text>}
+
+          <Pressable
+            onPress={submit}
+            disabled={create.isPending}
+            style={[styles.submit, create.isPending && { opacity: 0.6 }]}
+            accessibilityRole="button"
+          >
+            {create.isPending ? (
+              <ActivityIndicator color="#FFFFFF" />
+            ) : (
+              <Text style={styles.submitText}>{kk.goalNew.create}</Text>
+            )}
+          </Pressable>
+        </ScrollView>
+      </KeyboardFrame>
     </View>
   );
 }

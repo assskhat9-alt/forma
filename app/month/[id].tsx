@@ -108,6 +108,9 @@ export default function MonthScreen() {
           paddingBottom: insets.bottom + 32,
         }}
         showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
+        // ⚠ Сан пернетақтасында «Дайын» түймесі жоқ — тізімді сүйреп жабады
+        keyboardDismissMode="on-drag"
       >
         <View style={styles.header}>
           <Pressable onPress={() => goBack(goal ? `/goal/${goal.id}` : '/goals')} hitSlop={10} accessibilityRole="button">

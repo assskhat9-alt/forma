@@ -8,7 +8,9 @@
  * Сессия аяқталғанда `focus_sessions` кестесіне жазылады.
  */
 import React, { useEffect, useState } from 'react';
-import { View, Text, TextInput, Pressable, StyleSheet, ActivityIndicator } from 'react-native';
+import {
+  View, Text, TextInput, Pressable, StyleSheet, ActivityIndicator, Keyboard,
+} from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useLocalSearchParams, router } from 'expo-router';
 import Svg, { Circle } from 'react-native-svg';
@@ -23,6 +25,7 @@ import {
 import { errorText } from '../lib/errors';
 import { goBack } from '../lib/nav';
 import { CloseIcon, PlayIcon, PauseIcon, ResetIcon, CheckIcon, ChevronRightIcon } from '../components/icons';
+import { KeyboardFrame } from '../components/layout/KeyboardFrame';
 
 const RING = 260;
 const STROKE = 14;
@@ -172,6 +175,8 @@ export default function FocusScreen() {
   };
 
   return (
+    // ⚠ «Өз уақытым» өрісі сан пернетақтасын ашады — экран көтерілуі керек
+    <KeyboardFrame>
     <View style={[styles.root, { paddingTop: insets.top + 20, paddingBottom: insets.bottom + 24 }]}>
       <View style={styles.inner}>
         <View style={styles.header}>
@@ -360,6 +365,20 @@ export default function FocusScreen() {
               autoFocus
             />
             <Text style={styles.customUnit}>{kk.focus.minutes}</Text>
+
+            {/*
+              ⚠ iOS-тың САН пернетақтасында «Дайын» түймесі жоқ, ал бұл
+              экранда сырғытатын тізім де жоқ — сондықтан жабатын жолды
+              өз қолымызбен қоямыз, әйтпесе пернетақта тұрып қалады.
+            */}
+            <Pressable
+              onPress={() => Keyboard.dismiss()}
+              style={styles.customDone}
+              hitSlop={8}
+              accessibilityRole="button"
+            >
+              <Text style={styles.customDoneText}>{kk.common.done}</Text>
+            </Pressable>
           </View>
         )}
 
@@ -500,6 +519,7 @@ export default function FocusScreen() {
         )}
       </View>
     </View>
+    </KeyboardFrame>
   );
 }
 
@@ -603,6 +623,11 @@ const styles = StyleSheet.create({
     color: '#FFFFFF', minWidth: 60, paddingVertical: 2,
   },
   customUnit: { fontFamily: font.title, fontSize: 12, color: C.darkInk2 },
+  customDone: {
+    marginLeft: 'auto', paddingHorizontal: 12, paddingVertical: 5,
+    borderRadius: R.chip, backgroundColor: C.accent,
+  },
+  customDoneText: { fontFamily: font.title, fontSize: 11, color: '#FFFFFF' },
   preset: {
     flexGrow: 1, alignItems: 'center', paddingVertical: 12, paddingHorizontal: 10,
     borderRadius: R.chip, backgroundColor: C.darkCard,

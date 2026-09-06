@@ -43,7 +43,12 @@ export function DayPanel({ date, tasks, onToggle, onFocus, onAdd, width }: Props
           <Text style={styles.emptyText}>Бұл күнге тапсырма жоқ</Text>
         </View>
       ) : (
-        <ScrollView style={styles.list} showsVerticalScrollIndicator={false}>
+        <ScrollView
+          style={styles.list}
+          showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
+          keyboardDismissMode="on-drag"
+        >
           {tasks.map((t, i) => (
             <TaskRow
               key={t.id}

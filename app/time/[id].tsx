@@ -77,6 +77,9 @@ export default function GoalTimeScreen() {
         paddingBottom: insets.bottom + 28,
       }}
       showsVerticalScrollIndicator={false}
+      keyboardShouldPersistTaps="handled"
+      // ⚠ Сан пернетақтасында «Дайын» түймесі жоқ — тізімді сүйреп жабады
+      keyboardDismissMode="on-drag"
     >
       <View style={styles.header}>
         <Pressable onPress={() => goBack('/time')} hitSlop={10} accessibilityRole="button">

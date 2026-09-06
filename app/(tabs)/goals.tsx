@@ -46,6 +46,9 @@ export default function GoalsScreen() {
       style={styles.screen}
       contentContainerStyle={{ ...centered, paddingTop: insets.top + 18, paddingBottom: 32 }}
       showsVerticalScrollIndicator={false}
+      keyboardShouldPersistTaps="handled"
+      // ⚠ Сан пернетақтасында «Дайын» түймесі жоқ — тізімді сүйреп жабады
+      keyboardDismissMode="on-drag"
     >
       {wide ? (
         <TopBar

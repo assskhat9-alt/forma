@@ -23,6 +23,7 @@ import {
   useCreateAction,
   useRootGoals,
 } from '../../lib/goals';
+import { KeyboardFrame } from '../../components/layout/KeyboardFrame';
 import { CalendarPhone } from '../../components/calendar/CalendarPhone';
 import { CalendarWide } from '../../components/calendar/CalendarWide';
 import type { TaskDraft } from '../../components/calendar/TaskForm';
@@ -117,8 +118,13 @@ export default function CalendarScreen() {
     onToggleSeg: () => setSegOpen((v) => !v),
   };
 
-  if (bp === 'phone') return <CalendarPhone {...shared} />;
-  return <CalendarWide bp={bp} {...shared} />;
+  // ⚠ Тапсырма қосу пішіні екі нұсқада да экранның төменгі жағында
+  // тұр — пернетақтасыз ол көрінбей қалады.
+  return (
+    <KeyboardFrame>
+      {bp === 'phone' ? <CalendarPhone {...shared} /> : <CalendarWide bp={bp} {...shared} />}
+    </KeyboardFrame>
+  );
 }
 
 const styles = StyleSheet.create({

@@ -113,7 +113,12 @@ export function CalendarPhone(p: Props) {
             <Text style={styles.pct}>{tpl(kk.calendar.donePct, { pct })}</Text>
           </View>
 
-          <ScrollView showsVerticalScrollIndicator={false} style={{ flexGrow: 1, flexShrink: 1 }}>
+          <ScrollView
+            showsVerticalScrollIndicator={false}
+            style={{ flexGrow: 1, flexShrink: 1 }}
+            keyboardShouldPersistTaps="handled"
+            keyboardDismissMode="on-drag"
+          >
             {p.tasks.length === 0 ? (
               <View style={styles.empty}>
                 <Text style={styles.emptyText}>{kk.common.empty}</Text>

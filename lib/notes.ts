@@ -9,23 +9,14 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 import { supabase } from './supabase';
 import type { Note } from './database.types';
+import type { Stroke } from './notes.format';
+
+// Таза есептер бөлек файлда — олар базаны білмейді, тестпен тексеріледі
+export {
+  parseStrokes, groupNotes, noteDate, notePreview, type Stroke,
+} from './notes.format';
 
 const KEY = ['notes'] as const;
-
-/**
- * Бір сызық.
- *
- * Схемадағы пішін: {tool,color,width,opacity,points:[[x,y],…]}.
- * Құрал типі де сақталады — маркердің мөлдірлігі мен қаламның
- * қалыңдығы кейін ашқанда сол күйінде тұруы керек.
- */
-export type Stroke = {
-  tool: 'pen' | 'marker';
-  color: string;
-  width: number;
-  opacity: number;
-  points: [number, number][];
-};
 
 export function useNotes() {
   return useQuery({
@@ -96,16 +87,5 @@ export function useDeleteNote() {
       if (error) throw error;
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: KEY }),
-  });
-}
-
-/** jsonb-дан келген нәрсе сызық тізімі ме — базада ескі пішін жатуы мүмкін */
-export function parseStrokes(raw: unknown): Stroke[] {
-  if (!Array.isArray(raw)) return [];
-
-  return raw.filter((s): s is Stroke => {
-    if (!s || typeof s !== 'object') return false;
-    const o = s as Record<string, unknown>;
-    return Array.isArray(o.points) && typeof o.color === 'string';
   });
 }

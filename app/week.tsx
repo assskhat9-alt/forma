@@ -12,23 +12,37 @@
  * ‹ › арқылы өткен апталарды қарауға болады, болашақ аптаға өтуге
  * болмайды: әлі болмаған нәрсенің қорытындысы жоқ.
  */
-import React, { useEffect, useState } from 'react';
-import { View, Text, ScrollView, Pressable, TextInput, StyleSheet, ActivityIndicator } from 'react-native';
+import React, { useEffect, useRef, useState } from 'react';
+import { View, Text, ScrollView, Pressable, StyleSheet, ActivityIndicator } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { color as C, radius as R, font, gutter, centered } from '../theme/tokens';
 import { kk, formatDayMonth, t as tpl } from '../i18n/kk';
 import { goBack } from '../lib/nav';
 import { errorText } from '../lib/errors';
+import { useAutosave } from '../lib/autosave';
 import { useBreakpoint } from '../lib/breakpoints';
 import { weekNumber } from '../lib/calendar';
 import { fmtMinutes, startOfWeek, addDays } from '../lib/report';
 import {
   useWeekSummary, useMoveAction, useDropAction, useRootIdOf,
-  useWeekLesson, useSaveWeekLesson,
+  useWeekLesson, useWeekLessons, useSaveWeekLesson, useDeleteWeekLesson,
 } from '../lib/week';
 import { Card, DarkCard, SectionLabel } from '../components/ui';
 import { ChevronLeftIcon, ChevronRightIcon, CheckIcon, ClockIcon } from '../components/icons';
+import { KeyboardFrame } from '../components/layout/KeyboardFrame';
+import { LessonNote } from '../components/week/LessonNote';
+
+/**
+ * Жаңа жазбаның уақыт таңбасы.
+ *
+ * Қазіргі апта болса — нақты қазіргі уақыт. Өткен апта болса — сол
+ * аптаның соңғы күні: жазба сол аптаның ішінде тұруы керек, әйтпесе
+ * оны кейін ол апта бойынша іздегенде табылмайды.
+ */
+function stampFor(from: Date, to: Date, now: Date) {
+  return now >= from && now <= addDays(to, 1) ? now : to;
+}
 
 export default function WeekScreen() {
   const insets = useSafeAreaInsets();
@@ -38,20 +52,76 @@ export default function WeekScreen() {
   const [weekStart, setWeekStart] = useState(() => startOfWeek(now));
   const [note, setNote] = useState('');
   const [error, setError] = useState<string | null>(null);
-  const [saved, setSaved] = useState(false);
 
   const rep = useWeekSummary(weekStart, now);
-  const { data: lesson } = useWeekLesson(rep.from, rep.to);
+  const { data: lesson, isPending: lessonPending } = useWeekLesson(rep.from, rep.to);
+  const { data: lessons } = useWeekLessons();
   const rootIdOf = useRootIdOf();
   const move = useMoveAction();
   const drop = useDropAction();
   const saveLesson = useSaveWeekLesson();
+  const removeLesson = useDeleteWeekLesson();
 
-  // Апта ауысқанда сол аптаның сабағы өріске түседі
+  /**
+   * ⚠ Жазбаның id-і ref-те тұрады, state-те емес. Себебі автосақтау
+   * таймердің ішінен шақырылады: state сол сәттегі ЕСКІ мәнмен қатып
+   * қалады да, жаңа ғана қосылған жазбаның id-ін көрмей, әр сақтау
+   * сайын тағы бір жазба қосып жіберер еді.
+   */
+  const lessonId = useRef<string | null>(null);
+
+  /**
+   * Жазбаны базаға жіберу — «Менің ойларымдағы» сияқты автосақтау.
+   *
+   * ⚠ Мәтін мүлде тазаланса, жазба ӨШІРІЛЕДІ: бос жазба сақтаудың
+   * мәні жоқ.
+   */
+  const auto = useAutosave<string>({
+    onSave: async (raw) => {
+      const body = raw.trim();
+      const id = lessonId.current;
+
+      if (!body) {
+        if (id) {
+          await removeLesson.mutateAsync(id);
+          lessonId.current = null;
+        }
+        return;
+      }
+
+      const row = await saveLesson.mutateAsync({
+        id, body, at: stampFor(rep.from, rep.to, now),
+      });
+      lessonId.current = row.id;
+    },
+    onError: (e) => setError(errorText(e)),
+  });
+
+  /**
+   * Апта ауысқанда сол аптаның сабағы өріске түседі.
+   *
+   * ⚠ Тек аптасы бойынша БІР РЕТ. Әйтпесе автосақтау аяқталып,
+   * сұраныс жаңарған сайын өріс серверден келген ескі мәтінмен
+   * ауысып, адамның сол екі арада жазғаны жоғалып отырар еді.
+   */
+  const weekKey = rep.from.getTime();
+  const filledFor = useRef<number | null>(null);
+
   useEffect(() => {
+    if (lessonPending) return;
+    if (filledFor.current === weekKey) return;
+    filledFor.current = weekKey;
     setNote(lesson?.body ?? '');
-    setSaved(false);
-  }, [lesson?.id, rep.from.getTime()]); // eslint-disable-line react-hooks/exhaustive-deps
+    lessonId.current = lesson?.id ?? null;
+    auto.reset();
+  }, [weekKey, lessonPending, lesson?.id, lesson?.body, auto]);
+
+  // Аптаның аты — жазбаның «мұқабасы» да, жоғарғы жолақтағы тақырып та
+  const rangeLabel = tpl(kk.week.range, {
+    n: weekNumber(rep.from),
+    from: formatDayMonth(rep.from),
+    to: formatDayMonth(rep.to),
+  });
 
   const current = startOfWeek(now).getTime() === rep.from.getTime();
   const peak = Math.max(1, ...rep.trend.map((t) => t.pct));
@@ -66,259 +136,230 @@ export default function WeekScreen() {
     );
   };
 
-  const saveNote = () => {
-    const body = note.trim();
-    if (!body) return;
-    setError(null);
-
-    // ⚠ Бар болса ЖАҢАРТЫЛАДЫ: бір аптаға бір ғана сабақ
-    saveLesson.mutate(
-      { id: lesson?.id ?? null, body },
-      { onSuccess: () => setSaved(true), onError: (e) => setError(errorText(e)) },
-    );
+  // Апта ауыспас бұрын жазылмай қалғанын жіберіп үлгереміз
+  const goWeek = (next: Date) => {
+    auto.flush();
+    setWeekStart(next);
   };
 
   return (
-    <ScrollView
-      style={styles.screen}
-      contentContainerStyle={{
-        ...centered,
-        paddingTop: insets.top + (wide ? 18 : 12),
-        paddingBottom: insets.bottom + 28,
-      }}
-      showsVerticalScrollIndicator={false}
-    >
-      <View style={styles.header}>
-        <Pressable onPress={() => goBack('/')} hitSlop={10} accessibilityRole="button">
-          <ChevronLeftIcon size={20} color={C.ink} strokeWidth={2.2} />
-        </Pressable>
-        <Text style={styles.headerTitle}>{kk.week.title}</Text>
-        <View style={{ width: 20 }} />
-      </View>
-
-      <View style={styles.body}>
-        {/* ── Апта ауыстырғышы ── */}
-        <View style={styles.nav}>
-          <Pressable
-            onPress={() => setWeekStart((w) => addDays(w, -7))}
-            style={styles.arrow}
-            accessibilityRole="button"
-            accessibilityLabel={kk.week.prev}
-          >
-            <ChevronLeftIcon size={14} color={C.ink3} strokeWidth={2.4} />
+    <KeyboardFrame>
+      <ScrollView
+        style={styles.screen}
+        contentContainerStyle={{
+          ...centered,
+          paddingTop: insets.top + (wide ? 18 : 12),
+          paddingBottom: insets.bottom + 28,
+        }}
+        showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
+        // ⚠ Сан пернетақтасында «Дайын» түймесі жоқ — тізімді сүйреп жабады
+        keyboardDismissMode="on-drag"
+      >
+        <View style={styles.header}>
+          <Pressable onPress={() => goBack('/')} hitSlop={10} accessibilityRole="button">
+            <ChevronLeftIcon size={20} color={C.ink} strokeWidth={2.2} />
           </Pressable>
-
-          <Text style={styles.navTitle}>
-            {tpl(kk.week.range, {
-              n: weekNumber(rep.from),
-              from: formatDayMonth(rep.from),
-              to: formatDayMonth(rep.to),
-            })}
-          </Text>
-
-          <Pressable
-            onPress={() => rep.canGoNext && setWeekStart((w) => addDays(w, 7))}
-            disabled={!rep.canGoNext}
-            style={[styles.arrow, !rep.canGoNext && { opacity: 0.3 }]}
-            accessibilityRole="button"
-            accessibilityLabel={kk.week.next}
-          >
-            <ChevronRightIcon size={14} color={C.ink3} strokeWidth={2.4} />
-          </Pressable>
+          <Text style={styles.headerTitle}>{kk.week.title}</Text>
+          <View style={{ width: 20 }} />
         </View>
 
-        {rep.isLoading ? (
-          <Card style={styles.pad}>
-            <View style={styles.center}>
-              <ActivityIndicator color={C.accent} />
-            </View>
-          </Card>
-        ) : (
-          <>
-            {/* ── Аптаның пайызы ── */}
-            <DarkCard style={styles.hero}>
-              <View style={styles.heroRow}>
-                <View style={{ flexGrow: 1, flexShrink: 1, minWidth: 0 }}>
-                  <Text style={styles.heroLabel}>
-                    {current ? kk.week.thisWeek : kk.week.done}
-                  </Text>
+        <View style={styles.body}>
+          {/* ── Апта ауыстырғышы ── */}
+          <View style={styles.nav}>
+            <Pressable
+              onPress={() => goWeek(addDays(weekStart, -7))}
+              style={styles.arrow}
+              accessibilityRole="button"
+              accessibilityLabel={kk.week.prev}
+            >
+              <ChevronLeftIcon size={14} color={C.ink3} strokeWidth={2.4} />
+            </Pressable>
 
-                  <View style={styles.bigRow}>
-                    <Text style={styles.big}>{rep.pct}%</Text>
-                    {rep.delta != null && rep.delta !== 0 && (
-                      <Text
-                        style={[
-                          styles.delta,
-                          { color: rep.delta > 0 ? C.accent2 : C.darkInk3 },
-                        ]}
-                      >
-                        {rep.delta > 0 ? '+' : '−'}
-                        {Math.abs(rep.delta)}%
-                      </Text>
-                    )}
+            <Text style={styles.navTitle}>{rangeLabel}</Text>
+
+            <Pressable
+              onPress={() => rep.canGoNext && goWeek(addDays(weekStart, 7))}
+              disabled={!rep.canGoNext}
+              style={[styles.arrow, !rep.canGoNext && { opacity: 0.3 }]}
+              accessibilityRole="button"
+              accessibilityLabel={kk.week.next}
+            >
+              <ChevronRightIcon size={14} color={C.ink3} strokeWidth={2.4} />
+            </Pressable>
+          </View>
+
+          {rep.isLoading ? (
+            <Card style={styles.pad}>
+              <View style={styles.center}>
+                <ActivityIndicator color={C.accent} />
+              </View>
+            </Card>
+          ) : (
+            <>
+              {/* ── Аптаның пайызы ── */}
+              <DarkCard style={styles.hero}>
+                <View style={styles.heroRow}>
+                  <View style={{ flexGrow: 1, flexShrink: 1, minWidth: 0 }}>
+                    <Text style={styles.heroLabel}>
+                      {current ? kk.week.thisWeek : kk.week.done}
+                    </Text>
+
+                    <View style={styles.bigRow}>
+                      <Text style={styles.big}>{rep.pct}%</Text>
+                      {rep.delta != null && rep.delta !== 0 && (
+                        <Text
+                          style={[
+                            styles.delta,
+                            { color: rep.delta > 0 ? C.accent2 : C.darkInk3 },
+                          ]}
+                        >
+                          {rep.delta > 0 ? '+' : '−'}
+                          {Math.abs(rep.delta)}%
+                        </Text>
+                      )}
+                    </View>
+
+                    <Text style={styles.heroSub}>
+                      {rep.delta == null
+                        ? kk.week.noCompare
+                        : tpl(kk.week.prevWas, { pct: rep.prevPct })}
+                    </Text>
                   </View>
 
-                  <Text style={styles.heroSub}>
-                    {rep.delta == null
-                      ? kk.week.noCompare
-                      : tpl(kk.week.prevWas, { pct: rep.prevPct })}
+                  {/* Серпін — соңғы бірнеше апта */}
+                  <View style={styles.trend}>
+                    {rep.trend.map((t) => (
+                      <View
+                        key={t.key}
+                        style={[
+                          styles.trendBar,
+                          { height: Math.max(Math.round((t.pct / peak) * 54), 4) },
+                          t.current && { backgroundColor: C.accent },
+                        ]}
+                      />
+                    ))}
+                  </View>
+                </View>
+              </DarkCard>
+
+              {/* ── Сандар ── */}
+              <View style={styles.tiles}>
+                <Card level="cardSm" radius={R.cardSm} style={styles.tile}>
+                  <View style={styles.tileHead}>
+                    <CheckIcon size={13} color={C.accent} strokeWidth={3.2} />
+                    <SectionLabel>{kk.week.done}</SectionLabel>
+                  </View>
+                  <Text style={styles.tileValue}>{rep.done}</Text>
+                </Card>
+
+                <Card level="cardSm" radius={R.cardSm} style={styles.tile}>
+                  <View style={styles.tileHead}>
+                    <ClockIcon size={13} color={C.ink3} strokeWidth={2.6} />
+                    <SectionLabel>{kk.week.missed}</SectionLabel>
+                  </View>
+                  <Text style={[styles.tileValue, { color: C.ink3 }]}>
+                    {rep.missed.length}
+                  </Text>
+                </Card>
+              </View>
+
+              {/* ── Фокус пен әдеттер ── */}
+              <Card style={styles.pad}>
+                <View style={styles.line}>
+                  <Text style={styles.lineLabel}>{kk.week.focus}</Text>
+                  <Text style={styles.lineValue}>
+                    {rep.focusMinutes > 0 ? fmtMinutes(rep.focusMinutes) : '—'}
                   </Text>
                 </View>
-
-                {/* Серпін — соңғы бірнеше апта */}
-                <View style={styles.trend}>
-                  {rep.trend.map((t) => (
-                    <View
-                      key={t.key}
-                      style={[
-                        styles.trendBar,
-                        { height: Math.max(Math.round((t.pct / peak) * 54), 4) },
-                        t.current && { backgroundColor: C.accent },
-                      ]}
-                    />
-                  ))}
-                </View>
-              </View>
-            </DarkCard>
-
-            {/* ── Сандар ── */}
-            <View style={styles.tiles}>
-              <Card level="cardSm" radius={R.cardSm} style={styles.tile}>
-                <View style={styles.tileHead}>
-                  <CheckIcon size={13} color={C.accent} strokeWidth={3.2} />
-                  <SectionLabel>{kk.week.done}</SectionLabel>
-                </View>
-                <Text style={styles.tileValue}>{rep.done}</Text>
-              </Card>
-
-              <Card level="cardSm" radius={R.cardSm} style={styles.tile}>
-                <View style={styles.tileHead}>
-                  <ClockIcon size={13} color={C.ink3} strokeWidth={2.6} />
-                  <SectionLabel>{kk.week.missed}</SectionLabel>
-                </View>
-                <Text style={[styles.tileValue, { color: C.ink3 }]}>
-                  {rep.missed.length}
-                </Text>
-              </Card>
-            </View>
-
-            {/* ── Фокус пен әдеттер ── */}
-            <Card style={styles.pad}>
-              <View style={styles.line}>
-                <Text style={styles.lineLabel}>{kk.week.focus}</Text>
-                <Text style={styles.lineValue}>
-                  {rep.focusMinutes > 0 ? fmtMinutes(rep.focusMinutes) : '—'}
-                </Text>
-              </View>
-              <View style={[styles.line, styles.lineTop]}>
-                <Text style={styles.lineLabel}>{kk.week.habits}</Text>
-                <Text style={styles.lineValue}>
-                  {rep.habitPlanned > 0 ? `${rep.habitDone} / ${rep.habitPlanned}` : '—'}
-                </Text>
-              </View>
-              {rep.ahead > 0 && (
                 <View style={[styles.line, styles.lineTop]}>
-                  <Text style={styles.lineLabel}>{kk.week.ahead}</Text>
-                  <Text style={styles.lineValue}>{rep.ahead}</Text>
+                  <Text style={styles.lineLabel}>{kk.week.habits}</Text>
+                  <Text style={styles.lineValue}>
+                    {rep.habitPlanned > 0 ? `${rep.habitDone} / ${rep.habitPlanned}` : '—'}
+                  </Text>
                 </View>
-              )}
-            </Card>
+                {rep.ahead > 0 && (
+                  <View style={[styles.line, styles.lineTop]}>
+                    <Text style={styles.lineLabel}>{kk.week.ahead}</Text>
+                    <Text style={styles.lineValue}>{rep.ahead}</Text>
+                  </View>
+                )}
+              </Card>
 
-            {/* ── Қалып қойғандар ── */}
-            {rep.missed.length > 0 && (
-              <>
-                <SectionLabel style={{ paddingLeft: 4 }}>{kk.week.whatNext}</SectionLabel>
+              {/* ── Қалып қойғандар ── */}
+              {rep.missed.length > 0 && (
+                <>
+                  <SectionLabel style={{ paddingLeft: 4 }}>{kk.week.whatNext}</SectionLabel>
 
-                <Card style={styles.pad}>
-                  {rep.missed.map((a, i) => (
-                    <View key={a.id} style={[styles.slip, i > 0 && styles.lineTop]}>
-                      <View style={{ flexGrow: 1, flexShrink: 1, minWidth: 0 }}>
-                        <Text style={styles.slipTitle} numberOfLines={2}>
-                          {a.title}
-                        </Text>
-                        <View style={styles.slipMeta}>
-                          <Text style={styles.slipDate}>
-                            {formatDayMonth(new Date(a.date + 'T00:00:00'))}
+                  <Card style={styles.pad}>
+                    {rep.missed.map((a, i) => (
+                      <View key={a.id} style={[styles.slip, i > 0 && styles.lineTop]}>
+                        <View style={{ flexGrow: 1, flexShrink: 1, minWidth: 0 }}>
+                          <Text style={styles.slipTitle} numberOfLines={2}>
+                            {a.title}
                           </Text>
-                          {a.goal && (
-                            <View style={styles.goalChip}>
-                              <View style={[styles.dot, { backgroundColor: a.goal.color }]} />
-                              <Text style={styles.goalText} numberOfLines={1}>
-                                {a.goal.title}
-                              </Text>
-                            </View>
-                          )}
+                          <View style={styles.slipMeta}>
+                            <Text style={styles.slipDate}>
+                              {formatDayMonth(new Date(a.date + 'T00:00:00'))}
+                            </Text>
+                            {a.goal && (
+                              <View style={styles.goalChip}>
+                                <View style={[styles.dot, { backgroundColor: a.goal.color }]} />
+                                <Text style={styles.goalText} numberOfLines={1}>
+                                  {a.goal.title}
+                                </Text>
+                              </View>
+                            )}
+                          </View>
+                        </View>
+
+                        <View style={styles.slipBtns}>
+                          <Pressable
+                            onPress={() => moveToNextWeek(a.id, a.date)}
+                            disabled={move.isPending}
+                            style={[styles.btn, styles.btnMove]}
+                            accessibilityRole="button"
+                          >
+                            <Text style={styles.btnMoveText}>{kk.week.moveOn}</Text>
+                          </Pressable>
+
+                          <Pressable
+                            onPress={() => drop.mutate(a.id)}
+                            disabled={drop.isPending}
+                            style={styles.btn}
+                            accessibilityRole="button"
+                          >
+                            <Text style={styles.btnText}>{kk.week.close}</Text>
+                          </Pressable>
                         </View>
                       </View>
+                    ))}
 
-                      <View style={styles.slipBtns}>
-                        <Pressable
-                          onPress={() => moveToNextWeek(a.id, a.date)}
-                          disabled={move.isPending}
-                          style={[styles.btn, styles.btnMove]}
-                          accessibilityRole="button"
-                        >
-                          <Text style={styles.btnMoveText}>{kk.week.moveOn}</Text>
-                        </Pressable>
+                    <Text style={styles.hint}>{kk.week.closeHint}</Text>
+                  </Card>
+                </>
+              )}
 
-                        <Pressable
-                          onPress={() => drop.mutate(a.id)}
-                          disabled={drop.isPending}
-                          style={styles.btn}
-                          accessibilityRole="button"
-                        >
-                          <Text style={styles.btnText}>{kk.week.close}</Text>
-                        </Pressable>
-                      </View>
-                    </View>
-                  ))}
+              {/* ── Аптаның сабағы ── */}
+              <SectionLabel style={{ paddingLeft: 4 }}>{kk.week.lesson}</SectionLabel>
 
-                  <Text style={styles.hint}>{kk.week.closeHint}</Text>
-                </Card>
-              </>
-            )}
-
-            {/* ── Аптаның сабағы ── */}
-            <SectionLabel style={{ paddingLeft: 4 }}>{kk.week.lesson}</SectionLabel>
-
-            <Card style={styles.pad}>
-              <TextInput
+              <LessonNote
+                weekLabel={rangeLabel}
                 value={note}
-                onChangeText={(v) => {
-                  setNote(v);
-                  setSaved(false);
-                }}
-                placeholder={kk.week.lessonPlaceholder}
-                placeholderTextColor={C.ink4}
-                multiline
-                textAlignVertical="top"
-                style={styles.textarea}
+                onChange={(v) => { setNote(v); auto.push(v); }}
+                onBlur={auto.flush}
+                state={auto.state}
+                currentId={lessonId.current}
+                lessons={lessons ?? []}
+                onOpen={(d) => goWeek(startOfWeek(d))}
               />
 
-              <Pressable
-                onPress={saveNote}
-                disabled={!note.trim() || saveLesson.isPending}
-                style={[
-                  styles.save,
-                  (!note.trim() || saveLesson.isPending) && { opacity: 0.45 },
-                ]}
-                accessibilityRole="button"
-              >
-                {saveLesson.isPending ? (
-                  <ActivityIndicator color="#FFFFFF" size="small" />
-                ) : (
-                  <Text style={styles.saveText}>{kk.week.saveLesson}</Text>
-                )}
-              </Pressable>
-
-              {saved && <Text style={styles.ok}>{kk.week.lessonSaved}</Text>}
-            </Card>
-
-            {error && <Text style={styles.error}>{error}</Text>}
-          </>
-        )}
-      </View>
-    </ScrollView>
+              {error && <Text style={styles.error}>{error}</Text>}
+            </>
+          )}
+        </View>
+      </ScrollView>
+    </KeyboardFrame>
   );
 }
 
@@ -400,17 +441,4 @@ const styles = StyleSheet.create({
 
   hint: { fontFamily: font.prose, fontSize: 11, lineHeight: 16, color: C.ink4, marginTop: 12 },
 
-  textarea: {
-    minHeight: 84,
-    borderWidth: 1.5, borderColor: C.lineField, borderRadius: R.cardXs,
-    paddingHorizontal: 13, paddingVertical: 12,
-    fontFamily: font.prose, fontSize: 12.5, lineHeight: 19, color: C.ink,
-    outlineStyle: 'none' as never,
-  },
-  save: {
-    marginTop: 12, height: 46, borderRadius: R.sm, backgroundColor: C.accent,
-    alignItems: 'center', justifyContent: 'center',
-  },
-  saveText: { fontFamily: font.bold, fontSize: 13.5, color: '#FFFFFF' },
-  ok: { fontFamily: font.bold, fontSize: 11.5, color: C.accentDeep, marginTop: 10, textAlign: 'center' },
 });
