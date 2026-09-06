@@ -22,7 +22,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { color as C, radius as R, font, centered } from '../../theme/tokens';
 import { kk } from '../../i18n/kk';
-import { supabase } from '../../lib/supabase';
+import { supabase, signInWithApple } from '../../lib/supabase';
 import { Atmosphere } from '../../components/auth/Atmosphere';
 import { CascadeMark, AppleIcon, MailIcon, PhoneIcon, ChevronLeftIcon } from '../../components/icons';
 import { KeyboardFrame } from '../../components/layout/KeyboardFrame';
@@ -83,6 +83,19 @@ export default function SignIn() {
     }
   };
 
+  const handleAppleSignIn = async () => {
+    setError(null);
+    setNote(null);
+    setBusy(true);
+    try {
+      await signInWithApple();
+    } catch (e) {
+      setError(readableError(e));
+    } finally {
+      setBusy(false);
+    }
+  };
+
   return (
     <View style={styles.root}>
       <Atmosphere />
@@ -129,12 +142,19 @@ export default function SignIn() {
 
               <View style={styles.actions}>
                 <Pressable
-                  style={[styles.btn, styles.btnDark]}
-                  onPress={() => setNote(kk.signIn.appleSoon)}
+                  style={[styles.btn, styles.btnDark, busy && { opacity: 0.7 }]}
+                  onPress={handleAppleSignIn}
+                  disabled={busy}
                   accessibilityRole="button"
                 >
-                  <AppleIcon size={17} color="#FFFFFF" />
-                  <Text style={styles.btnDarkText}>{kk.signIn.apple}</Text>
+                  {busy ? (
+                    <ActivityIndicator color="#FFFFFF" size="small" />
+                  ) : (
+                    <>
+                      <AppleIcon size={17} color="#FFFFFF" />
+                      <Text style={styles.btnDarkText}>{kk.signIn.apple}</Text>
+                    </>
+                  )}
                 </Pressable>
 
                 <Pressable
@@ -240,6 +260,9 @@ function readableError(e: unknown): string {
   }
   if (msg.includes('password') && msg.includes('6')) return kk.signIn.errors.short;
   if (msg.includes('network') || msg.includes('fetch')) return kk.signIn.errors.network;
+  if (msg.includes('provider is not enabled') || msg.includes('unsupported provider')) {
+    return 'Supabase-те Apple арқылы кіру әлі қосылмаған. Supabase Authentication → Providers → Apple бөлімін қосыңыз.';
+  }
   return e instanceof Error ? e.message : kk.common.loadError;
 }
 

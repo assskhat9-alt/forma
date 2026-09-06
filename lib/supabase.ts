@@ -12,6 +12,7 @@ import 'react-native-url-polyfill/auto';
 import { createClient } from '@supabase/supabase-js';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Platform } from 'react-native';
+import * as Linking from 'expo-linking';
 
 import type { Database, GoalStats } from './database.types';
 
@@ -60,6 +61,55 @@ export async function signOut() {
 export async function currentUserId(): Promise<string | null> {
   const { data } = await supabase.auth.getSession();
   return data.session?.user.id ?? null;
+}
+
+export async function signInWithApple() {
+  if (Platform.OS === 'ios') {
+    try {
+      const AppleAuth = await import('expo-apple-authentication');
+      const isAvailable = await AppleAuth.isAvailableAsync();
+      if (isAvailable) {
+        const credential = await AppleAuth.signInAsync({
+          requestedScopes: [
+            AppleAuth.AppleAuthenticationScope.FULL_NAME,
+            AppleAuth.AppleAuthenticationScope.EMAIL,
+          ],
+        });
+        if (!credential.identityToken) {
+          throw new Error('Apple ID таңбасы алынбады.');
+        }
+        const { data, error } = await supabase.auth.signInWithIdToken({
+          provider: 'apple',
+          token: credential.identityToken,
+        });
+        if (error) throw error;
+        return data;
+      }
+    } catch (e: unknown) {
+      const err = e as { code?: string };
+      if (err?.code === 'ERR_REQUEST_CANCELED') {
+        return null;
+      }
+      throw e;
+    }
+  }
+
+  // Веб және басқа платформалар: Supabase OAuth арқылы
+  const redirectTo =
+    Platform.OS === 'web'
+      ? typeof window !== 'undefined'
+        ? window.location.origin
+        : undefined
+      : Linking.createURL('/');
+
+  const { data, error } = await supabase.auth.signInWithOAuth({
+    provider: 'apple',
+    options: {
+      redirectTo,
+    },
+  });
+  if (error) throw error;
+  return data;
 }
 
 // ── Есеп RPC-лері ───────────────────────────────────────────────────
