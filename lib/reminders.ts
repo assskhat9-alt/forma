@@ -30,14 +30,16 @@ const CHANNEL = 'forma-actions';
 
 export const supported = Platform.OS !== 'web';
 
-Notifications.setNotificationHandler({
-  handleNotification: async () => ({
-    shouldShowBanner: true,
-    shouldShowList: true,
-    shouldPlaySound: false,
-    shouldSetBadge: false,
-  }),
-});
+if (supported) {
+  Notifications.setNotificationHandler({
+    handleNotification: async () => ({
+      shouldShowBanner: true,
+      shouldShowList: true,
+      shouldPlaySound: false,
+      shouldSetBadge: false,
+    }),
+  });
+}
 
 /** Рұқсат сұрау — бас тартса қолданба бәрібір жұмыс істей береді */
 export async function askPermission(): Promise<boolean> {
