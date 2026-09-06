@@ -236,7 +236,10 @@ export const kk = {
     finishConfirm: 'Растаңыз — архивке кетеді',
     reopen: 'Аяқталды · қайта ашу',
     delete: 'Мақсатты өшіру',
+    deleteShort: 'Өшіру',
     deleteConfirm: 'Шынымен өшіресіз бе?',
+    deletePrompt: '«{title}» мақсатын өшіруді растайсыз ба?',
+    cancel: 'Бас тарту',
     orphanWarning: 'Мерзімнен тыс {n} ай әрекеттерімен бірге сақталды.',
   },
 

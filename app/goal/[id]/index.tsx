@@ -15,25 +15,22 @@ import { useLocalSearchParams, router } from 'expo-router';
 import { differenceInCalendarDays } from 'date-fns';
 
 import { color as C, radius as R, font, gutter, centered } from '../../../theme/tokens';
-import { kk, formatDayMonth, t as tpl } from '../../../i18n/kk';
+import { kk, t as tpl } from '../../../i18n/kk';
 import {
-  useGoals, useMonths, useNodeStats, useChildrenStats, useCompleteGoal, useDeleteGoal,
+  useGoals, useMonths, useNodeStats, useChildrenStats, useDeleteGoal,
 } from '../../../lib/goals';
 import { goBack } from '../../../lib/nav';
-import { Card, DarkCard, SectionLabel, ProgressBar } from '../../../components/ui';
+import { SectionLabel } from '../../../components/ui';
 import {
-  CheckIcon,
   TrashIcon,
   ChevronLeftIcon,
-  DotsIcon,
-  CalendarChipIcon,
-  ChevronRightIcon,
 } from '../../../components/icons';
+import { GoalHero } from '../../../components/goals/GoalHero';
+import { MonthItemCard } from '../../../components/goals/MonthItemCard';
+import { GoalActions } from '../../../components/goals/GoalActions';
 
 export default function GoalDetail() {
-  const complete = useCompleteGoal();
   const deleteGoal = useDeleteGoal();
-  const [confirmDone, setConfirmDone] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const insets = useSafeAreaInsets();
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -98,76 +95,71 @@ export default function GoalDetail() {
         </Pressable>
         <Text style={styles.headerTitle}>{kk.goal.title}</Text>
         <Pressable
-          onPress={() => setConfirmDelete((v) => !v)}
+          onPress={() => {
+            if (confirmDelete) {
+              deleteGoal.mutate(goal.id, {
+                onSuccess: () => goBack('/goals'),
+              });
+            } else {
+              setConfirmDelete(true);
+            }
+          }}
           hitSlop={10}
           accessibilityRole="button"
-          accessibilityLabel={kk.goal.delete}
+          accessibilityLabel={confirmDelete ? kk.goal.deleteConfirm : kk.goal.delete}
         >
           <TrashIcon size={18} color={confirmDelete ? C.accent : C.ink4} />
         </Pressable>
       </View>
 
+      {confirmDelete && (
+        <View style={styles.confirmBanner}>
+          <Text style={styles.confirmBannerText}>
+            {tpl(kk.goal.deletePrompt, { title: goal.title })}
+          </Text>
+          <View style={styles.confirmBannerBtns}>
+            <Pressable
+              onPress={() => {
+                deleteGoal.mutate(goal.id, {
+                  onSuccess: () => goBack('/goals'),
+                });
+              }}
+              disabled={deleteGoal.isPending}
+              style={styles.confirmBannerDeleteBtn}
+              accessibilityRole="button"
+              accessibilityLabel={kk.goal.delete}
+            >
+              {deleteGoal.isPending ? (
+                <ActivityIndicator color="#FFFFFF" size="small" />
+              ) : (
+                <>
+                  <TrashIcon size={14} color="#FFFFFF" strokeWidth={2.2} />
+                  <Text style={styles.confirmBannerDeleteText}>{kk.goal.deleteShort}</Text>
+                </>
+              )}
+            </Pressable>
+            <Pressable
+              onPress={() => setConfirmDelete(false)}
+              style={styles.confirmBannerCancelBtn}
+              accessibilityRole="button"
+            >
+              <Text style={styles.confirmBannerCancelText}>{kk.goal.cancel}</Text>
+            </Pressable>
+          </View>
+        </View>
+      )}
+
       <View style={styles.body}>
         {/* hero */}
-        <DarkCard style={styles.hero}>
-          <Text style={styles.heroLabel}>{kk.period.year}</Text>
-          <Text style={styles.heroTitle}>{goal.title}</Text>
-
-          <View style={styles.heroRow}>
-            <View style={styles.heroPctRow}>
-              <Text style={styles.heroPct}>{hasActions ? `${actual}%` : '0%'}</Text>
-              <Text style={styles.heroPctSub}>{kk.goal.completed}</Text>
-            </View>
-
-            <View style={styles.dueBox}>
-              <CalendarChipIcon size={14} color={C.accentOnDark} />
-              <View>
-                <Text style={styles.dueDate}>{formatDayMonth(due)}</Text>
-                <Text style={styles.dueLeft}>{tpl(kk.goal.daysLeft, { n: daysLeft })}</Text>
-              </View>
-            </View>
-          </View>
-
-          <ProgressBar
-            pct={actual}
-            plannedPct={hasActions ? planned : undefined}
-            height={8}
-            color={C.accentOnDark}
-            trackColor={C.darkTrack}
-            markerColor="#FFFFFF"
-            style={{ marginTop: 14 }}
-          />
-
-          <View style={styles.heroLegend}>
-            <Text style={styles.heroLegendText}>
-              {hasActions ? (
-                <>
-                  {tpl(kk.goal.needed, { planned })} ·{' '}
-                  <Text style={{ color: '#FFFFFF' }}>
-                    {gap === 0
-                      ? kk.goal.onTrack
-                      : gap > 0
-                        ? tpl(kk.goal.ahead, { n: gap })
-                        : tpl(kk.goal.behind, { n: Math.abs(gap) })}
-                  </Text>
-                </>
-              ) : (
-                kk.goal.noActions
-              )}
-            </Text>
-          </View>
-
-          {/* Нәтиже — пайызға қатыспайды */}
-          {goal.result_to != null && (
-            <View style={styles.resultRow}>
-              <Text style={styles.resultLabel}>{kk.goalNew.result}</Text>
-              <Text style={styles.resultValue}>
-                {goal.result_from != null ? `${fmt(goal.result_from)} → ` : ''}
-                {fmt(goal.result_to)} {goal.result_unit ?? ''}
-              </Text>
-            </View>
-          )}
-        </DarkCard>
+        <GoalHero
+          goal={goal}
+          actual={actual}
+          planned={planned}
+          gap={gap}
+          hasActions={hasActions}
+          due={due}
+          daysLeft={daysLeft}
+        />
 
         {/* мерзімнен тыс қалған айлар */}
         {orphans.length > 0 && (
@@ -181,141 +173,23 @@ export default function GoalDetail() {
         {/* АЙЛАР — жүйе ашқан қаңқа */}
         <SectionLabel style={{ paddingLeft: 4, marginTop: 4 }}>{kk.goal.months}</SectionLabel>
 
-        {months.map((m) => {
-          const st = statOf(m.id);
-          const total = st?.total ?? 0;
-          const done = st?.done ?? 0;
-          const pct = st?.actual ?? 0;
-          const current = m.period_start <= toIso(today) && m.period_end >= toIso(today);
-
-          return (
-            <Pressable
-              key={m.id}
-              onPress={() => router.push(`/month/${m.id}` as never)}
-              accessibilityRole="button"
-            >
-              <Card level="cardSm" radius={R.cardSm} style={styles.monthCard}>
-                <View style={styles.monthHead}>
-                  <View style={[styles.monthBadge, current && { backgroundColor: C.accent }]}>
-                    <Text style={[styles.monthBadgeText, current && { color: '#FFFFFF' }]}>
-                      {total > 0 ? pct : '—'}
-                    </Text>
-                  </View>
-
-                  <View style={{ flexGrow: 1, flexShrink: 1, minWidth: 0 }}>
-                    <View style={styles.monthTitleRow}>
-                      <Text style={styles.monthTitle}>{m.title}</Text>
-                      {current && (
-                        <View style={styles.currentChip}>
-                          <Text style={styles.currentText}>{kk.goal.current}</Text>
-                        </View>
-                      )}
-                    </View>
-                    <Text style={styles.monthRange}>
-                      {formatDayMonth(new Date(m.period_start + 'T00:00:00'))} —{' '}
-                      {formatDayMonth(new Date(m.period_end + 'T00:00:00'))}
-                    </Text>
-                  </View>
-
-                  <View style={styles.monthRight}>
-                    <Text style={[styles.monthCount, total === 0 && { color: C.ink4 }]}>
-                      {total === 0
-                        ? kk.goal.addAction
-                        : tpl(kk.goal.actionCount, { done, total })}
-                    </Text>
-                    <ChevronRightIcon size={15} color={C.inkIcon} />
-                  </View>
-                </View>
-
-                {total > 0 && (
-                  <ProgressBar
-                    pct={pct}
-                    color={current ? C.accent : C.accent5}
-                    height={4}
-                    style={{ marginTop: 10 }}
-                  />
-                )}
-              </Card>
-            </Pressable>
-          );
-        })}
-        {/*
-          Мақсатты аяқтау — АДАМНЫҢ шешімі. Жүйе оны 100%-ке жеткенде де
-          өзі жаппайды: мақсаттың бітті-бітпегенін пайыз емес, адам біледі.
-        */}
-        <Pressable
-          onPress={() =>
-            goal.status === 'done'
-              ? complete.mutate({ id: goal.id, done: false })
-              : confirmDone
-                ? complete.mutate({ id: goal.id, done: true })
-                : setConfirmDone(true)
-          }
-          disabled={complete.isPending}
-          style={[styles.finish, goal.status === 'done' && styles.finishOn]}
-          accessibilityRole="button"
-        >
-          <CheckIcon
-            size={13}
-            color={goal.status === 'done' ? C.accentDeep : C.ink3}
-            strokeWidth={3}
+        {months.map((m) => (
+          <MonthItemCard
+            key={m.id}
+            m={m}
+            stat={statOf(m.id)}
+            today={today}
           />
-          <Text
-            style={[styles.finishText, goal.status === 'done' && { color: C.accentDeep }]}
-          >
-            {goal.status === 'done'
-              ? kk.goal.reopen
-              : confirmDone
-                ? kk.goal.finishConfirm
-                : kk.goal.finish}
-          </Text>
-        </Pressable>
-
-        {/* Мақсатты өшіру */}
-        <Pressable
-          onPress={() => {
-            if (confirmDelete) {
-              deleteGoal.mutate(goal.id, {
-                onSuccess: () => {
-                  goBack('/goals');
-                },
-              });
-            } else {
-              setConfirmDelete(true);
-            }
-          }}
-          disabled={deleteGoal.isPending}
-          style={[styles.deleteBtn, confirmDelete && styles.deleteBtnConfirm]}
-          accessibilityRole="button"
-          accessibilityLabel={confirmDelete ? kk.goal.deleteConfirm : kk.goal.delete}
-        >
-          {deleteGoal.isPending ? (
-            <ActivityIndicator color={confirmDelete ? '#FFFFFF' : C.ink3} size="small" />
-          ) : (
-            <>
-              <TrashIcon
-                size={14}
-                color={confirmDelete ? '#FFFFFF' : C.ink3}
-                strokeWidth={2.2}
-              />
-              <Text
-                style={[styles.deleteBtnText, confirmDelete && { color: '#FFFFFF' }]}
-              >
-                {confirmDelete ? kk.goal.deleteConfirm : kk.goal.delete}
-              </Text>
-            </>
-          )}
-        </Pressable>
+        ))}
+        <GoalActions
+          goal={goal}
+          confirmDelete={confirmDelete}
+          setConfirmDelete={setConfirmDelete}
+        />
       </View>
     </ScrollView>
   );
 }
-
-/** Ондық бөлшек үтірмен жазылады (CLAUDE.md §9) */
-const fmt = (n: number) => String(n).replace('.', ',');
-
-const toIso = (d: Date) =>
-  `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: C.bg },
@@ -333,84 +207,57 @@ const styles = StyleSheet.create({
   },
   headerTitle: { fontFamily: font.display, fontSize: 12, letterSpacing: 1.92, color: C.ink },
   body: { paddingHorizontal: gutter, gap: 10 },
-  finish: {
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
-    height: 46, borderRadius: R.sm, marginTop: 6,
-    backgroundColor: C.card, borderWidth: 1.5, borderColor: C.line,
-  },
-  finishOn: { backgroundColor: C.tintSoft, borderColor: C.tintLine },
-  finishText: { fontFamily: font.bold, fontSize: 12.5, color: C.ink3 },
 
-  deleteBtn: {
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
-    height: 44, borderRadius: R.sm, marginTop: 4,
-    backgroundColor: C.card, borderWidth: 1.5, borderColor: C.lineField,
+  confirmBanner: {
+    marginHorizontal: gutter,
+    marginBottom: 12,
+    padding: 14,
+    borderRadius: R.sm,
+    backgroundColor: C.card,
+    borderWidth: 1.5,
+    borderColor: C.lineField,
+    gap: 10,
   },
-  deleteBtnConfirm: {
-    backgroundColor: C.accent, borderColor: C.accent,
+  confirmBannerText: {
+    fontFamily: font.body,
+    fontSize: 13,
+    color: C.ink,
+    lineHeight: 18,
   },
-  deleteBtnText: {
-    fontFamily: font.bold, fontSize: 12.5, color: C.ink3,
+  confirmBannerBtns: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
   },
-
-  hero: { padding: 20 },
-  heroLabel: {
-    fontFamily: font.bold, fontSize: 10, letterSpacing: 1.2,
-    textTransform: 'uppercase', color: C.accent2,
+  confirmBannerDeleteBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: R.tiny,
+    backgroundColor: C.accent,
   },
-  heroTitle: {
-    fontFamily: font.display, fontSize: 21, letterSpacing: -0.63,
-    lineHeight: 27, color: '#FFFFFF', marginTop: 9,
+  confirmBannerDeleteText: {
+    fontFamily: font.bold,
+    fontSize: 12,
+    color: '#FFFFFF',
   },
-  heroRow: {
-    flexDirection: 'row', alignItems: 'flex-end',
-    justifyContent: 'space-between', marginTop: 16, gap: 12,
+  confirmBannerCancelBtn: {
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: R.tiny,
+    backgroundColor: C.trackChip,
   },
-  heroPctRow: { flexDirection: 'row', alignItems: 'baseline', gap: 7 },
-  heroPct: { fontFamily: font.display, fontSize: 36, letterSpacing: -1.44, color: '#FFFFFF' },
-  heroPctSub: { fontFamily: font.title, fontSize: 11, color: C.darkInk2 },
-  dueBox: {
-    flexDirection: 'row', alignItems: 'center', gap: 9,
-    backgroundColor: 'rgba(255,255,255,0.08)', borderRadius: R.chipSm,
-    paddingHorizontal: 11, paddingVertical: 8,
+  confirmBannerCancelText: {
+    fontFamily: font.bold,
+    fontSize: 12,
+    color: C.ink2,
   },
-  dueDate: { fontFamily: font.bold, fontSize: 11.5, color: '#FFFFFF' },
-  dueLeft: { fontFamily: font.body, fontSize: 9.5, color: C.darkInk2, marginTop: 1 },
-  heroLegend: { marginTop: 10 },
-  heroLegendText: { fontFamily: font.title, fontSize: 10.5, color: C.darkInk2 },
-
-  resultRow: {
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-    marginTop: 14, paddingTop: 12, borderTopWidth: 1, borderTopColor: C.darkLine,
-  },
-  resultLabel: {
-    fontFamily: font.bold, fontSize: 9.5, letterSpacing: 1.14,
-    textTransform: 'uppercase', color: C.darkInk3,
-  },
-  resultValue: { fontFamily: font.bold, fontSize: 13, color: '#FFFFFF' },
 
   warning: {
     backgroundColor: C.trackChip, borderRadius: R.sm,
     paddingHorizontal: 13, paddingVertical: 11,
   },
   warningText: { fontFamily: font.title, fontSize: 12, lineHeight: 18, color: C.ink2 },
-
-  monthCard: { paddingHorizontal: 15, paddingVertical: 13 },
-  monthHead: { flexDirection: 'row', alignItems: 'center', gap: 12 },
-  monthBadge: {
-    width: 36, height: 36, borderRadius: R.box,
-    alignItems: 'center', justifyContent: 'center',
-    backgroundColor: C.tintRing2, flexShrink: 0,
-  },
-  monthBadgeText: { fontFamily: font.bold, fontSize: 11, color: C.accentDeep },
-  monthTitleRow: { flexDirection: 'row', alignItems: 'center', gap: 7, flexWrap: 'wrap' },
-  monthTitle: { fontFamily: font.title, fontSize: 13.5, color: C.ink },
-  monthRange: { fontFamily: font.body, fontSize: 10.5, color: C.inkMuted, marginTop: 3 },
-  currentChip: {
-    backgroundColor: C.tint, borderRadius: R.pill,
-    paddingHorizontal: 7, paddingVertical: 2,
-  },
-  currentText: { fontFamily: font.bold, fontSize: 9, letterSpacing: 0.54, color: C.accentDeep },
-  monthRight: { flexDirection: 'row', alignItems: 'center', gap: 6, flexShrink: 0 },
-  monthCount: { fontFamily: font.bold, fontSize: 11, color: C.accent },
 });

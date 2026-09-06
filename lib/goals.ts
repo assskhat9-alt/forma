@@ -627,6 +627,26 @@ export function useDeleteGoal() {
       const { error } = await supabase.from('goals').delete().eq('id', id);
       if (error) throw error;
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: qk.goals.all }),
+    onMutate: async (id: string) => {
+      await qc.cancelQueries({ queryKey: qk.goals.all });
+      const prev = qc.getQueryData<Goal[]>(qk.goals.all);
+      if (prev) {
+        qc.setQueryData<Goal[]>(
+          qk.goals.all,
+          prev.filter((g) => g.id !== id && g.parent_id !== id),
+        );
+      }
+      return { prev };
+    },
+    onError: (_err, _id, ctx) => {
+      if (ctx?.prev) qc.setQueryData(qk.goals.all, ctx.prev);
+    },
+    onSettled: () => {
+      qc.invalidateQueries({ queryKey: qk.goals.all });
+      qc.invalidateQueries({ queryKey: ['yearStats'] });
+      qc.invalidateQueries({ queryKey: ['nodeStats'] });
+      qc.invalidateQueries({ queryKey: ['todayLevels'] });
+      qc.invalidateQueries({ queryKey: ['weekStats'] });
+    },
   });
 }

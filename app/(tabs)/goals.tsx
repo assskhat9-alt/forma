@@ -13,14 +13,13 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 
 import { color as C, radius as R, font, gutter, centered } from '../../theme/tokens';
-import { kk, formatDueShort, t as tpl } from '../../i18n/kk';
-import {
-  useYearGoalsWithStats, useMonths, useChildrenStats, type NodeStats,
-} from '../../lib/goals';
-import { Card, SectionLabel, ProgressRing, ProgressBar, PaceBadge } from '../../components/ui';
-import { PlusIcon, CalendarChipIcon, ChevronRightIcon } from '../../components/icons';
+import { kk, t as tpl } from '../../i18n/kk';
+import { useYearGoalsWithStats } from '../../lib/goals';
+import { Card, SectionLabel, ProgressBar } from '../../components/ui';
+import { PlusIcon } from '../../components/icons';
 import { TopBar } from '../../components/layout/TopBar';
 import { useBreakpoint } from '../../lib/breakpoints';
+import { GoalCard } from '../../components/goals/GoalCard';
 
 export default function GoalsScreen() {
   const wide = useBreakpoint() !== 'phone';
@@ -138,99 +137,6 @@ export default function GoalsScreen() {
   );
 }
 
-function GoalCard({
-  item, open, onToggle, today,
-}: {
-  item: NodeStats;
-  open: boolean;
-  onToggle: () => void;
-  today: Date;
-}) {
-  const { goal, color, actual, gap, total, done } = item;
-  const months = useMonths(open ? goal.id : null);
-  const { data: monthStats } = useChildrenStats(months, today);
-  const due = new Date(goal.period_end + 'T00:00:00');
-  const hasActions = total > 0;
-
-  return (
-    <Card level="cardSm" radius={R.cardSm} style={styles.goalCard}>
-      <Pressable onPress={onToggle} style={styles.goalHead} accessibilityRole="button">
-        <ProgressRing
-          pct={actual}
-          size={44}
-          strokeWidth={5}
-          color={color}
-          trackColor={C.tintRing}
-          numberSize={11}
-          showPercentSign={false}
-        />
-
-        <View style={{ flexGrow: 1, flexShrink: 1, minWidth: 0 }}>
-          <Text style={styles.goalTitle} numberOfLines={2}>{goal.title}</Text>
-          <View style={styles.goalMeta}>
-            <View style={styles.dueChip}>
-              <CalendarChipIcon size={9} color={C.inkMuted} />
-              <Text style={styles.dueText}>{formatDueShort(due)}</Text>
-            </View>
-            {hasActions ? (
-              <>
-                <PaceBadge gap={gap} />
-                <Text style={styles.goalSub}>{tpl(kk.goal.actionCount, { done, total })}</Text>
-              </>
-            ) : (
-              <Text style={styles.goalSub}>{kk.goal.noActions}</Text>
-            )}
-          </View>
-        </View>
-
-        <View style={{ transform: [{ rotate: open ? '90deg' : '0deg' }] }}>
-          <ChevronRightIcon size={16} color={C.inkIcon} />
-        </View>
-      </Pressable>
-
-      {open && (
-        <View style={styles.expanded}>
-          <SectionLabel style={{ marginBottom: 9 }}>{kk.goal.months}</SectionLabel>
-
-          {months.map((m) => {
-            const st = (monthStats ?? []).find((s) => s.goal.id === m.id);
-            const mTotal = st?.total ?? 0;
-            const mPct = st?.actual ?? 0;
-            return (
-              <Pressable
-                key={m.id}
-                onPress={() => router.push(`/month/${m.id}` as never)}
-                style={styles.monthRow}
-                accessibilityRole="button"
-              >
-                <Text style={styles.monthName}>{m.title}</Text>
-                <View style={{ flexGrow: 1 }}>
-                  <ProgressBar
-                    pct={mPct}
-                    color={mTotal === 0 ? C.lineField : color}
-                    height={4}
-                  />
-                </View>
-                <Text style={[styles.monthPct, mTotal === 0 && { color: C.ink4 }]}>
-                  {mTotal === 0 ? '—' : `${mPct}%`}
-                </Text>
-              </Pressable>
-            );
-          })}
-
-          <Pressable
-            onPress={() => router.push(`/goal/${goal.id}` as never)}
-            style={styles.more}
-            accessibilityRole="button"
-          >
-            <Text style={styles.moreText}>{kk.year.more}</Text>
-          </Pressable>
-        </View>
-      )}
-    </Card>
-  );
-}
-
 function EmptyGoals() {
   return (
     <Card style={styles.pad}>
@@ -280,25 +186,6 @@ const styles = StyleSheet.create({
     fontFamily: font.body, fontSize: 10.5, lineHeight: 16, color: C.inkFaint,
     marginTop: 8, paddingTop: 8, borderTopWidth: 1, borderTopColor: C.lineSoft,
   },
-
-  goalCard: { paddingHorizontal: 16, paddingVertical: 15 },
-  goalHead: { flexDirection: 'row', alignItems: 'center', gap: 12 },
-  goalTitle: { fontFamily: font.title, fontSize: 13.5, letterSpacing: -0.14, color: C.ink },
-  goalMeta: { flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 5, marginTop: 5 },
-  dueChip: {
-    flexDirection: 'row', alignItems: 'center', gap: 4,
-    backgroundColor: C.trackChip, borderRadius: R.pill,
-    paddingHorizontal: 8, paddingVertical: 3,
-  },
-  dueText: { fontFamily: font.bold, fontSize: 10, color: C.inkBody },
-  goalSub: { fontFamily: font.title, fontSize: 10, color: C.inkFaint },
-
-  expanded: { marginTop: 14, paddingTop: 13, borderTopWidth: 1, borderTopColor: C.trackChip },
-  monthRow: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 7 },
-  monthName: { fontFamily: font.body, fontSize: 11.5, color: C.inkBody, width: 96 },
-  monthPct: { fontFamily: font.bold, fontSize: 11, color: C.ink, width: 40, textAlign: 'right' },
-  more: { alignSelf: 'flex-end', paddingTop: 11 },
-  moreText: { fontFamily: font.bold, fontSize: 11, color: C.accent },
 
   emptyTitle: {
     fontFamily: font.bold, fontSize: 17, letterSpacing: -0.34,
