@@ -15,7 +15,9 @@ import { Platform } from 'react-native';
 
 import type { Database, GoalStats } from './database.types';
 
-const url = process.env.EXPO_PUBLIC_SUPABASE_URL;
+const url =
+  process.env.EXPO_PUBLIC_SUPABASE_URL ??
+  'https://wgkdwrkromuyqjfxkvwr.supabase.co';
 
 // Supabase кілттің екі пішімін қатар ұстайды: ескісі `eyJ…` (anon JWT),
 // жаңасы `sb_publishable_…`. Екеуі де клиент үшін бірдей жұмыс істейді.
@@ -23,12 +25,12 @@ const url = process.env.EXPO_PUBLIC_SUPABASE_URL;
 // сондықтан екеуі де ашық жазылған — динамикалық оқу жұмыс істемейді.
 const publicKey =
   process.env.EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY ??
-  process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY;
+  process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY ??
+  'sb_publishable_26GMtxL66-BfS_Ea2USrEA_BAvGLp3e';
 
 if (!url || !publicKey) {
   throw new Error(
-    'EXPO_PUBLIC_SUPABASE_URL және EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY орнатылмаған. ' +
-      '.env.example файлын .env деп көшіріп, мәндерін толтырыңыз.',
+    'EXPO_PUBLIC_SUPABASE_URL және EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY орнатылмаған.',
   );
 }
 
