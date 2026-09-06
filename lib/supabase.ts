@@ -106,9 +106,36 @@ export async function signInWithApple() {
     provider: 'apple',
     options: {
       redirectTo,
+      skipBrowserRedirect: true,
     },
   });
   if (error) throw error;
+
+  if (data?.url) {
+    try {
+      const resp = await fetch(data.url, { method: 'GET' });
+      if (!resp.ok) {
+        const json = (await resp.json().catch(() => ({}))) as { msg?: string };
+        if (
+          json?.msg?.includes('provider is not enabled') ||
+          json?.msg?.includes('Unsupported provider')
+        ) {
+          throw new Error(
+            'Supabase-те Apple арқылы кіру әлі қосылмаған (Authentication → Providers → Apple). Тест кезеңінде төмендегі Email арқылы кіріңіз.',
+          );
+        }
+      }
+    } catch (e: unknown) {
+      if (e instanceof Error && e.message.includes('Supabase-те Apple')) {
+        throw e;
+      }
+    }
+
+    if (typeof window !== 'undefined') {
+      window.location.href = data.url;
+    }
+  }
+
   return data;
 }
 
