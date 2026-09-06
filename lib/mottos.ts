@@ -8,6 +8,8 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 import { supabase } from './supabase';
+import { isDemoSessionActive } from './auth';
+import { INITIAL_DEMO_MOTTOS } from './demoData';
 import type { Motto } from './database.types';
 
 const KEY = ['mottos'] as const;
@@ -17,6 +19,7 @@ export function useMottos() {
   return useQuery({
     queryKey: KEY,
     queryFn: async () => {
+      if (isDemoSessionActive()) return INITIAL_DEMO_MOTTOS;
       const { data, error } = await supabase
         .from('mottos')
         .select('*')

@@ -48,4 +48,18 @@ for (const e of fs.readdirSync(dist, { withFileTypes: true })) {
   }
 }
 
-console.log(`тақырып тазаланды: ${cleaned} бет, index көшірмесі: ${copied}`);
+/** Vercel SPA rewrites конфигурациясын dist ішіне қою */
+const vercelConfig = {
+  cleanUrls: true,
+  rewrites: [{ source: '/(.*)', destination: '/index.html' }],
+};
+fs.writeFileSync(path.join(dist, 'vercel.json'), JSON.stringify(vercelConfig, null, 2));
+
+/** 404.html үшін index.html көшіру (SPA fallback) */
+const rootIndex = path.join(dist, 'index.html');
+const notFound = path.join(dist, '404.html');
+if (fs.existsSync(rootIndex) && !fs.existsSync(notFound)) {
+  fs.copyFileSync(rootIndex, notFound);
+}
+
+console.log(`тақырып тазаланды: ${cleaned} бет, index көшірмесі: ${copied}, vercel.json және 404.html дайын`);

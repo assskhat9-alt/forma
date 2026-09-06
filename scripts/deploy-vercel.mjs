@@ -1,4 +1,6 @@
 import { spawn, execSync } from 'node:child_process';
+import fs from 'node:fs';
+import path from 'node:path';
 
 const cleanEnv = {};
 for (const [k, v] of Object.entries(process.env)) {
@@ -13,44 +15,47 @@ for (const [k, v] of Object.entries(process.env)) {
   if (safe) cleanEnv[k] = v;
 }
 cleanEnv.VERCEL_TELEMETRY_DISABLED = '1';
+const patchPath = path.resolve('scripts/patch-hostname.cjs').replace(/\\/g, '/');
+cleanEnv.NODE_OPTIONS = `--require "${patchPath}"`;
 
-// Check if logged in
-let isLoggedIn = false;
-try {
-  const who = execSync('npx.cmd vercel whoami', { env: cleanEnv, stdio: ['ignore', 'pipe', 'ignore'] }).toString();
-  if (who.trim().length > 0 && !who.includes('Error')) {
-    isLoggedIn = true;
-  }
-} catch {
-  isLoggedIn = false;
-}
-
-if (!isLoggedIn) {
-  console.log('Vercel-ге кіру басталды...');
-  const loginChild = spawn('cmd.exe', ['/c', 'npx', 'vercel', 'login'], {
-    env: cleanEnv,
-    stdio: 'inherit',
-  });
-  loginChild.on('exit', (code) => {
-    if (code === 0) {
-      console.log('Жүйеге кірді! Енді жобаны орналастырамыз...');
-      deploy();
-    } else {
-      console.log('Кіру тоқтатылды.');
-      process.exit(code ?? 1);
-    }
-  });
-} else {
-  deploy();
-}
+deploy();
 
 function deploy() {
   console.log('Forma жобасы Vercel-ге орналастырылуда...');
-  const child = spawn('cmd.exe', ['/c', 'npx', 'vercel', 'dist', '--prod', '--yes'], {
-    env: cleanEnv,
-    stdio: 'inherit',
-  });
+  const out = path.resolve('.vercel/output');
+  fs.mkdirSync(path.join(out, 'static'), { recursive: true });
+  fs.cpSync(path.resolve('dist'), path.join(out, 'static'), { recursive: true });
+  fs.writeFileSync(
+    path.join(out, 'config.json'),
+    JSON.stringify(
+      {
+        version: 3,
+        routes: [{ handle: 'filesystem' }, { src: '/(.*)', dest: '/index.html' }],
+      },
+      null,
+      2,
+    ),
+  );
+
+  const child = spawn(
+    'cmd.exe',
+    ['/c', 'npx', 'vercel', 'deploy', '--prebuilt', '--prod', '--yes'],
+    {
+      env: cleanEnv,
+      stdio: 'inherit',
+    },
+  );
   child.on('exit', (code) => {
+    if (code === 0) {
+      console.log('Доменді forma-app-kz.vercel.app етіп баптау...');
+      try {
+        execSync(
+          'npx.cmd vercel alias set forma-app-kz.vercel.app',
+          { env: cleanEnv, stdio: 'inherit' },
+        );
+      } catch {}
+      console.log('Сәтті аяқталды!');
+    }
     process.exit(code ?? 0);
   });
 }

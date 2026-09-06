@@ -97,6 +97,15 @@ function RootNavigator() {
     );
   }
 
+  // Егер сессия жоқ болса және кіру тобында болмаса — бағыттау аяқталғанша күтеміз
+  if (!session && segments[0] !== '(auth)') {
+    return (
+      <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: C.bg }}>
+        <ActivityIndicator color={C.accent} />
+      </View>
+    );
+  }
+
   return (
     <View style={{ flex: 1, flexDirection: 'row', backgroundColor: C.bg }}>
       {showSidebar && (

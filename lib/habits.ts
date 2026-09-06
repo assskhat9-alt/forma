@@ -9,6 +9,8 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from './supabase';
 import { qk } from './query';
 import { toISODate } from './calendar';
+import { isDemoSessionActive } from './auth';
+import { INITIAL_DEMO_HABITS, INITIAL_DEMO_HABIT_LOGS } from './demoData';
 import type { Habit, HabitLog, HabitSchedule } from './database.types';
 
 export type HabitToday = {
@@ -33,6 +35,7 @@ export function useHabits() {
   return useQuery({
     queryKey: qk.habits.all,
     queryFn: async (): Promise<Habit[]> => {
+      if (isDemoSessionActive()) return INITIAL_DEMO_HABITS;
       const { data, error } = await supabase
         .from('habits')
         .select('*')
@@ -51,6 +54,7 @@ export function useHabitLogs(from: Date, to: Date) {
   return useQuery({
     queryKey: qk.habits.logs(a, b),
     queryFn: async (): Promise<HabitLog[]> => {
+      if (isDemoSessionActive()) return INITIAL_DEMO_HABIT_LOGS;
       const { data, error } = await supabase
         .from('habit_logs')
         .select('*')
@@ -91,6 +95,7 @@ export function useToggleHabit(date: Date) {
 
   return useMutation({
     mutationFn: async ({ habitId, done }: { habitId: string; done: boolean }) => {
+      if (isDemoSessionActive()) return;
       if (done) {
         const { data: session } = await supabase.auth.getSession();
         const userId = session.session?.user.id;

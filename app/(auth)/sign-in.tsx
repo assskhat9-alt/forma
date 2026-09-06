@@ -23,8 +23,16 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { color as C, radius as R, font, centered } from '../../theme/tokens';
 import { kk } from '../../i18n/kk';
 import { supabase, signInWithApple } from '../../lib/supabase';
+import { useSession } from '../../lib/auth';
 import { Atmosphere } from '../../components/auth/Atmosphere';
-import { CascadeMark, AppleIcon, MailIcon, PhoneIcon, ChevronLeftIcon } from '../../components/icons';
+import {
+  CascadeMark,
+  AppleIcon,
+  MailIcon,
+  PhoneIcon,
+  ChevronLeftIcon,
+  DiamondIcon,
+} from '../../components/icons';
 import { KeyboardFrame } from '../../components/layout/KeyboardFrame';
 
 /** Каскад жолағы — жүйенің мәнін бір қарағанда түсіндіреді */
@@ -39,6 +47,7 @@ type Mode = 'hero' | 'email';
 
 export default function SignIn() {
   const insets = useSafeAreaInsets();
+  const { enterDemoMode } = useSession();
   const [mode, setMode] = useState<Mode>('hero');
   const [register, setRegister] = useState(false);
   const [email, setEmail] = useState('');
@@ -49,6 +58,19 @@ export default function SignIn() {
 
   // Поштадан кейін «Келесі» басқанда құпиясөзге өзі көшеді
   const passwordRef = useRef<TextInput>(null);
+
+  const handleDemoSignIn = async () => {
+    setError(null);
+    setNote(null);
+    setBusy(true);
+    try {
+      await enterDemoMode();
+    } catch (e) {
+      setError(readableError(e));
+    } finally {
+      setBusy(false);
+    }
+  };
 
   const submit = async () => {
     setError(null);
@@ -142,6 +164,31 @@ export default function SignIn() {
 
               <View style={styles.actions}>
                 <Pressable
+                  style={[styles.btn, styles.btnHeroAccent, busy && { opacity: 0.7 }]}
+                  onPress={handleDemoSignIn}
+                  disabled={busy}
+                  accessibilityRole="button"
+                >
+                  {busy ? (
+                    <ActivityIndicator color="#FFFFFF" size="small" />
+                  ) : (
+                    <>
+                      <DiamondIcon size={17} color="#FFFFFF" />
+                      <Text style={styles.btnDarkText}>{kk.signIn.demo}</Text>
+                    </>
+                  )}
+                </Pressable>
+
+                <Pressable
+                  style={[styles.btn, styles.btnLight]}
+                  onPress={() => { setMode('email'); setNote(null); }}
+                  accessibilityRole="button"
+                >
+                  <MailIcon size={17} color={C.ink} />
+                  <Text style={styles.btnLightText}>{kk.signIn.email}</Text>
+                </Pressable>
+
+                <Pressable
                   style={[styles.btn, styles.btnDark, busy && { opacity: 0.7 }]}
                   onPress={handleAppleSignIn}
                   disabled={busy}
@@ -155,15 +202,6 @@ export default function SignIn() {
                       <Text style={styles.btnDarkText}>{kk.signIn.apple}</Text>
                     </>
                   )}
-                </Pressable>
-
-                <Pressable
-                  style={[styles.btn, styles.btnLight]}
-                  onPress={() => { setMode('email'); setNote(null); }}
-                  accessibilityRole="button"
-                >
-                  <MailIcon size={17} color={C.ink} />
-                  <Text style={styles.btnLightText}>{kk.signIn.email}</Text>
                 </Pressable>
 
                 <View style={styles.sync}>
@@ -214,7 +252,19 @@ export default function SignIn() {
                 style={styles.input}
               />
 
-              {error && <Text style={styles.error}>{error}</Text>}
+              {error && (
+                <View>
+                  <Text style={styles.error}>{error}</Text>
+                  <Pressable
+                    style={styles.demoFallback}
+                    onPress={handleDemoSignIn}
+                    accessibilityRole="button"
+                  >
+                    <DiamondIcon size={14} color={C.accentDeep} />
+                    <Text style={styles.demoFallbackText}>{kk.signIn.demo}</Text>
+                  </Pressable>
+                </View>
+              )}
               {note && <Text style={styles.note}>{note}</Text>}
 
               <Pressable
@@ -260,6 +310,12 @@ function readableError(e: unknown): string {
   }
   if (msg.includes('password') && msg.includes('6')) return kk.signIn.errors.short;
   if (msg.includes('network') || msg.includes('fetch')) return kk.signIn.errors.network;
+  if (msg.includes('rate limit') || msg.includes('over_email_send_rate_limit')) {
+    return kk.signIn.rateLimitHelp;
+  }
+  if (msg.includes('email not confirmed')) {
+    return 'Пошта әлі расталмаған. Поштаңызға келген хатты ашыңыз немесе Supabase-те «Confirm email» баптауын өшіріңіз.';
+  }
   if (msg.includes('provider is not enabled') || msg.includes('unsupported provider')) {
     return 'Supabase-те Apple арқылы кіру әлі қосылмаған. Supabase Authentication → Providers → Apple бөлімін қосыңыз.';
   }
@@ -324,6 +380,14 @@ const styles = StyleSheet.create({
     borderRadius: R.cardXs,
   },
   btnDark: { backgroundColor: C.ink },
+  btnHeroAccent: {
+    backgroundColor: C.accent,
+    shadowColor: C.accent,
+    shadowOpacity: 0.35,
+    shadowRadius: 18,
+    shadowOffset: { width: 0, height: 6 },
+    elevation: 6,
+  },
   btnAccent: {
     backgroundColor: C.accent,
     marginTop: 18,
@@ -336,6 +400,24 @@ const styles = StyleSheet.create({
   btnLight: { backgroundColor: C.card, borderWidth: 1.5, borderColor: C.lineField },
   btnDarkText: { fontFamily: font.bold, fontSize: 14, color: '#FFFFFF' },
   btnLightText: { fontFamily: font.bold, fontSize: 14, color: C.ink },
+
+  demoFallback: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 7,
+    paddingVertical: 11,
+    marginTop: 10,
+    backgroundColor: C.card,
+    borderWidth: 1.5,
+    borderColor: C.accent,
+    borderRadius: R.sm,
+  },
+  demoFallbackText: {
+    fontFamily: font.bold,
+    fontSize: 13,
+    color: C.accentDeep,
+  },
 
   sync: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 7, marginTop: 6 },
   syncText: { fontFamily: font.title, fontSize: 11, color: C.inkFaint },

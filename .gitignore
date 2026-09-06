@@ -40,6 +40,9 @@ yarn-error.*
 /ios
 /android
 
+.vercel/
+edge-test-data*
+
 # тексеру бандлы
 .expo-export-check/
 
@@ -52,3 +55,4 @@ yarn-error.*
 # миграция тексерісінің уақытша БД-сы
 .pgdata-verify/
 
+.vercel

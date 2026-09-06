@@ -18,6 +18,8 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from './supabase';
 import { qk } from './query';
 import { toISODate } from './calendar';
+import { isDemoSessionActive } from './auth';
+import { INITIAL_DEMO_GOALS } from './demoData';
 import { color as C } from '../theme/tokens';
 import type { Goal, GoalStats } from './database.types';
 
@@ -46,12 +48,18 @@ export type DayLoad = {
 // ─────────────────────────────────────────────────────────────────────
 
 async function fetchGoals(): Promise<Goal[]> {
+  if (isDemoSessionActive()) {
+    return INITIAL_DEMO_GOALS;
+  }
   const { data, error } = await supabase
     .from('goals')
     .select('*')
     .order('period_start', { ascending: true })
     .order('sort_order', { ascending: true });
   if (error) throw error;
+  if (!data || data.length === 0) {
+    if (isDemoSessionActive()) return INITIAL_DEMO_GOALS;
+  }
   return data ?? [];
 }
 
@@ -217,6 +225,20 @@ export type NodeStats = {
 };
 
 async function statsFor(goal: Goal, iso: string, color: string): Promise<NodeStats> {
+  if (isDemoSessionActive()) {
+    const demoStat =
+      goal.id === 'demo-goal-1'
+        ? { actual: 62, planned: 55, gap: 7, total: 24, done: 15 }
+        : goal.id === 'demo-goal-2'
+        ? { actual: 55, planned: 50, gap: 5, total: 30, done: 16 }
+        : { actual: 40, planned: 45, gap: -5, total: 18, done: 7 };
+    return {
+      goal,
+      color,
+      ...demoStat,
+    };
+  }
+
   const [{ data: s, error: e1 }, { data: c, error: e2 }] = await Promise.all([
     supabase.rpc('goal_stats', { p_goal_id: goal.id, p_on_date: iso }),
     supabase.rpc('action_counts', { p_goal_id: goal.id }),
@@ -326,6 +348,7 @@ export function useToggleTask() {
 
   return useMutation({
     mutationFn: async ({ id, done }: { id: string; done: boolean }) => {
+      if (isDemoSessionActive()) return;
       const { error } = await supabase
         .from('goals')
         .update({

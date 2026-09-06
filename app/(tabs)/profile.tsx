@@ -43,16 +43,20 @@ function QuoteNavIcon({ size, color }: IconProps) {
 export default function ProfileScreen() {
   const insets = useSafeAreaInsets();
   const phone = useBreakpoint() === 'phone';
-  const { session } = useSession();
+  const { session, isDemo, leaveDemoMode } = useSession();
   const [busy, setBusy] = useState(false);
 
-  const email = session?.user.email ?? '—';
+  const email = isDemo ? 'demo@forma.kz' : (session?.user.email ?? '—');
   const initial = email.charAt(0).toUpperCase();
 
   const leave = async () => {
     setBusy(true);
     try {
-      await signOut();
+      if (isDemo) {
+        await leaveDemoMode();
+      } else {
+        await signOut();
+      }
       // useProtectedRoute өзі кіру экранына шығарады
     } finally {
       setBusy(false);
@@ -77,7 +81,7 @@ export default function ProfileScreen() {
           </View>
           <View style={{ flexGrow: 1, flexShrink: 1 }}>
             <Text style={styles.email} numberOfLines={1}>{email}</Text>
-            <Text style={styles.sync}>{kk.cascade.syncAll}</Text>
+            <Text style={styles.sync}>{isDemo ? kk.signIn.demoModeActive : kk.cascade.syncAll}</Text>
           </View>
           <UserIcon size={20} color={C.ink4} />
         </View>
