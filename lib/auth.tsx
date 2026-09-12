@@ -43,12 +43,32 @@ export const DEMO_SESSION: Session = {
   },
 };
 
+export const ADMIN_EMAIL = 'admin@forma.kz';
+export const ADMIN_USER_ID = 'admin-user-0000-0000-0000-000000000000';
+
+export const ADMIN_SESSION: Session = {
+  access_token: 'admin-token',
+  token_type: 'bearer',
+  expires_in: 3600 * 24 * 365,
+  refresh_token: 'admin-refresh',
+  user: {
+    id: ADMIN_USER_ID,
+    app_metadata: { provider: 'admin' },
+    user_metadata: { full_name: 'Жүйе әкімшісі', role: 'admin' },
+    aud: 'authenticated',
+    created_at: '2026-01-01T00:00:00Z',
+    email: ADMIN_EMAIL,
+  },
+};
+
 type SessionState = {
   session: Session | null;
   /** Бірінші тексеріс аяқталды ма — оған дейін ештеңе көрсетпейміз */
   ready: boolean;
   isDemo: boolean;
+  isAdmin: boolean;
   enterDemoMode: () => Promise<void>;
+  enterAdminMode: () => Promise<void>;
   leaveDemoMode: () => Promise<void>;
 };
 
@@ -56,7 +76,9 @@ const Ctx = createContext<SessionState>({
   session: null,
   ready: false,
   isDemo: false,
+  isAdmin: false,
   enterDemoMode: async () => {},
+  enterAdminMode: async () => {},
   leaveDemoMode: async () => {},
 });
 
@@ -74,6 +96,13 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
 
     AsyncStorage.getItem(DEMO_STORAGE_KEY).then((val) => {
       if (!alive) return;
+      if (val === 'admin') {
+        gDemoActive = true;
+        setIsDemo(true);
+        setSession(ADMIN_SESSION);
+        setReady(true);
+        return;
+      }
       if (val === 'true') {
         gDemoActive = true;
         setIsDemo(true);
@@ -92,7 +121,11 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
     const { data: sub } = supabase.auth.onAuthStateChange((_event, next) => {
       AsyncStorage.getItem(DEMO_STORAGE_KEY).then((val) => {
         if (!alive) return;
-        if (val === 'true') {
+        if (val === 'admin') {
+          gDemoActive = true;
+          setIsDemo(true);
+          setSession(ADMIN_SESSION);
+        } else if (val === 'true') {
           gDemoActive = true;
           setIsDemo(true);
           setSession(DEMO_SESSION);
@@ -118,6 +151,13 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
     setSession(DEMO_SESSION);
   };
 
+  const enterAdminMode = async () => {
+    await AsyncStorage.setItem(DEMO_STORAGE_KEY, 'admin');
+    gDemoActive = true;
+    setIsDemo(true);
+    setSession(ADMIN_SESSION);
+  };
+
   const leaveDemoMode = async () => {
     await AsyncStorage.removeItem(DEMO_STORAGE_KEY);
     gDemoActive = false;
@@ -126,9 +166,17 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
     await supabase.auth.signOut().catch(() => {});
   };
 
+  const isAdmin = useMemo(() => {
+    if (!session?.user) return false;
+    return (
+      session.user.email === ADMIN_EMAIL ||
+      session.user.user_metadata?.role === 'admin'
+    );
+  }, [session]);
+
   const value = useMemo(
-    () => ({ session, ready, isDemo, enterDemoMode, leaveDemoMode }),
-    [session, ready, isDemo],
+    () => ({ session, ready, isDemo, isAdmin, enterDemoMode, enterAdminMode, leaveDemoMode }),
+    [session, ready, isDemo, isAdmin],
   );
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
 }

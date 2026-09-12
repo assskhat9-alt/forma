@@ -18,6 +18,7 @@ import { usePathname, router } from 'expo-router';
 import { color as C, radius as R, font } from '../../theme/tokens';
 import { kk } from '../../i18n/kk';
 import { signOut } from '../../lib/supabase';
+import { useSession } from '../../lib/auth';
 import {
   DiamondIcon,
   QuoteIcon,
@@ -32,6 +33,7 @@ import {
   PencilIcon,
   UserIcon,
   LogOutIcon,
+  ShieldIcon,
   type IconProps,
 } from '../icons';
 
@@ -85,6 +87,7 @@ const FOOT_ITEMS: Item[] = [
 export function Sidebar({ width = 232, motto }: { width?: number; motto?: string }) {
   const insets = useSafeAreaInsets();
   const pathname = usePathname();
+  const { isAdmin } = useSession();
 
   const isOn = (href: string) =>
     href === '/' ? pathname === '/' : pathname.startsWith(href);
@@ -137,6 +140,13 @@ export function Sidebar({ width = 232, motto }: { width?: number; motto?: string
       <View style={styles.divider} />
 
       <View style={styles.foot}>
+        {isAdmin ? (
+          <NavRow
+            item={{ name: kk.nav.admin, href: '/admin', Icon: ShieldIcon }}
+            active={isOn('/admin')}
+            muted
+          />
+        ) : null}
         {FOOT_ITEMS.map((it) => (
           <NavRow key={it.href} item={it} active={isOn(it.href)} muted />
         ))}

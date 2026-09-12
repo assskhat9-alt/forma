@@ -45,7 +45,8 @@ import {
   type Stat, type DayBar, type StripDay, type TableRow, type Level,
 } from '../../components/home';
 import { useTimeOverview } from '../../lib/report';
-import { QuoteIcon, StarIcon, ChevronRightIcon } from '../../components/icons';
+import { useAdminAnnouncement } from '../../lib/admin';
+import { QuoteIcon, StarIcon, ChevronRightIcon, BellIcon } from '../../components/icons';
 import { TopBar } from '../../components/layout/TopBar';
 import { TaskRow } from '../../components/calendar/TaskRow';
 
@@ -67,6 +68,7 @@ export default function HomeScreen() {
   const timeRep = useTimeOverview(today);
   // Сөз базадан келеді — Мотивация экранында таңдалады
   const motto = useActiveMotto(today);
+  const { data: announcement } = useAdminAnnouncement();
   const { items: habits } = useHabitsForDay(selected);
   const toggleHabit = useToggleHabit(selected);
 
@@ -184,6 +186,13 @@ export default function HomeScreen() {
       )}
 
       <View style={[styles.body, wide && styles.bodyWide, tablet && styles.bodyTablet]}>
+        {announcement?.enabled && Boolean(announcement.text) && (
+          <View style={styles.announcementBanner}>
+            <BellIcon size={16} color={C.accent} />
+            <Text style={styles.announcementText}>{announcement.text}</Text>
+          </View>
+        )}
+
         {/* ── 1. Сандар қатары ── */}
         <View style={styles.statRow}>
           {stats.map((s, i) => (
@@ -503,4 +512,23 @@ const styles = StyleSheet.create({
   habItem: { flexDirection: 'row', alignItems: 'center', gap: 11, paddingVertical: 8 },
   habName: { fontFamily: font.title, fontSize: 13, color: C.ink, flexShrink: 1 },
   habNameDone: { color: C.inkFaint, textDecorationLine: 'line-through' },
+
+  announcementBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    backgroundColor: C.tintChip,
+    borderRadius: R.cardXs,
+    paddingVertical: 10,
+    paddingHorizontal: 14,
+    borderWidth: 1,
+    borderColor: C.accentLine,
+  },
+  announcementText: {
+    flex: 1,
+    fontFamily: font.title,
+    fontSize: 13,
+    color: C.accent,
+  },
 });
+

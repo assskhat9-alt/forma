@@ -18,7 +18,7 @@ import { kk } from '../../i18n/kk';
 import { Card, SectionLabel } from '../../components/ui';
 import {
   UserIcon, ClockIcon, CheckIcon, BarChartIcon, FilterIcon,
-  QuoteIcon, PencilIcon, BookmarkIcon, ChevronRightIcon, type IconProps,
+  QuoteIcon, PencilIcon, BookmarkIcon, ChevronRightIcon, ShieldIcon, type IconProps,
 } from '../../components/icons';
 import { useBreakpoint } from '../../lib/breakpoints';
 import { useSession } from '../../lib/auth';
@@ -43,7 +43,7 @@ function QuoteNavIcon({ size, color }: IconProps) {
 export default function ProfileScreen() {
   const insets = useSafeAreaInsets();
   const phone = useBreakpoint() === 'phone';
-  const { session, isDemo, leaveDemoMode } = useSession();
+  const { session, isDemo, isAdmin, leaveDemoMode } = useSession();
   const [busy, setBusy] = useState(false);
 
   const email = isDemo ? 'demo@forma.kz' : (session?.user.email ?? '—');
@@ -81,11 +81,23 @@ export default function ProfileScreen() {
           </View>
           <View style={{ flexGrow: 1, flexShrink: 1 }}>
             <Text style={styles.email} numberOfLines={1}>{email}</Text>
-            <Text style={styles.sync}>{isDemo ? kk.signIn.demoModeActive : kk.cascade.syncAll}</Text>
+            <Text style={styles.sync}>{isAdmin ? kk.nav.admin : isDemo ? kk.signIn.demoModeActive : kk.cascade.syncAll}</Text>
           </View>
           <UserIcon size={20} color={C.ink4} />
         </View>
       </Card>
+
+      {isAdmin && (
+        <Pressable
+          onPress={() => router.push('/admin' as never)}
+          style={styles.adminRow}
+          accessibilityRole="button"
+        >
+          <ShieldIcon size={18} color={C.accent} />
+          <Text style={styles.adminRowText}>{kk.nav.admin}</Text>
+          <ChevronRightIcon size={14} color={C.ink3} />
+        </Pressable>
+      )}
 
       {phone && (
         <>
@@ -116,7 +128,7 @@ export default function ProfileScreen() {
         {busy ? (
           <ActivityIndicator color={C.ink} />
         ) : (
-          <Text style={styles.leaveText}>Шығу</Text>
+          <Text style={styles.leaveText}>{kk.nav.signOut}</Text>
         )}
       </Pressable>
     </ScrollView>
@@ -146,6 +158,24 @@ const styles = StyleSheet.create({
   avatarText: { fontFamily: font.bold, fontSize: 16, color: '#FFFFFF' },
   email: { fontFamily: font.title, fontSize: 14, color: C.ink },
   sync: { fontFamily: font.body, fontSize: 11, color: C.inkFaint, marginTop: 2 },
+  adminRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    paddingVertical: 14,
+    paddingHorizontal: 16,
+    borderRadius: R.cardXs,
+    backgroundColor: C.card,
+    borderWidth: 1.5,
+    borderColor: C.accentLine,
+    marginTop: 4,
+  },
+  adminRowText: {
+    flexGrow: 1,
+    fontFamily: font.bold,
+    fontSize: 14,
+    color: C.accent,
+  },
   leave: {
     alignItems: 'center',
     justifyContent: 'center',
@@ -158,3 +188,4 @@ const styles = StyleSheet.create({
   },
   leaveText: { fontFamily: font.bold, fontSize: 13.5, color: C.ink },
 });
+
