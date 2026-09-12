@@ -63,8 +63,9 @@ export function TaskForm({ date, draft, onChange, onClose, onSubmit, variant, wi
       </View>
 
       <ScrollView
-        showsVerticalScrollIndicator={false}
-        style={{ flexGrow: 1 }}
+        showsVerticalScrollIndicator={true}
+        style={styles.scroll}
+        contentContainerStyle={styles.scrollContent}
         keyboardShouldPersistTaps="handled"
         // ⚠ Сан пернетақтасында «Дайын» жоқ — тізімді сүйресең жабылады
         keyboardDismissMode="on-drag"
@@ -179,6 +180,8 @@ function Options({
 const styles = StyleSheet.create({
   sheet: {
     flexGrow: 1,
+    flexShrink: 1,
+    minHeight: 0,
     backgroundColor: C.card,
     borderTopLeftRadius: R.sheet,
     borderTopRightRadius: R.sheet,
@@ -193,6 +196,8 @@ const styles = StyleSheet.create({
   },
   panel: {
     height: '100%',
+    maxHeight: '100%',
+    flex: 1,
     backgroundColor: C.card,
     borderRadius: R.card,
     paddingHorizontal: 18,
@@ -203,6 +208,8 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 8 },
     elevation: 3,
   },
+  scroll: { flex: 1, minHeight: 0 },
+  scrollContent: { paddingBottom: 16 },
   grabber: {
     width: 38,
     height: 4,

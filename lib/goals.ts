@@ -474,6 +474,10 @@ export type NewAction = {
   time: string | null;
   /** Неше рет қайталансын: 1 = бір рет */
   repeatWeeks?: number;
+  /** Қайталау түрі: 'once' | 'daily' | 'weekly' */
+  repeatMode?: 'once' | 'daily' | 'weekly';
+  /** Қайталау саны (күн немесе апта) */
+  repeatCount?: number;
 };
 
 /**
@@ -492,6 +496,59 @@ export function useCreateAction() {
 
   return useMutation({
     mutationFn: async (a: NewAction) => {
+      let repeats = 1;
+      let stepDays = 7;
+      if (a.repeatMode === 'daily') {
+        repeats = a.repeatCount ?? 7;
+        stepDays = 1;
+      } else if (a.repeatMode === 'weekly') {
+        repeats = a.repeatCount ?? (a.repeatWeeks ?? 4);
+        stepDays = 7;
+      } else if (a.repeatWeeks && a.repeatWeeks > 1) {
+        repeats = a.repeatWeeks;
+        stepDays = 7;
+      }
+
+      if (isDemoSessionActive()) {
+        let added = 0;
+        for (let i = 0; i < repeats; i++) {
+          const d = new Date(a.date);
+          d.setDate(d.getDate() + i * stepDays);
+          const iso = toISODate(d);
+
+          let scheduled: string | null = null;
+          if (a.time) {
+            const [h, m] = a.time.split(':').map(Number);
+            const dt = new Date(d);
+            dt.setHours(h ?? 0, m ?? 0, 0, 0);
+            scheduled = dt.toISOString();
+          }
+
+          const newGoal: Goal = {
+            id: `demo-action-${Date.now()}-${i}-${Math.random().toString(36).slice(2, 6)}`,
+            user_id: DEMO_USER_ID,
+            parent_id: a.goalId ?? a.monthId ?? null,
+            level: 'day',
+            title: a.title,
+            note: null,
+            period_start: iso,
+            period_end: iso,
+            result_from: null,
+            result_to: null,
+            result_unit: null,
+            locked: false,
+            status: 'active',
+            scheduled_at: scheduled,
+            completed_at: null,
+            sort_order: 0,
+            created_at: new Date().toISOString(),
+          };
+          addDemoGoal(newGoal);
+          added++;
+        }
+        return { added, skipped: 0 };
+      }
+
       const { data: session } = await supabase.auth.getSession();
       const userId = session.session?.user.id;
       if (!userId) throw new Error('Сессия жоқ');
@@ -511,13 +568,12 @@ export function useCreateAction() {
       // parent_id null болғандықтан ол ешбір жылдық мақсаттың
       // ағашына кірмейді, демек progress() оны санамайды.
 
-      const repeats = Math.max(a.repeatWeeks ?? 1, 1);
       const rows = [];
       let skipped = 0;
 
       for (let i = 0; i < repeats; i++) {
         const d = new Date(a.date);
-        d.setDate(d.getDate() + i * 7);
+        d.setDate(d.getDate() + i * stepDays);
         const iso = toISODate(d);
 
         // Күн қай айға түссе — сол айға тіркеледі.

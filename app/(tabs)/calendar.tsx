@@ -70,11 +70,19 @@ export default function CalendarScreen() {
     const parentId =
       draft.goalIndex === 0 ? undefined : rootGoals[draft.goalIndex - 1]?.id;
 
+    const repeatMode =
+      draft.repeatIndex === 1
+        ? ('daily' as const)
+        : draft.repeatIndex === 2
+        ? ('weekly' as const)
+        : ('once' as const);
+
     createAction.mutate({
       goalId: parentId,
       title,
       date: selected,
       time: TIMES[draft.timeIndex] ?? null,
+      repeatMode,
     });
 
     setDraft(EMPTY_DRAFT);

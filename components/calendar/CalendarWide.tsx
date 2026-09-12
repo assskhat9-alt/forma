@@ -183,5 +183,5 @@ const styles = StyleSheet.create({
   },
   addText: { fontFamily: font.bold, fontSize: 12, color: '#FFFFFF' },
   columns: { flexDirection: 'row', flexGrow: 1, minHeight: 0 },
-  clip: { flexShrink: 0, overflow: 'hidden' },
+  clip: { flexShrink: 0, height: '100%', overflow: 'hidden' },
 });
