@@ -120,7 +120,12 @@ export function CalendarWide(p: Props) {
 
       {/* календарь + сырғымалы панельдер */}
       <View style={[styles.columns, { gap: lay.gap }]}>
-        <View style={lay.calendarWidth ? { width: lay.calendarWidth } : { flexGrow: 1, flexShrink: 1, minWidth: 0 }}>
+        <View
+          style={[
+            lay.calendarWidth ? { width: lay.calendarWidth } : { flexGrow: 1, flexShrink: 1, minWidth: 0 },
+            { height: '100%', minHeight: 0 },
+          ]}
+        >
           <MonthGridWide
             cells={p.cells}
             selected={p.selected}
@@ -159,7 +164,15 @@ export function CalendarWide(p: Props) {
 }
 
 const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: C.bg, paddingHorizontal: 22 },
+  root: {
+    flex: 1,
+    height: '100%',
+    maxHeight: '100%',
+    minHeight: 0,
+    backgroundColor: C.bg,
+    paddingHorizontal: 22,
+    overflow: 'hidden',
+  },
   controls: { flexDirection: 'row', alignItems: 'center', gap: 16 },
   arrows: { flexDirection: 'row', gap: 5 },
   arrow: {
@@ -182,6 +195,18 @@ const styles = StyleSheet.create({
     backgroundColor: C.accent,
   },
   addText: { fontFamily: font.bold, fontSize: 12, color: '#FFFFFF' },
-  columns: { flexDirection: 'row', flexGrow: 1, minHeight: 0 },
-  clip: { flexShrink: 0, height: '100%', overflow: 'hidden' },
+  columns: {
+    flexDirection: 'row',
+    flex: 1,
+    height: '100%',
+    maxHeight: '100%',
+    minHeight: 0,
+  },
+  clip: {
+    flexShrink: 0,
+    height: '100%',
+    maxHeight: '100%',
+    minHeight: 0,
+    overflow: 'hidden',
+  },
 });

@@ -198,6 +198,7 @@ const styles = StyleSheet.create({
     height: '100%',
     maxHeight: '100%',
     flex: 1,
+    minHeight: 0,
     backgroundColor: C.card,
     borderRadius: R.card,
     paddingHorizontal: 18,
@@ -218,7 +219,7 @@ const styles = StyleSheet.create({
     alignSelf: 'center',
     marginBottom: 12,
   },
-  head: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  head: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0 },
   headTitle: { fontFamily: font.bold, fontSize: 15, color: C.ink, letterSpacing: -0.3 },
   closeBtn: {
     width: 28,
@@ -239,6 +240,7 @@ const styles = StyleSheet.create({
     borderRadius: R.field,
     paddingHorizontal: 14,
     paddingVertical: 12,
+    flexShrink: 0,
   },
   dateBadge: {
     width: 36,
@@ -286,6 +288,7 @@ const styles = StyleSheet.create({
     shadowRadius: 20,
     shadowOffset: { width: 0, height: 8 },
     elevation: 6,
+    flexShrink: 0,
   },
   submitText: { fontFamily: font.bold, fontSize: 13.5, color: '#FFFFFF' },
 });
