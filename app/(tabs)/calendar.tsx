@@ -23,6 +23,7 @@ import {
   useCreateAction,
   useRootGoals,
 } from '../../lib/goals';
+import { isPastDay } from '../../lib/periodLock';
 import { KeyboardFrame } from '../../components/layout/KeyboardFrame';
 import { CalendarPhone } from '../../components/calendar/CalendarPhone';
 import { CalendarWide } from '../../components/calendar/CalendarWide';
@@ -63,6 +64,7 @@ export default function CalendarScreen() {
   };
 
   const submit = () => {
+    if (isPastDay(selected)) return;
     const title = draft.title.trim();
     if (!title) return;
 
@@ -111,14 +113,17 @@ export default function CalendarScreen() {
     onSelect: selectDay,
     onToggleTask: (id: string) => {
       const t = tasks.find((x) => x.id === id);
-      if (t) toggleTask.mutate({ id, done: !t.done });
+      if (t && !t.isLocked) toggleTask.mutate({ id, done: !t.done });
     },
     // Күнтізбедегі әрекетті таңдап, дәл соған таймер қосу
     onFocusTask: (task: DayTask) =>
       router.push(`/focus?taskId=${task.id}` as never),
     onPrevMonth: () => setAnchor((a) => prevMonth(a)),
     onNextMonth: () => setAnchor((a) => nextMonth(a)),
-    onOpenForm: () => setAdding(true),
+    onOpenForm: () => {
+      if (isPastDay(selected)) return;
+      setAdding(true);
+    },
     onCloseForm: () => setAdding(false),
     onDraftChange: setDraft,
     onSubmit: submit,

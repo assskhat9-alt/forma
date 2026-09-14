@@ -8,6 +8,8 @@ import { useCompleteGoal, useDeleteGoal } from '../../lib/goals';
 import { goBack } from '../../lib/nav';
 import { CheckIcon, TrashIcon } from '../icons';
 
+import { isPeriodExpired } from '../../lib/periodLock';
+
 export function GoalActions({
   goal,
   confirmDelete,
@@ -21,18 +23,26 @@ export function GoalActions({
   const deleteGoal = useDeleteGoal();
   const [confirmDone, setConfirmDone] = useState(false);
 
+  const isExpired = isPeriodExpired(goal.level, goal.period_start, goal.period_end);
+  const isLocked = isExpired && goal.status !== 'done';
+
   return (
     <>
       <Pressable
-        onPress={() =>
+        onPress={() => {
+          if (isLocked) return;
           goal.status === 'done'
             ? complete.mutate({ id: goal.id, done: false })
             : confirmDone
               ? complete.mutate({ id: goal.id, done: true })
-              : setConfirmDone(true)
-        }
-        disabled={complete.isPending}
-        style={[styles.finish, goal.status === 'done' && styles.finishOn]}
+              : setConfirmDone(true);
+        }}
+        disabled={complete.isPending || isLocked}
+        style={[
+          styles.finish,
+          goal.status === 'done' && styles.finishOn,
+          isLocked && { opacity: 0.5 },
+        ]}
         accessibilityRole="button"
       >
         <CheckIcon
@@ -43,7 +53,9 @@ export function GoalActions({
         <Text
           style={[styles.finishText, goal.status === 'done' && { color: C.accentDeep }]}
         >
-          {goal.status === 'done'
+          {isLocked
+            ? 'Мерзімі аяқталған'
+            : goal.status === 'done'
             ? kk.goal.reopen
             : confirmDone
               ? kk.goal.finishConfirm

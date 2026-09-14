@@ -10,6 +10,7 @@ import { PlusIcon } from '../icons';
 import { TaskRow } from './TaskRow';
 import { formatDayMonthWeekday } from '../../i18n/kk';
 import type { DayTask } from '../../lib/goals';
+import { isPastDay } from '../../lib/periodLock';
 
 type Props = {
   date: Date;
@@ -62,10 +63,12 @@ export function DayPanel({ date, tasks, onToggle, onFocus, onAdd, width }: Props
         </ScrollView>
       )}
 
-      <Pressable onPress={onAdd} style={styles.addBtn} accessibilityRole="button">
-        <PlusIcon size={13} color={C.accentDeep} strokeWidth={2.8} />
-        <Text style={styles.addText}>Осы күнге қосу</Text>
-      </Pressable>
+      {!isPastDay(date) && (
+        <Pressable onPress={onAdd} style={styles.addBtn} accessibilityRole="button">
+          <PlusIcon size={13} color={C.accentDeep} strokeWidth={2.8} />
+          <Text style={styles.addText}>Осы күнге қосу</Text>
+        </Pressable>
+      )}
     </View>
   );
 }

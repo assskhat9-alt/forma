@@ -9,6 +9,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from './supabase';
 import { qk } from './query';
 import { toISODate } from './calendar';
+import { isPastDay } from './periodLock';
 import { isDemoSessionActive } from './auth';
 import {
   getDemoHabits,
@@ -110,6 +111,9 @@ export function useToggleHabit(date: Date) {
   return useMutation({
     mutationFn: async ({ habitId, done }: { habitId: string; done: boolean }) => {
       if (isDemoSessionActive()) return;
+      if (isPastDay(date)) {
+        throw new Error('Өткен күн үшін әдетті өзгертуге болмайды (00:00-ден кейін құлыпталған).');
+      }
       if (done) {
         const { data: session } = await supabase.auth.getSession();
         const userId = session.session?.user.id;

@@ -18,6 +18,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from './supabase';
 import { qk } from './query';
 import { toISODate } from './calendar';
+import { isPastDay, isPlanLocked } from './periodLock';
 import { isDemoSessionActive } from './auth';
 import {
   getDemoGoals,
@@ -40,6 +41,8 @@ export type DayTask = {
   time: string | null;
   goal: GoalRef | null;
   done: boolean;
+  date: string;
+  isLocked: boolean;
 };
 
 export type DayLoad = {
@@ -112,6 +115,8 @@ export function useDayTasks(date: Date) {
   const byId = new Map((goals ?? []).map((g) => [g.id, g]));
   const colors = colorMap(goals ?? []);
 
+  const isLocked = isPastDay(date);
+
   const tasks: DayTask[] = (goals ?? [])
     .filter((g) => g.level === 'day' && g.period_start === iso && g.status !== 'dropped')
     .map((g) => {
@@ -125,6 +130,8 @@ export function useDayTasks(date: Date) {
             ? null
             : { id: root.id, title: root.title, color: colors.get(root.id) ?? C.accent },
         done: g.status === 'done',
+        date: g.period_start,
+        isLocked,
       };
     })
     .sort((a, b) => (a.time ?? '99').localeCompare(b.time ?? '99'));
@@ -356,6 +363,11 @@ export function useToggleTask() {
   return useMutation({
     mutationFn: async ({ id, done }: { id: string; done: boolean }) => {
       if (isDemoSessionActive()) return;
+      const goals = qc.getQueryData<Goal[]>(qk.goals.all) ?? [];
+      const target = goals.find((g) => g.id === id);
+      if (target && isPlanLocked(target)) {
+        throw new Error('Мерзімі өткен күннің жоспарын өзгертуге болмайды (00:00-ден кейін жабылған).');
+      }
       const { error } = await supabase
         .from('goals')
         .update({
@@ -369,6 +381,10 @@ export function useToggleTask() {
     onMutate: async ({ id, done }) => {
       await qc.cancelQueries({ queryKey: qk.goals.all });
       const prev = qc.getQueryData<Goal[]>(qk.goals.all);
+      const target = (prev ?? []).find((g) => g.id === id);
+      if (target && isPlanLocked(target)) {
+        return { prev };
+      }
       qc.setQueryData<Goal[]>(qk.goals.all, (old) =>
         (old ?? []).map((g) => (g.id === id ? { ...g, status: done ? 'done' : 'active' } : g)),
       );
@@ -640,6 +656,11 @@ export function useCompleteGoal() {
 
   return useMutation({
     mutationFn: async ({ id, done }: { id: string; done: boolean }) => {
+      const goals = qc.getQueryData<Goal[]>(qk.goals.all) ?? [];
+      const target = goals.find((g) => g.id === id);
+      if (target && isPlanLocked(target)) {
+        throw new Error('Мерзімі аяқталған мақсатты өзгертуге болмайды.');
+      }
       const { error } = await supabase
         .from('goals')
         .update({

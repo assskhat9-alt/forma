@@ -19,6 +19,7 @@ import { TaskRow } from './TaskRow';
 import { TaskForm, type TaskDraft } from './TaskForm';
 import type { DayCell } from '../../lib/calendar';
 import type { DayLoad, DayTask } from '../../lib/goals';
+import { isPastDay } from '../../lib/periodLock';
 
 type Props = {
   anchor: Date;
@@ -153,12 +154,14 @@ export function CalendarPhone(p: Props) {
             )}
           </ScrollView>
 
-          <Pressable onPress={p.onOpenForm} style={styles.addBtn} accessibilityRole="button">
-            <PlusIcon size={15} color="#FFFFFF" strokeWidth={2.8} />
-            <Text style={styles.addText}>
-              {tpl(kk.calendar.addTask, { date: `${p.selected.getDate()}` })}
-            </Text>
-          </Pressable>
+          {!isPastDay(p.selected) && (
+            <Pressable onPress={p.onOpenForm} style={styles.addBtn} accessibilityRole="button">
+              <PlusIcon size={15} color="#FFFFFF" strokeWidth={2.8} />
+              <Text style={styles.addText}>
+                {tpl(kk.calendar.addTask, { date: `${p.selected.getDate()}` })}
+              </Text>
+            </Pressable>
+          )}
         </View>
       )}
     </View>

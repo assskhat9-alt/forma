@@ -19,6 +19,7 @@ import {
   useGoals, useActions, useNodeStats, useMonthWeekStats,
   useCreateAction, useToggleTask, useDeleteAction,
 } from '../../lib/goals';
+import { isPastDay, isPeriodExpired } from '../../lib/periodLock';
 import { errorText } from '../../lib/errors';
 import { goBack } from '../../lib/nav';
 import { Card, SectionLabel, ProgressBar, Checkbox, AddButton } from '../../components/ui';
@@ -149,56 +150,79 @@ export default function MonthScreen() {
                 <Text style={styles.emptyHint}>{kk.goal.addAction}</Text>
               </Pressable>
             ) : (
-              actions.map((a, i) => (
-                <View
-                  key={a.id}
-                  style={[styles.actionRow, i < actions.length - 1 && styles.divider]}
-                >
-                  <Checkbox
-                    checked={a.status === 'done'}
-                    onToggle={() => {
-                      const next = a.status !== 'done';
-                      toggle.mutate({ id: a.id, done: next });
-                      if (next) router.push(`/reflection?taskId=${a.id}` as never);
-                    }}
-                    size={20}
-                    radius={6}
-                  />
-
-                  <View style={{ flexGrow: 1, flexShrink: 1, minWidth: 0 }}>
-                    <Text
-                      style={[styles.actionTitle, a.status === 'done' && styles.actionDone]}
-                      numberOfLines={2}
-                    >
-                      {a.title}
-                    </Text>
-                    <View style={styles.actionMeta}>
-                      <Text style={styles.actionDate}>
-                        {formatDayMonth(new Date(a.period_start + 'T00:00:00'))}
-                      </Text>
-                      {a.scheduled_at && (
-                        <>
-                          <ClockIcon size={10} color={C.ink4} strokeWidth={2.6} />
-                          <Text style={styles.actionTime}>{timeOf(a.scheduled_at)}</Text>
-                        </>
-                      )}
-                    </View>
-                  </View>
-
-                  <Pressable
-                    onPress={() => remove.mutate(a.id)}
-                    hitSlop={10}
-                    accessibilityRole="button"
+              actions.map((a, i) => {
+                const isActionLocked = isPastDay(a.period_start, today);
+                return (
+                  <View
+                    key={a.id}
+                    style={[
+                      styles.actionRow,
+                      i < actions.length - 1 && styles.divider,
+                      isActionLocked && a.status !== 'done' && { opacity: 0.75 },
+                    ]}
                   >
-                    <CloseIcon size={11} color={C.ink4} />
-                  </Pressable>
-                </View>
-              ))
+                    <Checkbox
+                      checked={a.status === 'done'}
+                      onToggle={
+                        isActionLocked
+                          ? undefined
+                          : () => {
+                              const next = a.status !== 'done';
+                              toggle.mutate({ id: a.id, done: next });
+                              if (next) router.push(`/reflection?taskId=${a.id}` as never);
+                            }
+                      }
+                      disabled={isActionLocked}
+                      size={20}
+                      radius={6}
+                    />
+
+                    <View style={{ flexGrow: 1, flexShrink: 1, minWidth: 0 }}>
+                      <Text
+                        style={[
+                          styles.actionTitle,
+                          a.status === 'done' && styles.actionDone,
+                          isActionLocked && a.status !== 'done' && { color: C.ink3 },
+                        ]}
+                        numberOfLines={2}
+                      >
+                        {a.title}
+                      </Text>
+                      <View style={styles.actionMeta}>
+                        <Text style={styles.actionDate}>
+                          {formatDayMonth(new Date(a.period_start + 'T00:00:00'))}
+                        </Text>
+                        {isActionLocked && a.status !== 'done' && (
+                          <View style={styles.lockedBadge}>
+                            <Text style={styles.lockedText}>Мерзімі өткен</Text>
+                          </View>
+                        )}
+                        {a.scheduled_at && (
+                          <>
+                            <ClockIcon size={10} color={C.ink4} strokeWidth={2.6} />
+                            <Text style={styles.actionTime}>{timeOf(a.scheduled_at)}</Text>
+                          </>
+                        )}
+                      </View>
+                    </View>
+
+                    <Pressable
+                      onPress={() => remove.mutate(a.id)}
+                      hitSlop={10}
+                      accessibilityRole="button"
+                    >
+                      <CloseIcon size={11} color={C.ink4} />
+                    </Pressable>
+                  </View>
+                );
+              })
             )}
           </Card>
 
-          {/* Қосу — әрекеттер тізімінің дәл астында */}
-          <AddButton label={kk.goal.addAction} onPress={openForm} />
+          {/* Қосу — ай бітпеген болса ғана шығады */}
+          {!isPeriodExpired('month', month.period_start, month.period_end, today) && (
+            <AddButton label={kk.goal.addAction} onPress={openForm} />
+          )}
 
           {/* АПТАЛАР — тек статистикалық фон */}
           {(weeks ?? []).length > 0 && (
@@ -308,6 +332,15 @@ const styles = StyleSheet.create({
   actionMeta: { flexDirection: 'row', alignItems: 'center', gap: 5, marginTop: 3 },
   actionDate: { fontFamily: font.title, fontSize: 10, color: C.inkMuted },
   actionTime: { fontFamily: font.bold, fontSize: 10, color: C.ink4 },
+  lockedBadge: {
+    backgroundColor: C.cardSoft,
+    borderRadius: R.pill,
+    paddingHorizontal: 6,
+    paddingVertical: 1,
+    borderWidth: 1,
+    borderColor: C.line,
+  },
+  lockedText: { fontFamily: font.bold, fontSize: 8.5, color: C.ink3 },
 
   statsCard: { paddingHorizontal: 15, paddingVertical: 14 },
   bars: { flexDirection: 'row', alignItems: 'flex-end', gap: 8 },
