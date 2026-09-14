@@ -11,12 +11,12 @@
 
 export const color = {
   // ── Фон және беттер ───────────────────────────────────────────
-  bg: '#F1F1F7',
+  bg: '#F6F7FA',
   card: '#FFFFFF',
   cardSoft: '#FBFBFD', // input фоны, әдеттің бос ұяшығы
 
   // ── Мәтін: қоюдан ашыққа қарай ────────────────────────────────
-  ink: '#14141B',
+  ink: '#1A1D26',
   inkProse: '#3A3A52', // ұзын мәтін, рефлексия
   inkBody: '#43435A', // тізім мәтіні, деңгей атауы
   ink2: '#5A5A70',
@@ -30,10 +30,10 @@ export const color = {
   inkOut: '#CFCFDC', // көрші айдың күндері
 
   // ── Жиектер мен бөлгіштер ─────────────────────────────────────
-  line: '#ECECF3',
-  lineSoft: '#F4F4F9',
-  lineFaint: '#F7F7FB',
-  lineField: '#E6E6EF', // ақ түйменің жиегі
+  line: '#ECEEF2',
+  lineSoft: '#F4F5F9',
+  lineFaint: '#F7F8FB',
+  lineField: '#E6E8EF', // ақ түйменің жиегі
   lineBox: '#DEDEE9', // чекбокс жиегі
   lineSwitch: '#E2E2EC', // свитч өшірулі, drag handle
   lineDash: '#DEDAF8', // әдеттер блогының үзік сызығы
@@ -45,12 +45,12 @@ export const color = {
   trackHabit: '#F5F5FA', // әдеттің орындалмаған ұяшығы
 
   // ── Акцент шкаласы ────────────────────────────────────────────
-  accent: '#7A6CF0',
-  accent2: '#8B7DF3',
+  accent: '#7C5CFC',
+  accent2: '#855DF6',
   accent3: '#9A8DF5',
   accent4: '#AA9EF7',
   accent5: '#BDB4FA',
-  accentDeep: '#6A59EC',
+  accentDeep: '#6C48F5',
   accentOnDark: '#A79BF8', // қара фондағы акцент (Фокус, Мақсат hero)
   accentSoft: '#C6BEFB', // диаграмманың екінші деңгейі
   accentGlow: '#C9C0FB', // кіру экранының атмосфералық дағы

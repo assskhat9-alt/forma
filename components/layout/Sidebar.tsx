@@ -1,41 +1,19 @@
 /**
- * Бүйір навигация — планшет пен ПК.
- *
- * Құрылымы: жоғарыда сөзбелгі, ортасында иконкалы навигация, астында
- * бөлек топ — Профиль мен Шығу. Екеуінің ортасында мотивация карточкасы:
- * қара, панельдегі жалғыз түсті нәрсе.
- *
- * «Басты бет» — топтан тыс, ең жоғарғы жол: ол жоспардың бір деңгейі
- * емес, бүкіл жүйенің кіреберісі. «ЖОСПАРЛАР» тобында каскад
- * деңгейлері ғана тұрады.
- *
- * Телефонда бұның орнына төменгі жолақ тұрады (BottomNav).
+ * Бүйір навигация — Dropify стиліндегі заманауи дизайн.
  */
 import React from 'react';
 import { View, Text, Pressable, StyleSheet } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { usePathname, router } from 'expo-router';
 import { color as C, radius as R, font } from '../../theme/tokens';
-import { kk } from '../../i18n/kk';
 import { signOut } from '../../lib/supabase';
 import { useSession } from '../../lib/auth';
 import { useI18n } from '../../i18n/context';
 import { LangSwitcher } from '../ui';
 import {
-  DiamondIcon,
-  QuoteIcon,
-  HomeIcon,
-  CalendarIcon,
-  ClockIcon,
-  BarChartIcon,
-  CheckIcon,
-  FilterIcon,
-  BookmarkIcon,
-  QuoteIcon as QuoteNav,
-  PencilIcon,
-  UserIcon,
-  LogOutIcon,
-  ShieldIcon,
+  DiamondIcon, QuoteIcon, HomeIcon, CalendarIcon, ClockIcon,
+  BarChartIcon, CheckIcon, FilterIcon, BookmarkIcon,
+  QuoteIcon as QuoteNav, PencilIcon, LogOutIcon, ChevronRightIcon,
   type IconProps,
 } from '../icons';
 
@@ -51,8 +29,12 @@ const ITEM_GAP = 2;
 export function Sidebar({ width = 232, motto }: { width?: number; motto?: string }) {
   const insets = useSafeAreaInsets();
   const pathname = usePathname();
-  const { isAdmin } = useSession();
+  const { session, isAdmin } = useSession();
   const { strings: S } = useI18n();
+
+  const userEmail = session?.user?.email ?? 'demo@forma.kz';
+  const userName = userEmail.split('@')[0] ?? 'User';
+  const initial = userName.charAt(0).toUpperCase();
 
   const isOn = (href: string) =>
     href === '/' ? pathname === '/' : pathname.startsWith(href);
@@ -81,19 +63,17 @@ export function Sidebar({ width = 232, motto }: { width?: number; motto?: string
     },
   ];
 
-  const footItems: Item[] = [
-    { name: S.nav.profile, href: '/profile', Icon: UserIcon },
-  ];
-
   return (
     <View
       style={[
         styles.root,
-        { width, paddingTop: insets.top + 24, paddingBottom: insets.bottom + 18 },
+        { width, paddingTop: insets.top + 20, paddingBottom: insets.bottom + 16 },
       ]}
     >
       <View style={styles.brand}>
-        <DiamondIcon size={24} color={C.accent} />
+        <View style={styles.brandIconBox}>
+          <DiamondIcon size={18} color="#FFFFFF" />
+        </View>
         <Text style={styles.wordmark}>{S.app.name}</Text>
       </View>
 
@@ -112,43 +92,47 @@ export function Sidebar({ width = 232, motto }: { width?: number; motto?: string
         </View>
       ))}
 
-      <View style={{ flexGrow: 1, minHeight: 16 }} />
-
+      <View style={{ flexGrow: 1, minHeight: 12 }} />
       {motto ? (
         <View style={styles.motto}>
-          <QuoteIcon size={16} color={C.accent2} />
+          <QuoteIcon size={14} color={C.accent2} />
           <Text style={styles.mottoLabel}>{S.today.motto}</Text>
-          <Text style={styles.mottoText} numberOfLines={3}>
+          <Text style={styles.mottoText} numberOfLines={2}>
             {motto}
           </Text>
         </View>
       ) : null}
-
       <View style={styles.divider} />
-
       <View style={styles.foot}>
-        <View style={{ marginBottom: 10, alignItems: 'flex-start' }}>
-          <LangSwitcher compact />
-        </View>
-        {isAdmin ? (
-          <NavRow
-            item={{ name: S.nav.admin, href: '/admin', Icon: ShieldIcon }}
-            active={isOn('/admin')}
-            muted
-          />
-        ) : null}
-        {footItems.map((it) => (
-          <NavRow key={it.href} item={it} active={isOn(it.href)} muted />
-        ))}
-
         <Pressable
-          onPress={() => void signOut()}
-          style={styles.item}
+          onPress={() => router.navigate('/profile' as never)}
+          style={styles.userCard}
           accessibilityRole="button"
         >
-          <LogOutIcon size={18} color={C.ink3} strokeWidth={2} />
-          <Text style={[styles.itemText, { color: C.ink3 }]}>{S.nav.signOut}</Text>
+          <View style={styles.userAvatar}>
+            <Text style={styles.userAvatarText}>{initial}</Text>
+          </View>
+          <View style={{ flexGrow: 1, flexShrink: 1 }}>
+            <Text style={styles.userName} numberOfLines={1}>{userName}</Text>
+            <Text style={styles.userSub} numberOfLines={1}>
+              {isAdmin ? S.nav.admin : 'Алматы, KZ'}
+            </Text>
+          </View>
+          <Pressable onPress={() => void signOut()} hitSlop={8}>
+            <LogOutIcon size={16} color={C.ink3} strokeWidth={2} />
+          </Pressable>
         </Pressable>
+
+        <View style={styles.bottomControls}>
+          <View style={styles.themePill}>
+            <View style={styles.themeActive}>
+              <Text style={styles.themeActiveText}>Light</Text>
+            </View>
+            <Text style={styles.themeInactiveText}>Dark</Text>
+          </View>
+
+          <LangSwitcher compact />
+        </View>
       </View>
     </View>
   );
@@ -157,14 +141,10 @@ export function Sidebar({ width = 232, motto }: { width?: number; motto?: string
 function NavRow({
   item,
   active,
-  muted = false,
 }: {
   item: Item;
   active: boolean;
-  muted?: boolean;
 }) {
-  const tone = active ? C.ink : muted ? C.ink3 : C.ink2;
-
   return (
     <Pressable
       onPress={() => router.navigate(item.href as never)}
@@ -172,12 +152,21 @@ function NavRow({
       accessibilityRole="link"
       accessibilityState={{ selected: active }}
     >
-      <item.Icon size={18} color={active ? C.accent : tone} strokeWidth={2} />
-      <Text style={[styles.itemText, { color: tone }]} numberOfLines={1}>
+      <item.Icon
+        size={18}
+        color={active ? '#FFFFFF' : C.ink2}
+        strokeWidth={active ? 2.4 : 1.8}
+      />
+      <Text
+        style={[styles.itemText, { color: active ? '#FFFFFF' : C.ink2 }]}
+        numberOfLines={1}
+      >
         {item.name}
       </Text>
       <View style={{ flexGrow: 1 }} />
-      {active ? <View style={styles.mark} /> : null}
+      {active ? (
+        <ChevronRightIcon size={14} color="#FFFFFF" strokeWidth={2.4} />
+      ) : null}
     </Pressable>
   );
 }
@@ -188,26 +177,34 @@ const styles = StyleSheet.create({
     backgroundColor: C.card,
     borderRightWidth: 1,
     borderRightColor: C.line,
-    paddingHorizontal: 16,
+    paddingHorizontal: 14,
   },
   brand: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingHorizontal: 6 },
-  wordmark: { fontFamily: font.display, fontSize: 15, letterSpacing: 2.4, color: C.ink },
+  brandIconBox: {
+    width: 32,
+    height: 32,
+    borderRadius: 10,
+    backgroundColor: C.accent,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  wordmark: { fontFamily: font.display, fontSize: 16, letterSpacing: 1.5, color: C.ink },
 
   groupLabel: {
-    marginTop: 16,
-    marginBottom: 6,
+    marginTop: 14,
+    marginBottom: 5,
     paddingHorizontal: 12,
     fontFamily: font.bold,
     fontSize: 10,
-    letterSpacing: 1.3,
+    letterSpacing: 1.2,
     textTransform: 'uppercase',
     color: C.ink3,
   },
   groupBody: { gap: ITEM_GAP },
 
-  home: { marginTop: 22 },
-  foot: { gap: ITEM_GAP },
-  divider: { height: 1, backgroundColor: C.lineSoft, marginVertical: 12, marginHorizontal: 6 },
+  home: { marginTop: 18 },
+  foot: { gap: 10 },
+  divider: { height: 1, backgroundColor: C.lineSoft, marginVertical: 10, marginHorizontal: 4 },
 
   item: {
     height: ITEM_H,
@@ -215,17 +212,70 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 12,
     paddingHorizontal: 12,
-    borderRadius: R.chipSm,
+    borderRadius: 14,
   },
-  itemOn: { backgroundColor: C.tintRow },
+  itemOn: {
+    backgroundColor: C.accent,
+    shadowColor: C.accent,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.25,
+    shadowRadius: 8,
+    elevation: 3,
+  },
   itemText: { fontFamily: font.title, fontSize: 13.5, flexShrink: 1 },
-  /** Активті жолдың оң жақ белгісі — түске сенбейтін екінші сигнал */
-  mark: { width: 4, height: 4, borderRadius: 999, backgroundColor: C.accent },
+
+  userCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    paddingHorizontal: 8,
+    paddingVertical: 6,
+    borderRadius: 12,
+    backgroundColor: C.bg,
+  },
+  userAvatar: {
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    backgroundColor: C.accent,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  userAvatarText: { fontFamily: font.bold, fontSize: 13, color: '#FFFFFF' },
+  userName: { fontFamily: font.title, fontSize: 13, color: C.ink },
+  userSub: { fontFamily: font.body, fontSize: 10.5, color: C.ink3 },
+
+  bottomControls: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 8,
+  },
+  themePill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#1E222E',
+    borderRadius: 20,
+    padding: 3,
+  },
+  themeActive: {
+    backgroundColor: '#323748',
+    borderRadius: 16,
+    paddingHorizontal: 10,
+    paddingVertical: 3,
+  },
+  themeActiveText: { fontFamily: font.bold, fontSize: 11, color: '#FFFFFF' },
+  themeInactiveText: {
+    fontFamily: font.body,
+    fontSize: 11,
+    color: '#8A8F9E',
+    paddingHorizontal: 8,
+  },
 
   motto: {
     backgroundColor: C.darkBg,
     borderRadius: R.cardXs,
-    padding: 15,
+    padding: 12,
     overflow: 'hidden',
   },
   mottoLabel: {
@@ -233,13 +283,13 @@ const styles = StyleSheet.create({
     fontSize: 9,
     letterSpacing: 1.44,
     color: C.accent2,
-    marginTop: 8,
+    marginTop: 6,
   },
   mottoText: {
     fontFamily: font.title,
-    fontSize: 12.5,
-    lineHeight: 18,
+    fontSize: 11.5,
+    lineHeight: 16,
     color: '#FFFFFF',
-    marginTop: 7,
+    marginTop: 4,
   },
 });

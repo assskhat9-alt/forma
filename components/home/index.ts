@@ -5,3 +5,8 @@ export { RingCard } from './RingCard';
 export { TaskTable, type TableRow } from './TaskTable';
 export { LevelsCard, type Level } from './LevelsCard';
 export { TimeCard } from './TimeCard';
+export { GoalStatusCard, type GoalStage } from './GoalStatusCard';
+export { TaskDetailsCard } from './TaskDetailsCard';
+export { MapOverviewCard } from './MapOverviewCard';
+export { FocusFeatureCard } from './FocusFeatureCard';
+export { TodayTasksSection } from './TodayTasksSection';

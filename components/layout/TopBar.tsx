@@ -16,64 +16,96 @@ import { router } from 'expo-router';
 
 import { color as C, radius as R, font } from '../../theme/tokens';
 import { useSession } from '../../lib/auth';
-import { SearchIcon } from '../icons';
+import { useI18n } from '../../i18n/context';
+import { SearchIcon, BellIcon, ChatIcon, PlusIcon } from '../icons';
 import { LangSwitcher } from '../ui';
 
 export function TopBar({
   title,
+  subtitle,
   right,
   actions,
+  primaryAction,
   onSearch,
   padH = 26,
 }: {
-  title: string;
-  /** Тақырыптың астындағы қосымша қатар — период ауыстырғышы, күн аралығы */
+  title?: string;
+  subtitle?: string;
   right?: React.ReactNode;
-  /** Беттің өз батырмалары — аватардың сол жағында тұрады */
   actions?: React.ReactNode;
-  /** Берілмесе іздеу өрісі мүлде шықпайды — жұмыс істемейтін өріс қоймаймыз */
+  primaryAction?: { label: string; onPress: () => void };
   onSearch?: (q: string) => void;
-  /** Экранның өз шеті болса — 0 беріңіз, әйтпесе шет екі есе болады */
   padH?: number;
 }) {
   const { session } = useSession();
+  const { strings: S, isKk } = useI18n();
   const email = session?.user.email ?? '';
-  const initial = email.charAt(0).toUpperCase() || '·';
+  const userName = email.split('@')[0] || 'User';
+
+  const defaultTitle = isKk
+    ? `Қош келдіңіз, ${userName}!`
+    : `Добро пожаловать, ${userName}!`;
+
+  const defaultSub = isKk
+    ? 'Бүгінгі жоспарларыңыз бен тапсырмаларыңыз дайын.'
+    : 'Ваши планы и задачи на сегодня готовы.';
 
   return (
     <View style={[styles.root, { paddingHorizontal: padH }]}>
       <View style={styles.row}>
-        <Text style={styles.title} numberOfLines={1}>
-          {title}
-        </Text>
+        <View style={{ flexShrink: 1, minWidth: 160 }}>
+          <Text style={styles.title} numberOfLines={1}>
+            {title ?? defaultTitle}
+          </Text>
+          <Text style={styles.subtitle} numberOfLines={1}>
+            {subtitle ?? defaultSub}
+          </Text>
+        </View>
 
         <View style={{ flexGrow: 1, minWidth: 12 }} />
 
-        {onSearch ? (
-          <View style={styles.search}>
-            <SearchIcon size={16} color={C.ink3} strokeWidth={2} />
-            <TextInput
-              placeholder="Іздеу…"
-              placeholderTextColor={C.ink4}
-              onChangeText={onSearch}
-              style={styles.searchInput}
-              returnKeyType="search"
-            />
-          </View>
-        ) : null}
+        {/* ── Dropify стиліндегі дөңгелек батырмалар ── */}
+        <View style={styles.actionPills}>
+          <Pressable
+            style={styles.circleBtn}
+            onPress={() => router.navigate('/notes' as never)}
+            accessibilityRole="button"
+          >
+            <BellIcon size={17} color={C.ink2} strokeWidth={2} />
+            <View style={styles.bellDot} />
+          </Pressable>
 
-        {actions}
+          <Pressable
+            style={styles.circleBtn}
+            onPress={() => {
+              if (onSearch) onSearch('');
+            }}
+            accessibilityRole="button"
+          >
+            <SearchIcon size={17} color={C.ink2} strokeWidth={2} />
+          </Pressable>
+
+          <Pressable
+            style={styles.circleBtn}
+            onPress={() => router.navigate('/notes' as never)}
+            accessibilityRole="button"
+          >
+            <ChatIcon size={17} color={C.ink2} strokeWidth={2} />
+          </Pressable>
+        </View>
 
         <LangSwitcher compact />
 
-        <Pressable
-          onPress={() => router.navigate('/profile' as never)}
-          style={styles.avatar}
-          accessibilityRole="link"
-          accessibilityLabel={email}
-        >
-          <Text style={styles.avatarText}>{initial}</Text>
-        </Pressable>
+        {primaryAction ? (
+          <Pressable
+            style={styles.primaryBtn}
+            onPress={primaryAction.onPress}
+            accessibilityRole="button"
+          >
+            <PlusIcon size={16} color="#FFFFFF" strokeWidth={2.4} />
+            <Text style={styles.primaryBtnText}>{primaryAction.label}</Text>
+          </Pressable>
+        ) : actions}
       </View>
 
       {right ? <View style={styles.right}>{right}</View> : null}
@@ -87,10 +119,62 @@ const styles = StyleSheet.create({
 
   title: {
     fontFamily: font.display,
-    fontSize: 26,
-    letterSpacing: -0.6,
+    fontSize: 22,
+    letterSpacing: -0.5,
     color: C.ink,
     flexShrink: 1,
+  },
+  subtitle: {
+    fontFamily: font.body,
+    fontSize: 12,
+    color: C.ink3,
+    marginTop: 2,
+  },
+
+  actionPills: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  circleBtn: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    backgroundColor: C.card,
+    borderWidth: 1,
+    borderColor: C.line,
+    alignItems: 'center',
+    justifyContent: 'center',
+    position: 'relative',
+  },
+  bellDot: {
+    position: 'absolute',
+    top: 9,
+    right: 10,
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: C.accent,
+  },
+
+  primaryBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 7,
+    backgroundColor: C.accent,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: R.pill,
+    shadowColor: C.accent,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.25,
+    shadowRadius: 8,
+    elevation: 3,
+  },
+  primaryBtnText: {
+    fontFamily: font.bold,
+    fontSize: 13,
+    color: '#FFFFFF',
   },
 
   search: {
@@ -98,7 +182,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 9,
     height: 40,
-    // Іздеу — ең кең элемент, бірақ тақырыпты қыспауы керек
     flexGrow: 1,
     flexShrink: 1,
     maxWidth: 300,
@@ -116,19 +199,8 @@ const styles = StyleSheet.create({
     fontFamily: font.body,
     fontSize: 13,
     color: C.ink,
-    // Веб-браузердің өз контуры дизайнды бұзады
     outlineStyle: 'none' as never,
   },
-
-  avatar: {
-    width: 40,
-    height: 40,
-    borderRadius: R.pill,
-    backgroundColor: C.darkBg,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  avatarText: { fontFamily: font.bold, fontSize: 15, color: '#FFFFFF' },
 
   right: { marginTop: 12 },
 });
