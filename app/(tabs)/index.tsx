@@ -61,32 +61,31 @@ export default function HomeScreen() {
   const stats: Stat[] = [
     {
       label: isKk ? 'Осы айдағы тапсырмалар' : 'Задачи на этот месяц',
-      value: String(tasks.length || done || 132),
-      badge: '+25%',
-      badgeTone: 'up',
+      value: String(tasks.length),
       icon: CheckIcon,
       chartType: 'bars',
-      note: tasks.length ? `${done} / ${tasks.length} орындалды` : 'Бүгінге белсенді',
+      empty: tasks.length === 0,
+      note: tasks.length
+        ? `${done} / ${tasks.length} ${isKk ? 'орындалды' : 'выполнено'}`
+        : (isKk ? 'Тапсырмалар қосылмаған' : 'Задач пока нет'),
       href: '/calendar',
     },
     {
       label: isKk ? 'Фокус уақыты' : 'Время фокуса',
-      value: timeRep.total > 0 ? `${timeRep.total} мин` : '32 сағ',
-      badge: '↓ 12%',
-      badgeTone: 'down',
+      value: `${timeRep.total} мин`,
       icon: ClockIcon,
       chartType: 'equalizer',
-      note: isKk ? 'Күндік орташа ұзақтық' : 'Средняя длительность',
+      empty: timeRep.total === 0,
+      note: isKk ? 'Бүгінгі фокус' : 'Фокус сегодня',
       href: '/focus',
     },
     {
       label: isKk ? 'Жалпы прогресс' : 'Общий прогресс',
       value: `${dayPct}%`,
-      badge: '87%',
-      badgeTone: 'up',
       icon: DiamondIcon,
       chartType: 'line',
-      note: isKk ? 'Күндік қарқын' : 'Дневной темп',
+      empty: dayPct === 0,
+      note: tasks.length > 0 ? (isKk ? 'Күндік қарқын' : 'Дневной темп') : (isKk ? 'Әрекет қосылмаған' : 'Нет действий'),
       href: '/goals',
     },
   ];
@@ -156,8 +155,8 @@ export default function HomeScreen() {
 
             <RingCard
               title={isKk ? 'Күндік қарқын' : 'Дневной темп'}
-              caption={isKk ? 'қарқын' : 'темп'}
-              pct={dayPct || 65}
+              caption={tasks.length > 0 ? (isKk ? 'қарқын' : 'темп') : (isKk ? 'жоспар жоқ' : 'нет задач')}
+              pct={dayPct}
               unit="%"
               onPress={() => router.navigate('/goals' as never)}
             />
@@ -167,16 +166,22 @@ export default function HomeScreen() {
           <View style={[styles.col, styles.colCenter]}>
             <GoalStatusCard
               title={isKk ? 'Ағымдағы кезең' : 'Текущий этап'}
-              code={topGoal ? `#${topGoal.goal.id.slice(0, 8).toUpperCase()}` : '#GOAL-2026'}
+              hasGoal={Boolean(topGoal)}
+              code={topGoal ? `#${topGoal.goal.id.slice(0, 8).toUpperCase()}` : undefined}
               origin="2026 ЖЫЛ"
-              destination="Q3 КЕЗЕҢ"
-              pct={yearPct || dayPct || 60}
+              destination={isKk ? 'МАҚСАТ' : 'ЦЕЛЬ'}
+              pct={topGoal ? (topGoal.total > 0 ? Math.round((topGoal.actual / topGoal.total) * 100) : 0) : 0}
               onViewMore={() => router.navigate('/goals' as never)}
+              onAddGoal={() => router.push('/goal/new' as never)}
             />
 
             <FocusFeatureCard
-              title={topGoal ? topGoal.goal.title : 'Forma Focus Pro'}
-              subtitle={isKk ? 'Басты назардағы мақсат пен қарқын' : 'Главный фокус и темп'}
+              title={topGoal ? topGoal.goal.title : (isKk ? 'Фокус орталығы' : 'Центр фокуса')}
+              subtitle={
+                topGoal
+                  ? (isKk ? 'Басты назардағы мақсат' : 'Главный фокус')
+                  : (isKk ? 'Таймерді қосып, өнімділікті арттырыңыз' : 'Запустите таймер для продуктивности')
+              }
               spec1={{ val: `${timeRep.total} мин`, lbl: isKk ? 'Уақыт' : 'Время' }}
               spec2={{ val: `${dayPct}%`, lbl: isKk ? 'Орындалу' : 'Итог' }}
               spec3={{ val: `${tasks.length} іс`, lbl: isKk ? 'Тапсырма' : 'Задачи' }}
@@ -191,6 +196,7 @@ export default function HomeScreen() {
               startName={isKk ? 'Дс (Бастау)' : 'Пн (Старт)'}
               endName={isKk ? 'Жс (Мәре)' : 'Вс (Финиш)'}
               progressMetric={`${dayPct}% / 100%`}
+              pct={dayPct}
               onExpand={() => router.navigate('/calendar' as never)}
             />
           </View>

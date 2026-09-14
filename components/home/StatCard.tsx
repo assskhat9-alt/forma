@@ -17,6 +17,7 @@ export type Stat = {
   href?: string;
   icon?: (p: IconProps) => React.ReactElement;
   chartType?: 'bars' | 'equalizer' | 'line';
+  empty?: boolean;
 };
 
 export function StatCard({
@@ -63,11 +64,11 @@ export function StatCard({
         {/* ── Оң жақтағы мини-график ── */}
         <View style={styles.chartBox}>
           {stat.chartType === 'line' ? (
-            <MiniLineChart />
+            <MiniLineChart empty={stat.empty} />
           ) : stat.chartType === 'equalizer' ? (
-            <MiniEqualizerChart />
+            <MiniEqualizerChart empty={stat.empty} />
           ) : (
-            <MiniBarsChart />
+            <MiniBarsChart empty={stat.empty} />
           )}
         </View>
       </View>
@@ -89,8 +90,8 @@ export function StatCard({
   );
 }
 
-function MiniBarsChart() {
-  const heights = [14, 22, 18, 30, 26];
+function MiniBarsChart({ empty }: { empty?: boolean }) {
+  const heights = empty ? [6, 6, 6, 6, 6] : [14, 22, 18, 30, 26];
   return (
     <View style={styles.chartRow}>
       {heights.map((h, i) => (
@@ -100,7 +101,7 @@ function MiniBarsChart() {
             styles.chartBar,
             {
               height: h,
-              backgroundColor: i === 3 ? C.accent : i === 4 ? C.accent2 : '#DDD6FE',
+              backgroundColor: empty ? '#E5E7EB' : (i === 3 ? C.accent : i === 4 ? C.accent2 : '#DDD6FE'),
             },
           ]}
         />
@@ -109,21 +110,32 @@ function MiniBarsChart() {
   );
 }
 
-function MiniEqualizerChart() {
-  const dots = [12, 28, 16, 32, 20, 26];
+function MiniEqualizerChart({ empty }: { empty?: boolean }) {
+  const dots = empty ? [4, 4, 4, 4, 4, 4] : [12, 28, 16, 32, 20, 26];
   return (
     <View style={styles.chartRow}>
       {dots.map((h, i) => (
         <View key={i} style={styles.eqCol}>
-          <View style={[styles.eqDot, { backgroundColor: i % 2 === 0 ? C.accent : '#AA9EF7' }]} />
-          <View style={[styles.eqLine, { height: h, backgroundColor: '#EDE9FE' }]} />
+          <View style={[styles.eqDot, { backgroundColor: empty ? '#E5E7EB' : (i % 2 === 0 ? C.accent : '#AA9EF7') }]} />
+          <View style={[styles.eqLine, { height: h, backgroundColor: empty ? '#F3F4F6' : '#EDE9FE' }]} />
         </View>
       ))}
     </View>
   );
 }
 
-function MiniLineChart() {
+function MiniLineChart({ empty }: { empty?: boolean }) {
+  if (empty) {
+    return (
+      <View style={styles.lineChart}>
+        <View style={[styles.lineDot, { bottom: 6, left: 2, backgroundColor: '#E5E7EB' }]} />
+        <View style={[styles.lineDot, { bottom: 6, left: 16, backgroundColor: '#E5E7EB' }]} />
+        <View style={[styles.lineDot, { bottom: 6, left: 30, backgroundColor: '#E5E7EB' }]} />
+        <View style={[styles.lineDot, { bottom: 6, left: 44, backgroundColor: '#E5E7EB' }]} />
+        <View style={[styles.lineDot, { bottom: 6, left: 58, backgroundColor: '#E5E7EB' }]} />
+      </View>
+    );
+  }
   return (
     <View style={styles.lineChart}>
       <View style={[styles.lineDot, { bottom: 6, left: 2 }]} />

@@ -6,7 +6,7 @@ import React from 'react';
 import { View, Text, Pressable, StyleSheet } from 'react-native';
 import { color as C, radius as R, font } from '../../theme/tokens';
 import { Card } from '../ui';
-import { ChevronRightIcon, CheckIcon, ChevronUpIcon } from '../icons';
+import { ChevronRightIcon, CheckIcon, ChevronUpIcon, DiamondIcon, PlusIcon } from '../icons';
 
 export type GoalStage = {
   label: string;
@@ -16,21 +16,54 @@ export type GoalStage = {
 
 export function GoalStatusCard({
   title = 'Ағымдағы кезең',
+  hasGoal = false,
   code = '#GOAL-2026',
   origin = '2026 ЖЫЛ',
   destination = 'Q3 КЕЗЕҢ',
-  pct = 60,
+  pct = 0,
   stages,
   onViewMore,
+  onAddGoal,
 }: {
   title?: string;
+  hasGoal?: boolean;
   code?: string;
   origin?: string;
   destination?: string;
   pct?: number;
   stages?: GoalStage[];
   onViewMore?: () => void;
+  onAddGoal?: () => void;
 }) {
+  if (!hasGoal) {
+    return (
+      <Card radius={22} style={styles.card}>
+        <View style={styles.head}>
+          <Text style={styles.title}>{title}</Text>
+        </View>
+
+        <View style={styles.emptyWrap}>
+          <View style={styles.emptyIconCircle}>
+            <DiamondIcon size={24} color={C.accent} strokeWidth={2.2} />
+          </View>
+          <Text style={styles.emptyTitle}>Әзірге мақсат қойылмаған</Text>
+          <Text style={styles.emptySub}>
+            Басты мақсатыңызды қосып, кезеңдер бойынша дамуды қадағалаңыз.
+          </Text>
+
+          <Pressable
+            style={styles.addBtn}
+            onPress={onAddGoal ?? onViewMore}
+            accessibilityRole="button"
+          >
+            <PlusIcon size={14} color="#FFFFFF" strokeWidth={2.4} />
+            <Text style={styles.addBtnText}>Жаңа мақсат қосу</Text>
+          </Pressable>
+        </View>
+      </Card>
+    );
+  }
+
   const defaultStages: GoalStage[] = stages ?? [
     { label: 'Жоспарлау', time: '10:00', status: 'done' },
     { label: 'Бастау', time: '13:18', status: 'done' },
@@ -187,4 +220,50 @@ const styles = StyleSheet.create({
   progressRingFill: { height: '100%', backgroundColor: C.accent, borderRadius: 3 },
   progressText: { fontFamily: font.bold, fontSize: 11.5, color: C.ink },
   deliveriesText: { fontFamily: font.body, fontSize: 11, color: C.ink3 },
+
+  emptyWrap: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 24,
+    paddingHorizontal: 16,
+    gap: 8,
+  },
+  emptyIconCircle: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: C.tint,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 4,
+  },
+  emptyTitle: {
+    fontFamily: font.title,
+    fontSize: 15,
+    color: C.ink,
+    textAlign: 'center',
+  },
+  emptySub: {
+    fontFamily: font.body,
+    fontSize: 12,
+    color: C.ink3,
+    textAlign: 'center',
+    lineHeight: 18,
+    maxWidth: 260,
+  },
+  addBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: C.accent,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 14,
+    marginTop: 8,
+  },
+  addBtnText: {
+    fontFamily: font.bold,
+    fontSize: 12.5,
+    color: '#FFFFFF',
+  },
 });

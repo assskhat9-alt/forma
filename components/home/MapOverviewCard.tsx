@@ -13,19 +13,22 @@ export function MapOverviewCard({
   title = 'Апталық бағыт картасы',
   startName = 'Бастау (Дс)',
   endName = 'Мәре (Жс)',
-  progressMetric = '44,7 / 93,9 %',
+  progressMetric = '0% / 100%',
+  pct = 0,
   onExpand,
 }: {
   title?: string;
   startName?: string;
   endName?: string;
   progressMetric?: string;
+  pct?: number;
   onExpand?: () => void;
 }) {
   const [zoom, setZoom] = React.useState(1);
 
   const zoomIn = () => setZoom((z) => Math.min(1.35, Number((z + 0.12).toFixed(2))));
   const zoomOut = () => setZoom((z) => Math.max(0.75, Number((z - 0.12).toFixed(2))));
+  const isStarted = (pct ?? 0) > 0;
 
   return (
     <Card radius={22} style={styles.card}>
@@ -45,34 +48,47 @@ export function MapOverviewCard({
             <Line x1="60" y1="20" x2="60" y2="240" stroke="#F1F3F9" strokeWidth="1" />
             <Line x1="140" y1="20" x2="140" y2="240" stroke="#F1F3F9" strokeWidth="1" />
 
-            {/* Маршрут қисығы (Dropify стилі) */}
+            {/* Маршрут қисығы */}
             <Path
               d="M40 210 Q 70 180, 90 190 T 140 130 T 170 80 T 210 50"
               fill="none"
-              stroke="#1A1D26"
+              stroke={isStarted ? "#1A1D26" : "#D1D5DB"}
               strokeWidth="3.5"
               strokeLinecap="round"
             />
 
-            {/* Активті бөлік сызығы (күлгін) */}
-            <Path
-              d="M140 130 T 170 80"
-              fill="none"
-              stroke={C.accent}
-              strokeWidth="4"
-              strokeLinecap="round"
-            />
+            {/* Активті бөлік сызығы (прогресс бар кезде ғана) */}
+            {isStarted ? (
+              <Path
+                d="M140 130 T 170 80"
+                fill="none"
+                stroke={C.accent}
+                strokeWidth="4"
+                strokeLinecap="round"
+              />
+            ) : null}
 
             {/* Бастау нүктесі */}
-            <Circle cx="40" cy="210" r="7" fill="#FFFFFF" stroke="#1A1D26" strokeWidth="3" />
-            <Circle cx="40" cy="210" r="3" fill={C.accent} />
+            <Circle
+              cx="40"
+              cy="210"
+              r={isStarted ? 7 : 9}
+              fill={isStarted ? "#FFFFFF" : C.accent}
+              stroke={isStarted ? "#1A1D26" : "#FFFFFF"}
+              strokeWidth={isStarted ? 3 : 2}
+            />
+            <Circle cx="40" cy="210" r={isStarted ? 3 : 4} fill={isStarted ? C.accent : "#FFFFFF"} />
 
-            {/* Ағымдағы орындалу меңзегіші */}
-            <Circle cx="170" cy="80" r="8" fill={C.accent} />
-            <Circle cx="170" cy="80" r="4" fill="#FFFFFF" />
+            {/* Ағымдағы орындалу меңзегіші (прогресс бар кезде) */}
+            {isStarted ? (
+              <>
+                <Circle cx="170" cy="80" r="8" fill={C.accent} />
+                <Circle cx="170" cy="80" r="4" fill="#FFFFFF" />
+              </>
+            ) : null}
 
             {/* Мәре нүктесі */}
-            <Circle cx="210" cy="50" r="5" fill="#1A1D26" />
+            <Circle cx="210" cy="50" r="5" fill={isStarted ? "#1A1D26" : "#9CA3AF"} />
           </Svg>
         </View>
 
