@@ -1,16 +1,8 @@
 /**
- * АПТА ҚОРЫТЫНДЫСЫ (design/AptaQoryt.dc.html).
+ * АПТА ҚОРЫТЫНДЫСЫ (Week Summary Screen).
  *
- * Аптаның не болғанын көрсетеді де, қалып қойған әрекеттерді не істеу
- * керегін СҰРАЙДЫ. Жүйе оларды өзі көшірмейді, өзі жаппайды —
- * жоспарды адам басқарады (CLAUDE.md §5.2a).
- *
- * ⚠ Макеттегі «келесі аптаға таңдау» блогы жоқ. Ол жоспарланбаған
- * әрекеттер қоймасы бар деп болжайды, ал бұл модельде әрбір әрекеттің
- * өз күні бар: таңдайтын қойма жоқ.
- *
- * ‹ › арқылы өткен апталарды қарауға болады, болашақ аптаға өтуге
- * болмайды: әлі болмаған нәрсенің қорытындысы жоқ.
+ * Аптаның орындалу пайызы, серпіні, 7 күндік жүктемесі мен тапсырмалары
+ * және апталық сабақтар/рефлексия.
  */
 import React, { useEffect, useRef, useState } from 'react';
 import { View, Text, ScrollView, Pressable, StyleSheet, ActivityIndicator } from 'react-native';
@@ -23,23 +15,19 @@ import { errorText } from '../lib/errors';
 import { useAutosave } from '../lib/autosave';
 import { useBreakpoint } from '../lib/breakpoints';
 import { weekNumber } from '../lib/calendar';
-import { fmtMinutes, startOfWeek, addDays } from '../lib/report';
+import { startOfWeek, addDays } from '../lib/report';
 import {
   useWeekSummary, useMoveAction, useDropAction, useRootIdOf,
   useWeekLesson, useWeekLessons, useSaveWeekLesson, useDeleteWeekLesson,
 } from '../lib/week';
-import { Card, DarkCard, SectionLabel } from '../components/ui';
-import { ChevronLeftIcon, ChevronRightIcon, CheckIcon, ClockIcon } from '../components/icons';
+import { Card, SectionLabel } from '../components/ui';
+import { ChevronLeftIcon, ChevronRightIcon } from '../components/icons';
 import { KeyboardFrame } from '../components/layout/KeyboardFrame';
 import { LessonNote } from '../components/week/LessonNote';
+import { WeekDayStrip } from '../components/week/WeekDayStrip';
+import { WeekTasksView } from '../components/week/WeekTasksView';
+import { WeekHeroStats } from '../components/week/WeekHeroStats';
 
-/**
- * Жаңа жазбаның уақыт таңбасы.
- *
- * Қазіргі апта болса — нақты қазіргі уақыт. Өткен апта болса — сол
- * аптаның соңғы күні: жазба сол аптаның ішінде тұруы керек, әйтпесе
- * оны кейін ол апта бойынша іздегенде табылмайды.
- */
 function stampFor(from: Date, to: Date, now: Date) {
   return now >= from && now <= addDays(to, 1) ? now : to;
 }
@@ -50,6 +38,7 @@ export default function WeekScreen() {
   const now = new Date();
 
   const [weekStart, setWeekStart] = useState(() => startOfWeek(now));
+  const [selectedDayIso, setSelectedDayIso] = useState<string | null>(null);
   const [note, setNote] = useState('');
   const [error, setError] = useState<string | null>(null);
 
@@ -62,25 +51,12 @@ export default function WeekScreen() {
   const saveLesson = useSaveWeekLesson();
   const removeLesson = useDeleteWeekLesson();
 
-  /**
-   * ⚠ Жазбаның id-і ref-те тұрады, state-те емес. Себебі автосақтау
-   * таймердің ішінен шақырылады: state сол сәттегі ЕСКІ мәнмен қатып
-   * қалады да, жаңа ғана қосылған жазбаның id-ін көрмей, әр сақтау
-   * сайын тағы бір жазба қосып жіберер еді.
-   */
   const lessonId = useRef<string | null>(null);
 
-  /**
-   * Жазбаны базаға жіберу — «Менің ойларымдағы» сияқты автосақтау.
-   *
-   * ⚠ Мәтін мүлде тазаланса, жазба ӨШІРІЛЕДІ: бос жазба сақтаудың
-   * мәні жоқ.
-   */
   const auto = useAutosave<string>({
     onSave: async (raw) => {
       const body = raw.trim();
       const id = lessonId.current;
-
       if (!body) {
         if (id) {
           await removeLesson.mutateAsync(id);
@@ -88,7 +64,6 @@ export default function WeekScreen() {
         }
         return;
       }
-
       const row = await saveLesson.mutateAsync({
         id, body, at: stampFor(rep.from, rep.to, now),
       });
@@ -97,13 +72,6 @@ export default function WeekScreen() {
     onError: (e) => setError(errorText(e)),
   });
 
-  /**
-   * Апта ауысқанда сол аптаның сабағы өріске түседі.
-   *
-   * ⚠ Тек аптасы бойынша БІР РЕТ. Әйтпесе автосақтау аяқталып,
-   * сұраныс жаңарған сайын өріс серверден келген ескі мәтінмен
-   * ауысып, адамның сол екі арада жазғаны жоғалып отырар еді.
-   */
   const weekKey = rep.from.getTime();
   const filledFor = useRef<number | null>(null);
 
@@ -116,7 +84,6 @@ export default function WeekScreen() {
     auto.reset();
   }, [weekKey, lessonPending, lesson?.id, lesson?.body, auto]);
 
-  // Аптаның аты — жазбаның «мұқабасы» да, жоғарғы жолақтағы тақырып та
   const rangeLabel = tpl(kk.week.range, {
     n: weekNumber(rep.from),
     from: formatDayMonth(rep.from),
@@ -124,11 +91,9 @@ export default function WeekScreen() {
   });
 
   const current = startOfWeek(now).getTime() === rep.from.getTime();
-  const peak = Math.max(1, ...rep.trend.map((t) => t.pct));
 
   const moveToNextWeek = (id: string, date: string) => {
     setError(null);
-    // Дәл бір аптадан кейінгі сол күн — апта ырғағы бұзылмайды
     const next = addDays(new Date(date + 'T00:00:00'), 7);
     move.mutate(
       { id, date: next, rootId: rootIdOf(id) },
@@ -136,9 +101,9 @@ export default function WeekScreen() {
     );
   };
 
-  // Апта ауыспас бұрын жазылмай қалғанын жіберіп үлгереміз
   const goWeek = (next: Date) => {
     auto.flush();
+    setSelectedDayIso(null);
     setWeekStart(next);
   };
 
@@ -149,11 +114,10 @@ export default function WeekScreen() {
         contentContainerStyle={{
           ...centered,
           paddingTop: insets.top + (wide ? 18 : 12),
-          paddingBottom: insets.bottom + 28,
+          paddingBottom: insets.bottom + 36,
         }}
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
-        // ⚠ Сан пернетақтасында «Дайын» түймесі жоқ — тізімді сүйреп жабады
         keyboardDismissMode="on-drag"
       >
         <View style={styles.header}>
@@ -165,7 +129,7 @@ export default function WeekScreen() {
         </View>
 
         <View style={styles.body}>
-          {/* ── Апта ауыстырғышы ── */}
+          {/* Апта навигациясы */}
           <View style={styles.nav}>
             <Pressable
               onPress={() => goWeek(addDays(weekStart, -7))}
@@ -176,7 +140,18 @@ export default function WeekScreen() {
               <ChevronLeftIcon size={14} color={C.ink3} strokeWidth={2.4} />
             </Pressable>
 
-            <Text style={styles.navTitle}>{rangeLabel}</Text>
+            <View style={styles.navTitleWrap}>
+              <Text style={styles.navTitle}>{rangeLabel}</Text>
+              {!current && (
+                <Pressable
+                  onPress={() => goWeek(startOfWeek(now))}
+                  style={styles.currentPill}
+                  accessibilityRole="button"
+                >
+                  <Text style={styles.currentPillText}>Осы апта</Text>
+                </Pressable>
+              )}
+            </View>
 
             <Pressable
               onPress={() => rep.canGoNext && goWeek(addDays(weekStart, 7))}
@@ -197,152 +172,28 @@ export default function WeekScreen() {
             </Card>
           ) : (
             <>
-              {/* ── Аптаның пайызы ── */}
-              <DarkCard style={styles.hero}>
-                <View style={styles.heroRow}>
-                  <View style={{ flexGrow: 1, flexShrink: 1, minWidth: 0 }}>
-                    <Text style={styles.heroLabel}>
-                      {current ? kk.week.thisWeek : kk.week.done}
-                    </Text>
+              {/* Аптаның негізгі көрсеткіштері */}
+              <WeekHeroStats rep={rep} current={current} />
 
-                    <View style={styles.bigRow}>
-                      <Text style={styles.big}>{rep.pct}%</Text>
-                      {rep.delta != null && rep.delta !== 0 && (
-                        <Text
-                          style={[
-                            styles.delta,
-                            { color: rep.delta > 0 ? C.accent2 : C.darkInk3 },
-                          ]}
-                        >
-                          {rep.delta > 0 ? '+' : '−'}
-                          {Math.abs(rep.delta)}%
-                        </Text>
-                      )}
-                    </View>
+              {/* 7 күндік жүктеме жолағы */}
+              <WeekDayStrip
+                days={rep.days}
+                selectedIso={selectedDayIso}
+                onSelectDay={setSelectedDayIso}
+              />
 
-                    <Text style={styles.heroSub}>
-                      {rep.delta == null
-                        ? kk.week.noCompare
-                        : tpl(kk.week.prevWas, { pct: rep.prevPct })}
-                    </Text>
-                  </View>
+              {/* Тапсырмалардың интерактивті тізімі */}
+              <WeekTasksView
+                actions={rep.allActions}
+                selectedDayIso={selectedDayIso}
+                onMoveAction={moveToNextWeek}
+                onDropAction={(id) => drop.mutate(id)}
+                movePending={move.isPending}
+                dropPending={drop.isPending}
+              />
 
-                  {/* Серпін — соңғы бірнеше апта */}
-                  <View style={styles.trend}>
-                    {rep.trend.map((t) => (
-                      <View
-                        key={t.key}
-                        style={[
-                          styles.trendBar,
-                          { height: Math.max(Math.round((t.pct / peak) * 54), 4) },
-                          t.current && { backgroundColor: C.accent },
-                        ]}
-                      />
-                    ))}
-                  </View>
-                </View>
-              </DarkCard>
-
-              {/* ── Сандар ── */}
-              <View style={styles.tiles}>
-                <Card level="cardSm" radius={R.cardSm} style={styles.tile}>
-                  <View style={styles.tileHead}>
-                    <CheckIcon size={13} color={C.accent} strokeWidth={3.2} />
-                    <SectionLabel>{kk.week.done}</SectionLabel>
-                  </View>
-                  <Text style={styles.tileValue}>{rep.done}</Text>
-                </Card>
-
-                <Card level="cardSm" radius={R.cardSm} style={styles.tile}>
-                  <View style={styles.tileHead}>
-                    <ClockIcon size={13} color={C.ink3} strokeWidth={2.6} />
-                    <SectionLabel>{kk.week.missed}</SectionLabel>
-                  </View>
-                  <Text style={[styles.tileValue, { color: C.ink3 }]}>
-                    {rep.missed.length}
-                  </Text>
-                </Card>
-              </View>
-
-              {/* ── Фокус пен әдеттер ── */}
-              <Card style={styles.pad}>
-                <View style={styles.line}>
-                  <Text style={styles.lineLabel}>{kk.week.focus}</Text>
-                  <Text style={styles.lineValue}>
-                    {rep.focusMinutes > 0 ? fmtMinutes(rep.focusMinutes) : '—'}
-                  </Text>
-                </View>
-                <View style={[styles.line, styles.lineTop]}>
-                  <Text style={styles.lineLabel}>{kk.week.habits}</Text>
-                  <Text style={styles.lineValue}>
-                    {rep.habitPlanned > 0 ? `${rep.habitDone} / ${rep.habitPlanned}` : '—'}
-                  </Text>
-                </View>
-                {rep.ahead > 0 && (
-                  <View style={[styles.line, styles.lineTop]}>
-                    <Text style={styles.lineLabel}>{kk.week.ahead}</Text>
-                    <Text style={styles.lineValue}>{rep.ahead}</Text>
-                  </View>
-                )}
-              </Card>
-
-              {/* ── Қалып қойғандар ── */}
-              {rep.missed.length > 0 && (
-                <>
-                  <SectionLabel style={{ paddingLeft: 4 }}>{kk.week.whatNext}</SectionLabel>
-
-                  <Card style={styles.pad}>
-                    {rep.missed.map((a, i) => (
-                      <View key={a.id} style={[styles.slip, i > 0 && styles.lineTop]}>
-                        <View style={{ flexGrow: 1, flexShrink: 1, minWidth: 0 }}>
-                          <Text style={styles.slipTitle} numberOfLines={2}>
-                            {a.title}
-                          </Text>
-                          <View style={styles.slipMeta}>
-                            <Text style={styles.slipDate}>
-                              {formatDayMonth(new Date(a.date + 'T00:00:00'))}
-                            </Text>
-                            {a.goal && (
-                              <View style={styles.goalChip}>
-                                <View style={[styles.dot, { backgroundColor: a.goal.color }]} />
-                                <Text style={styles.goalText} numberOfLines={1}>
-                                  {a.goal.title}
-                                </Text>
-                              </View>
-                            )}
-                          </View>
-                        </View>
-
-                        <View style={styles.slipBtns}>
-                          <Pressable
-                            onPress={() => moveToNextWeek(a.id, a.date)}
-                            disabled={move.isPending}
-                            style={[styles.btn, styles.btnMove]}
-                            accessibilityRole="button"
-                          >
-                            <Text style={styles.btnMoveText}>{kk.week.moveOn}</Text>
-                          </Pressable>
-
-                          <Pressable
-                            onPress={() => drop.mutate(a.id)}
-                            disabled={drop.isPending}
-                            style={styles.btn}
-                            accessibilityRole="button"
-                          >
-                            <Text style={styles.btnText}>{kk.week.close}</Text>
-                          </Pressable>
-                        </View>
-                      </View>
-                    ))}
-
-                    <Text style={styles.hint}>{kk.week.closeHint}</Text>
-                  </Card>
-                </>
-              )}
-
-              {/* ── Аптаның сабағы ── */}
-              <SectionLabel style={{ paddingLeft: 4 }}>{kk.week.lesson}</SectionLabel>
-
+              {/* Апта сабағы мен рефлексиясы */}
+              <SectionLabel style={{ paddingLeft: 4, marginTop: 4 }}>{kk.week.lesson}</SectionLabel>
               <LessonNote
                 weekLabel={rangeLabel}
                 value={note}
@@ -369,76 +220,23 @@ const styles = StyleSheet.create({
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
     paddingHorizontal: gutter, paddingBottom: 10,
   },
-  headerTitle: {
-    fontFamily: font.display, fontSize: 12, letterSpacing: 1.8, color: C.ink,
-  },
-
-  body: { paddingHorizontal: gutter, gap: 10 },
+  headerTitle: { fontFamily: font.display, fontSize: 12, letterSpacing: 1.8, color: C.ink },
+  body: { paddingHorizontal: gutter, gap: 12 },
   pad: { padding: 17 },
   center: { paddingVertical: 30, alignItems: 'center' },
   error: { fontFamily: font.prose, fontSize: 12.5, color: C.inkProse, textAlign: 'center' },
 
   nav: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   arrow: {
-    width: 30, height: 30, borderRadius: R.boxSm,
+    width: 32, height: 32, borderRadius: R.boxSm,
     alignItems: 'center', justifyContent: 'center',
     backgroundColor: C.card, borderWidth: 1, borderColor: C.lineField,
   },
-  navTitle: {
-    flexGrow: 1, textAlign: 'center',
-    fontFamily: font.bold, fontSize: 12.5, color: C.ink,
+  navTitleWrap: { flexGrow: 1, alignItems: 'center', justifyContent: 'center', gap: 2 },
+  navTitle: { fontFamily: font.bold, fontSize: 12.5, color: C.ink },
+  currentPill: {
+    paddingHorizontal: 8, paddingVertical: 2, borderRadius: R.pill,
+    backgroundColor: C.tint, borderWidth: 1, borderColor: C.tintLine,
   },
-
-  hero: { padding: 18 },
-  heroRow: { flexDirection: 'row', alignItems: 'flex-end', gap: 14 },
-  heroLabel: {
-    fontFamily: font.bold, fontSize: 9.5, letterSpacing: 1.14,
-    textTransform: 'uppercase', color: C.accent2,
-  },
-  bigRow: { flexDirection: 'row', alignItems: 'baseline', gap: 9, marginTop: 8 },
-  big: {
-    fontFamily: font.display, fontSize: 36, letterSpacing: -1.8, color: '#FFFFFF',
-  },
-  delta: { fontFamily: font.bold, fontSize: 12 },
-  heroSub: { fontFamily: font.prose, fontSize: 11, color: C.darkInk2, marginTop: 6 },
-
-  trend: { flexDirection: 'row', alignItems: 'flex-end', gap: 5, height: 54, flexShrink: 0 },
-  trendBar: { width: 13, borderRadius: R.micro, backgroundColor: C.darkCard2 },
-
-  tiles: { flexDirection: 'row', gap: 9 },
-  tile: { flexGrow: 1, flexShrink: 1, flexBasis: 0, paddingHorizontal: 15, paddingVertical: 13 },
-  tileHead: { flexDirection: 'row', alignItems: 'center', gap: 7 },
-  tileValue: {
-    fontFamily: font.display, fontSize: 22, letterSpacing: -0.9,
-    color: C.ink, marginTop: 6,
-  },
-
-  line: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12, paddingVertical: 9 },
-  lineTop: { borderTopWidth: 1, borderTopColor: C.lineSoft },
-  lineLabel: { fontFamily: font.body, fontSize: 12.5, color: C.inkBody, flexShrink: 1 },
-  lineValue: { fontFamily: font.bold, fontSize: 13, color: C.ink, flexShrink: 0 },
-
-  slip: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 12 },
-  slipTitle: { fontFamily: font.title, fontSize: 12.5, lineHeight: 17, color: C.ink },
-  slipMeta: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 6 },
-  slipDate: { fontFamily: font.body, fontSize: 10.5, color: C.ink4 },
-  goalChip: {
-    flexDirection: 'row', alignItems: 'center', gap: 5,
-    backgroundColor: C.tint, borderRadius: R.pill,
-    paddingHorizontal: 8, paddingVertical: 2, flexShrink: 1,
-  },
-  dot: { width: 5, height: 5, borderRadius: 999, flexShrink: 0 },
-  goalText: { fontFamily: font.bold, fontSize: 9.5, color: C.accentDeep, flexShrink: 1 },
-
-  slipBtns: { flexDirection: 'row', gap: 5, flexShrink: 0 },
-  btn: {
-    paddingHorizontal: 11, paddingVertical: 7, borderRadius: R.chipSm,
-    backgroundColor: C.cardSoft, borderWidth: 1.5, borderColor: C.line,
-  },
-  btnText: { fontFamily: font.bold, fontSize: 10.5, color: C.ink3 },
-  btnMove: { backgroundColor: C.tintSoft, borderColor: C.tintLine },
-  btnMoveText: { fontFamily: font.bold, fontSize: 10.5, color: C.accentDeep },
-
-  hint: { fontFamily: font.prose, fontSize: 11, lineHeight: 16, color: C.ink4, marginTop: 12 },
-
+  currentPillText: { fontFamily: font.bold, fontSize: 10, color: C.accentDeep },
 });

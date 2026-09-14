@@ -19,6 +19,9 @@ import { startOfDay, addDays, startOfWeek } from './report';
 import { color as C } from '../theme/tokens';
 import type { Goal, FocusSession } from './database.types';
 
+export * from './weekLessons';
+export * from './weekActions';
+
 /** Қанша аптаның серпіні көрсетіледі */
 const TREND_WEEKS = 5;
 
@@ -26,10 +29,44 @@ export type WeekAction = {
   id: string;
   title: string;
   date: string;
+  time?: string | null;
+  status: 'done' | 'missed' | 'planned';
   goal: { title: string; color: string } | null;
 };
 
+export type WeekDayStats = {
+  date: Date;
+  iso: string;
+  dayName: string;
+  dayNum: number;
+  total: number;
+  done: number;
+  pct: number;
+  isToday: boolean;
+};
+
 export type WeekTrend = { key: string; pct: number; current: boolean };
+
+export type WeekReport = {
+  isLoading: boolean;
+  from: Date;
+  to: Date;
+  total: number;
+  done: number;
+  missed: WeekAction[];
+  doneActions: WeekAction[];
+  allActions: WeekAction[];
+  days: WeekDayStats[];
+  ahead: number;
+  pct: number;
+  prevPct: number;
+  delta: number | null;
+  trend: WeekTrend[];
+  focusMinutes: number;
+  habitDone: number;
+  habitPlanned: number;
+  canGoNext: boolean;
+};
 
 /** Аптадағы әрекеттердің бөлінісі */
 function split(goals: Goal[], from: Date, to: Date) {
@@ -50,7 +87,7 @@ function pctOf(rows: Goal[]): number {
   return Math.round((rows.filter((g) => g.status === 'done').length / rows.length) * 100);
 }
 
-export function useWeekSummary(weekStart: Date, now: Date) {
+export function useWeekSummary(weekStart: Date, now: Date): WeekReport {
   const from = startOfWeek(weekStart);
   const to = addDays(from, 7);
   const today = startOfDay(now);
@@ -133,12 +170,36 @@ export function useWeekSummary(weekStart: Date, now: Date) {
     }
   }
 
-  const toAction = (g: Goal): WeekAction => ({
-    id: g.id,
-    title: g.title,
-    date: g.period_start,
-    goal: rootOf(g),
+  const DAY_NAMES = ['Дс', 'Сс', 'Ср', 'Бс', 'Жм', 'Сн', 'Жк'];
+  const days: WeekDayStats[] = Array.from({ length: 7 }, (_, i) => {
+    const d = addDays(from, i);
+    const iso = toISODate(d);
+    const dayTasks = week.filter((g) => g.period_start === iso);
+    const dayDone = dayTasks.filter((g) => g.status === 'done').length;
+    return {
+      date: d,
+      iso,
+      dayName: DAY_NAMES[i]!,
+      dayNum: d.getDate(),
+      total: dayTasks.length,
+      done: dayDone,
+      pct: dayTasks.length ? Math.round((dayDone / dayTasks.length) * 100) : 0,
+      isToday: iso === toISODate(today),
+    };
   });
+
+  const toAction = (g: Goal): WeekAction => {
+    const isDone = g.status === 'done';
+    const isMissed = !isDone && new Date(g.period_start + 'T00:00:00').getTime() < today.getTime();
+    return {
+      id: g.id,
+      title: g.title,
+      date: g.period_start,
+      time: g.scheduled_at ? g.scheduled_at.slice(11, 16) : null,
+      status: isDone ? 'done' : isMissed ? 'missed' : 'planned',
+      goal: rootOf(g),
+    };
+  };
 
   const pct = pctOf(week);
   const prevPct = pctOf(prev);
@@ -150,6 +211,9 @@ export function useWeekSummary(weekStart: Date, now: Date) {
     total: week.length,
     done: done.length,
     missed: missed.map(toAction),
+    doneActions: done.map(toAction),
+    allActions: week.map(toAction),
+    days,
     ahead,
     pct,
     prevPct,
@@ -164,228 +228,4 @@ export function useWeekSummary(weekStart: Date, now: Date) {
   };
 }
 
-// ─────────────────────────────────────────────────────────────────────
-// Аптаның сабағы
-// ─────────────────────────────────────────────────────────────────────
 
-/**
- * Осы аптаға жазылған сабақ.
- *
- * ⚠ Бір аптаға БІР ғана жазба. Бұрын әр «Сақтау» жаңа жазба қосатын да,
- * бір аптада үш жазба пайда болатын. Енді бар болса — сол жаңартылады.
- */
-export function useWeekLesson(from: Date, to: Date) {
-  return useQuery({
-    queryKey: ['weekLesson', from.toISOString()],
-    queryFn: async () => {
-      const { data: session } = await supabase.auth.getSession();
-      const userId = session.session?.user.id;
-      if (!userId) return null;
-
-      const { data, error } = await supabase
-        .from('reflections')
-        .select('*')
-        .eq('user_id', userId)
-        .is('goal_id', null)
-        .gte('created_at', from.toISOString())
-        .lt('created_at', addDays(to, 1).toISOString())
-        .order('created_at', { ascending: false })
-        .limit(1);
-      if (error) throw error;
-      return (data ?? [])[0] ?? null;
-    },
-  });
-}
-
-/**
- * Аптаның сабағын сақтау.
- *
- * ⚠ Бар болса ЖАҢАРТЫЛАДЫ: бір аптаға бір ғана сабақ.
- *
- * ⚠ `at` — жаңа жазбаның УАҚЫТ таңбасы. Ол керек, өйткені жазба
- * қай аптаға тиесілі екені `created_at` арқылы ғана табылады. Оны
- * қоймасақ, өткен аптаның қорытындысын жазғанда жазба ОСЫ аптаға
- * түсіп кетер еді де, өзі жазған адам оны қайтып таба алмас еді.
- *
- * ⚠ Жаңа жазбаның id-і қайтарылады: автосақтауда келесі басылған әріп
- * сол id-ті пайдаланып ЖАҢАРТУЫ керек, әйтпесе әр әріп сайын жаңа
- * жазба қосылып кетеді.
- */
-/**
- * Барлық апта сабақтары — тізімге.
- *
- * ⚠ Мұнда мақсатқа байланған рефлексиялар КІРМЕЙДІ (`goal_id` бос
- * болуы шарт): олар басқа нәрсе, аптаның қорытындысы емес.
- */
-export function useWeekLessons(limit = 60) {
-  return useQuery({
-    queryKey: ['weekLessons', limit],
-    queryFn: async () => {
-      const { data: session } = await supabase.auth.getSession();
-      const userId = session.session?.user.id;
-      if (!userId) return [];
-
-      const { data, error } = await supabase
-        .from('reflections')
-        .select('id, body, created_at')
-        .eq('user_id', userId)
-        .is('goal_id', null)
-        .order('created_at', { ascending: false })
-        .limit(limit);
-      if (error) throw error;
-      return (data ?? []) as { id: string; body: string | null; created_at: string }[];
-    },
-  });
-}
-
-export function useSaveWeekLesson() {
-  const qc = useQueryClient();
-
-  return useMutation({
-    mutationFn: async (
-      { id, body, at }: { id: string | null; body: string; at: Date },
-    ): Promise<{ id: string }> => {
-      const { data: session } = await supabase.auth.getSession();
-      const userId = session.session?.user.id;
-      if (!userId) throw new Error('Сессия жоқ');
-
-      if (id) {
-        const { error } = await supabase.from('reflections').update({ body }).eq('id', id);
-        if (error) throw error;
-        return { id };
-      }
-
-      const { data, error } = await supabase
-        .from('reflections')
-        .insert({
-          user_id: userId,
-          goal_id: null,
-          body,
-          rating: null,
-          minutes_spent: null,
-          created_at: at.toISOString(),
-        })
-        .select('id')
-        .single();
-      if (error) throw error;
-      return { id: data.id as string };
-    },
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['weekLesson'] });
-      qc.invalidateQueries({ queryKey: ['weekLessons'] });
-      qc.invalidateQueries({ queryKey: ['reflections', 'all'] });
-    },
-  });
-}
-
-/**
- * Сабақты өшіру — мәтінді толық тазалағанда.
- *
- * ⚠ Бос жазба қалдырмаймыз: телефондағы «Заметкидегідей» мәтінді
- * өшірсең, жазбаның өзі де қалмайды. Әйтпесе базада мәні жоқ бос
- * жолдар жиналар еді.
- */
-export function useDeleteWeekLesson() {
-  const qc = useQueryClient();
-
-  return useMutation({
-    mutationFn: async (id: string) => {
-      const { data: session } = await supabase.auth.getSession();
-      const userId = session.session?.user.id;
-      if (!userId) throw new Error('Сессия жоқ');
-
-      const { error } = await supabase
-        .from('reflections')
-        .delete()
-        .eq('id', id)
-        .eq('user_id', userId);
-      if (error) throw error;
-    },
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['weekLesson'] });
-      qc.invalidateQueries({ queryKey: ['weekLessons'] });
-      qc.invalidateQueries({ queryKey: ['reflections', 'all'] });
-    },
-  });
-}
-
-// ─────────────────────────────────────────────────────────────────────
-// Қалып қойған әрекетті не істейміз
-// ─────────────────────────────────────────────────────────────────────
-
-/**
- * Әрекетті басқа күнге көшіру.
- *
- * ⚠ Ай да ауысады: жаңа күн басқа айға түссе, әрекет сол айдың астына
- * барады. Әйтпесе тамыздың әрекеті қыркүйекте тұрып, айлық пайызды
- * бұрмалар еді.
- */
-export function useMoveAction() {
-  const qc = useQueryClient();
-
-  return useMutation({
-    mutationFn: async ({ id, date, rootId }: { id: string; date: Date; rootId: string | null }) => {
-      const iso = toISODate(date);
-      let parentId: string | null = null;
-
-      if (rootId) {
-        const { data: month, error: e1 } = await supabase.rpc('month_for_date', {
-          p_goal_id: rootId,
-          p_date: iso,
-        });
-        if (e1) throw e1;
-        if (!month) throw new Error('Жаңа күн мақсаттың мерзімінен тыс.');
-        parentId = month as string;
-      }
-
-      const { error } = await supabase
-        .from('goals')
-        .update(
-          parentId
-            ? { period_start: iso, period_end: iso, parent_id: parentId }
-            : { period_start: iso, period_end: iso },
-        )
-        .eq('id', id);
-      if (error) throw error;
-    },
-    onSuccess: () => qc.invalidateQueries({ queryKey: qk.goals.all }),
-  });
-}
-
-/**
- * Әрекетті жабу.
- *
- * ⚠ Жойылмайды, `dropped` болады: пайыз есебінен шығады, бірақ
- * «мынаны жоспарлағанмын, істемедім» деген факт сақталады.
- */
-export function useDropAction() {
-  const qc = useQueryClient();
-
-  return useMutation({
-    mutationFn: async (id: string) => {
-      const { error } = await supabase
-        .from('goals')
-        .update({ status: 'dropped' })
-        .eq('id', id);
-      if (error) throw error;
-    },
-    onSuccess: () => qc.invalidateQueries({ queryKey: qk.goals.all }),
-  });
-}
-
-/** Әрекеттің тамырдағы жылдық мақсатының id-і — көшіргенде ай іздеу үшін */
-export function useRootIdOf() {
-  const { data: goals } = useGoals();
-  const byId = new Map((goals ?? []).map((g) => [g.id, g]));
-
-  return (actionId: string): string | null => {
-    let cur = byId.get(actionId);
-    const seen = new Set<string>();
-    while (cur?.parent_id && !seen.has(cur.id)) {
-      seen.add(cur.id);
-      cur = byId.get(cur.parent_id);
-    }
-    // Тамыры өзі болса — бұл жеке шаруа, айға тіркелмейді
-    return cur && cur.id !== actionId ? cur.id : null;
-  };
-}
