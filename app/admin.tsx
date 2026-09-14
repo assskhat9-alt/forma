@@ -14,12 +14,14 @@ import { useSession } from '../lib/auth';
 import { ChevronLeftIcon, DiamondIcon } from '../components/icons';
 import { AdminOverview } from '../components/admin/AdminOverview';
 import { AdminUsers } from '../components/admin/AdminUsers';
+import { AdminAnalytics } from '../components/admin/AdminAnalytics';
 import { AdminMottos } from '../components/admin/AdminMottos';
 import { AdminAnnouncements } from '../components/admin/AdminAnnouncements';
 
 const TABS = [
   kk.admin.tabOverview,
   kk.admin.tabUsers,
+  kk.admin.tabAnalytics,
   kk.admin.tabMottos,
   kk.admin.tabAnnounce,
 ] as const;
@@ -101,8 +103,9 @@ export default function AdminScreen() {
         >
           {tabIndex === 0 && <AdminOverview />}
           {tabIndex === 1 && <AdminUsers />}
-          {tabIndex === 2 && <AdminMottos />}
-          {tabIndex === 3 && <AdminAnnouncements />}
+          {tabIndex === 2 && <AdminAnalytics />}
+          {tabIndex === 3 && <AdminMottos />}
+          {tabIndex === 4 && <AdminAnnouncements />}
         </ScrollView>
       </View>
     </View>

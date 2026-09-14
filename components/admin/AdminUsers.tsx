@@ -4,7 +4,7 @@ import { color as C, radius as R, font } from '../../theme/tokens';
 import { kk, t } from '../../i18n/kk';
 import { useAdminUsers, type AdminUser } from '../../lib/admin';
 import { Card, SectionLabel } from '../ui';
-import { UserIcon, DiamondIcon, CheckIcon } from '../icons';
+import { UserIcon, DiamondIcon, CheckIcon, ClockIcon } from '../icons';
 
 export function AdminUsers() {
   const { data: users, isLoading } = useAdminUsers();
@@ -66,13 +66,23 @@ function UserRow({ user }: { user: AdminUser }) {
       <View style={styles.userHead}>
         <View style={styles.avatar}>
           <UserIcon size={16} color={C.accent} />
+          {user.isOnline ? <View style={styles.onlineDot} /> : null}
         </View>
         <View style={{ flex: 1 }}>
-          <Text style={styles.userName}>{user.name}</Text>
+          <View style={styles.nameRow}>
+            <Text style={styles.userName}>{user.name}</Text>
+            {user.isOnline ? (
+              <View style={styles.liveTag}>
+                <Text style={styles.liveTagText}>{kk.admin.statusOnline}</Text>
+              </View>
+            ) : null}
+          </View>
           <Text style={styles.userEmail}>{user.email}</Text>
         </View>
         <View style={styles.statusPill}>
-          <Text style={styles.statusText}>{user.status === 'active' ? 'Белсенді' : 'Бұғатталған'}</Text>
+          <Text style={styles.statusText}>
+            {user.status === 'active' ? kk.admin.mottoActive : kk.admin.mottoInactive}
+          </Text>
         </View>
       </View>
 
@@ -89,6 +99,14 @@ function UserRow({ user }: { user: AdminUser }) {
           <CheckIcon size={13} color={C.accent} />
           <Text style={styles.metaVal}>{user.habitsCount} әдет</Text>
         </View>
+        {user.todayMinutes ? (
+          <View style={styles.metaItem}>
+            <ClockIcon size={13} color={C.accentDeep} />
+            <Text style={[styles.metaVal, { color: C.accentDeep, fontFamily: font.bold }]}>
+              {user.todayMinutes} мин
+            </Text>
+          </View>
+        ) : null}
       </View>
     </Card>
   );
@@ -123,6 +141,34 @@ const styles = StyleSheet.create({
     backgroundColor: C.tintRow,
     alignItems: 'center',
     justifyContent: 'center',
+    position: 'relative',
+  },
+  onlineDot: {
+    position: 'absolute',
+    top: 0,
+    right: 0,
+    width: 9,
+    height: 9,
+    borderRadius: R.pill,
+    backgroundColor: C.accentDeep,
+    borderWidth: 1.5,
+    borderColor: C.card,
+  },
+  nameRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  liveTag: {
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: R.micro,
+    backgroundColor: C.tintChip,
+  },
+  liveTagText: {
+    fontFamily: font.bold,
+    fontSize: 10,
+    color: C.accentDeep,
   },
   userName: {
     fontFamily: font.bold,

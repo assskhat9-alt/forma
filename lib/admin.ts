@@ -1,4 +1,4 @@
-﻿/**
+/**
  * Әкімші (Admin) деректері мен API.
  *
  * Жүйелік шолу, қолданушылар тізімі, дәйексөздер және хабарландыруларды басқару.
@@ -27,6 +27,9 @@ export type AdminUser = {
   goalsCount: number;
   habitsCount: number;
   status: 'active' | 'inactive';
+  isOnline?: boolean;
+  todayMinutes?: number;
+  lastSeenText?: string;
 };
 
 export type AdminAnnouncement = {
@@ -71,6 +74,9 @@ const INITIAL_USERS: AdminUser[] = [
     goalsCount: 12,
     habitsCount: 5,
     status: 'active',
+    isOnline: true,
+    todayMinutes: 75,
+    lastSeenText: 'Жаңа ғана',
   },
   {
     id: 'user-002',
@@ -80,6 +86,9 @@ const INITIAL_USERS: AdminUser[] = [
     goalsCount: 8,
     habitsCount: 3,
     status: 'active',
+    isOnline: true,
+    todayMinutes: 98,
+    lastSeenText: 'Жаңа ғана',
   },
   {
     id: 'user-003',
@@ -89,6 +98,9 @@ const INITIAL_USERS: AdminUser[] = [
     goalsCount: 15,
     habitsCount: 6,
     status: 'active',
+    isOnline: true,
+    todayMinutes: 45,
+    lastSeenText: 'Жаңа ғана',
   },
   {
     id: 'user-004',
@@ -98,6 +110,9 @@ const INITIAL_USERS: AdminUser[] = [
     goalsCount: 3,
     habitsCount: 2,
     status: 'active',
+    isOnline: true,
+    todayMinutes: 28,
+    lastSeenText: 'Жаңа ғана',
   },
 ];
 
