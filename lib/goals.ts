@@ -56,15 +56,17 @@ async function fetchGoals(): Promise<Goal[]> {
   if (isDemoSessionActive()) {
     return getDemoGoals();
   }
+  const { data: session } = await supabase.auth.getSession();
+  const userId = session.session?.user.id;
+  if (!userId) return [];
+
   const { data, error } = await supabase
     .from('goals')
     .select('*')
+    .eq('user_id', userId)
     .order('period_start', { ascending: true })
     .order('sort_order', { ascending: true });
   if (error) throw error;
-  if (!data || data.length === 0) {
-    if (isDemoSessionActive()) return getDemoGoals();
-  }
   return data ?? [];
 }
 

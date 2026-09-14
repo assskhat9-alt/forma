@@ -22,9 +22,14 @@ export function useNotes() {
   return useQuery({
     queryKey: KEY,
     queryFn: async () => {
+      const { data: session } = await supabase.auth.getSession();
+      const userId = session.session?.user.id;
+      if (!userId) return [];
+
       const { data, error } = await supabase
         .from('notes')
         .select('*')
+        .eq('user_id', userId)
         .order('updated_at', { ascending: false });
       if (error) throw error;
       return (data ?? []) as Note[];
@@ -63,6 +68,10 @@ export function useSaveNote() {
       body: string;
       strokes: Stroke[];
     }) => {
+      const { data: session } = await supabase.auth.getSession();
+      const userId = session.session?.user.id;
+      if (!userId) throw new Error('Сессия жоқ');
+
       const { error } = await supabase
         .from('notes')
         .update({
@@ -71,7 +80,8 @@ export function useSaveNote() {
           strokes: n.strokes,
           updated_at: new Date().toISOString(),
         })
-        .eq('id', n.id);
+        .eq('id', n.id)
+        .eq('user_id', userId);
       if (error) throw error;
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: KEY }),
@@ -83,7 +93,15 @@ export function useDeleteNote() {
 
   return useMutation({
     mutationFn: async (id: string) => {
-      const { error } = await supabase.from('notes').delete().eq('id', id);
+      const { data: session } = await supabase.auth.getSession();
+      const userId = session.session?.user.id;
+      if (!userId) throw new Error('Сессия жоқ');
+
+      const { error } = await supabase
+        .from('notes')
+        .delete()
+        .eq('id', id)
+        .eq('user_id', userId);
       if (error) throw error;
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: KEY }),

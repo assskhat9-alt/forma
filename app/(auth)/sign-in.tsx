@@ -83,8 +83,7 @@ export default function SignIn() {
     if (!mail || !password) return setError(kk.signIn.errors.empty);
     if (password.length < 6) return setError(kk.signIn.errors.short);
 
-    const isAskhatAdmin =
-      mail.toLowerCase() === ADMIN_EMAIL || mail.toLowerCase() === 'assskhat9@gmail.com';
+    const isAskhatAdmin = mail.toLowerCase() === ADMIN_EMAIL;
     if (isAskhatAdmin && password === 'FormaAdmin2026!') {
       setBusy(true);
       try {

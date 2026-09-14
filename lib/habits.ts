@@ -42,9 +42,13 @@ export function useHabits() {
     queryKey: qk.habits.all,
     queryFn: async (): Promise<Habit[]> => {
       if (isDemoSessionActive()) return getDemoHabits();
+      const { data: session } = await supabase.auth.getSession();
+      const userId = session.session?.user.id;
+      if (!userId) return [];
       const { data, error } = await supabase
         .from('habits')
         .select('*')
+        .eq('user_id', userId)
         .is('archived_at', null)
         .order('sort_order', { ascending: true });
       if (error) throw error;
@@ -61,9 +65,13 @@ export function useHabitLogs(from: Date, to: Date) {
     queryKey: qk.habits.logs(a, b),
     queryFn: async (): Promise<HabitLog[]> => {
       if (isDemoSessionActive()) return getDemoHabitLogs();
+      const { data: session } = await supabase.auth.getSession();
+      const userId = session.session?.user.id;
+      if (!userId) return [];
       const { data, error } = await supabase
         .from('habit_logs')
         .select('*')
+        .eq('user_id', userId)
         .gte('log_date', a)
         .lte('log_date', b);
       if (error) throw error;
@@ -112,9 +120,14 @@ export function useToggleHabit(date: Date) {
           .insert({ user_id: userId, habit_id: habitId, log_date: iso });
         if (error) throw error;
       } else {
+        const { data: session } = await supabase.auth.getSession();
+        const userId = session.session?.user.id;
+        if (!userId) throw new Error('Сессия жоқ');
+
         const { error } = await supabase
           .from('habit_logs')
           .delete()
+          .eq('user_id', userId)
           .eq('habit_id', habitId)
           .eq('log_date', iso);
         if (error) throw error;

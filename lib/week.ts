@@ -178,9 +178,14 @@ export function useWeekLesson(from: Date, to: Date) {
   return useQuery({
     queryKey: ['weekLesson', from.toISOString()],
     queryFn: async () => {
+      const { data: session } = await supabase.auth.getSession();
+      const userId = session.session?.user.id;
+      if (!userId) return null;
+
       const { data, error } = await supabase
         .from('reflections')
         .select('*')
+        .eq('user_id', userId)
         .is('goal_id', null)
         .gte('created_at', from.toISOString())
         .lt('created_at', addDays(to, 1).toISOString())
@@ -216,9 +221,14 @@ export function useWeekLessons(limit = 60) {
   return useQuery({
     queryKey: ['weekLessons', limit],
     queryFn: async () => {
+      const { data: session } = await supabase.auth.getSession();
+      const userId = session.session?.user.id;
+      if (!userId) return [];
+
       const { data, error } = await supabase
         .from('reflections')
         .select('id, body, created_at')
+        .eq('user_id', userId)
         .is('goal_id', null)
         .order('created_at', { ascending: false })
         .limit(limit);
@@ -280,7 +290,15 @@ export function useDeleteWeekLesson() {
 
   return useMutation({
     mutationFn: async (id: string) => {
-      const { error } = await supabase.from('reflections').delete().eq('id', id);
+      const { data: session } = await supabase.auth.getSession();
+      const userId = session.session?.user.id;
+      if (!userId) throw new Error('Сессия жоқ');
+
+      const { error } = await supabase
+        .from('reflections')
+        .delete()
+        .eq('id', id)
+        .eq('user_id', userId);
       if (error) throw error;
     },
     onSuccess: () => {

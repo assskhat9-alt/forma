@@ -18,6 +18,7 @@ import { useHabitsForDay, useToggleHabit } from '../../lib/habits';
 import { useActiveMotto } from '../../lib/mottos';
 import { useTimeOverview } from '../../lib/report';
 import { useAdminAnnouncement } from '../../lib/admin';
+import { useSession } from '../../lib/auth';
 import { TopBar } from '../../components/layout/TopBar';
 import {
   StatCard, RingCard, GoalStatusCard, TaskDetailsCard,
@@ -34,7 +35,11 @@ export default function HomeScreen() {
   const today = useMemo(() => new Date(), []);
   const [selected, setSelected] = useState(today);
 
+  const { session } = useSession();
   const { strings: S, isKk } = useI18n();
+  const userName =
+    session?.user?.user_metadata?.full_name ||
+    (session?.user?.email?.split('@')[0] ?? (isKk ? 'Қолданушы' : 'Пользователь'));
   const { tasks, isLoading, isError } = useDayTasks(selected);
   const toggleTask = useToggleTask();
   const { data: yearGoals } = useYearGoalsWithStats(today);
@@ -145,7 +150,7 @@ export default function HomeScreen() {
               doneCount={done}
               leftCount={left}
               habitCount={habits.length}
-              userName={isKk ? 'Қолданушы' : 'Пользователь'}
+              userName={userName}
               onAction={() => router.navigate('/notes' as never)}
             />
 

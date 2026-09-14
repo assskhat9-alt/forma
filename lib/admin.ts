@@ -159,7 +159,7 @@ export function useAdminUsers() {
           return [
             {
               id: 'user-askhat-001',
-              email: 'askhat@forma.kz',
+              email: 'assskhat9@gmail.com',
               name: 'Асхат',
               createdAt: '2026-02-01',
               goalsCount: Math.max(8, (gRes.data ?? []).length),
@@ -197,11 +197,11 @@ export function useAdminUsers() {
           };
         });
 
-        const hasAskhat = mapped.some((u) => u.name === 'Асхат' || u.email.includes('askhat'));
+        const hasAskhat = mapped.some((u) => u.name === 'Асхат' || u.email.includes('assskhat9'));
         if (!hasAskhat) {
           mapped.unshift({
             id: 'user-askhat-001',
-            email: 'askhat@forma.kz',
+            email: 'assskhat9@gmail.com',
             name: 'Асхат',
             createdAt: '2026-02-01',
             goalsCount: 8,
@@ -217,7 +217,7 @@ export function useAdminUsers() {
         return [
           {
             id: 'user-askhat-001',
-            email: 'askhat@forma.kz',
+            email: 'assskhat9@gmail.com',
             name: 'Асхат',
             createdAt: '2026-02-01',
             goalsCount: 8,

@@ -107,7 +107,7 @@ export function useAdminAnalytics() {
               {
                 id: 'user-askhat-001',
                 name: 'Асхат',
-                email: 'askhat@forma.kz',
+                email: 'assskhat9@gmail.com',
                 currentScreen: kk.admin.secHome,
                 sessionMinutes: 20,
                 isOnline: true,
@@ -124,7 +124,7 @@ export function useAdminAnalytics() {
             {
               id: 'user-askhat-001',
               name: 'Асхат',
-              email: 'askhat@forma.kz',
+              email: 'assskhat9@gmail.com',
               currentScreen: kk.admin.secHome,
               sessionMinutes: 20,
               isOnline: true,

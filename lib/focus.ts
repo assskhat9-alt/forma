@@ -197,9 +197,14 @@ export function useTodayFocus(date: Date) {
   return useQuery({
     queryKey: qk.focus.range(iso, iso),
     queryFn: async () => {
+      const { data: session } = await supabase.auth.getSession();
+      const userId = session.session?.user.id;
+      if (!userId) return { total: 0, byGoal: [] };
+
       const { data, error } = await supabase
         .from('focus_sessions')
         .select('*')
+        .eq('user_id', userId)
         .gte('created_at', `${iso}T00:00:00`)
         .lte('created_at', `${iso}T23:59:59`);
       if (error) throw error;

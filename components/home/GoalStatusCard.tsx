@@ -117,15 +117,15 @@ export function GoalStatusCard({
       </View>
 
       {/* ── Төменгі прогресс капсуласы (60% Completed) ── */}
-      <View style={styles.progressPill}>
+      <Pressable onPress={onViewMore} style={styles.progressPill} accessibilityRole="button">
         <View style={styles.progressRingMini}>
           <View style={[styles.progressRingFill, { width: `${pct}%` }]} />
         </View>
         <Text style={styles.progressText}>{pct}% Орындалды</Text>
         <View style={{ flexGrow: 1 }} />
         <Text style={styles.deliveriesText}>Тапсырмалар</Text>
-        <ChevronUpIcon size={14} color={C.ink3} strokeWidth={2} />
-      </View>
+        <ChevronRightIcon size={14} color={C.ink3} strokeWidth={2} />
+      </Pressable>
     </Card>
   );
 }

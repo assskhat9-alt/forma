@@ -8,6 +8,7 @@
 import React from 'react';
 import { View, Text, Pressable, ScrollView, StyleSheet } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { router } from 'expo-router';
 
 import { color as C, radius as R, font, gutter, centered } from '../../theme/tokens';
 import { kk, monthsUpper, formatDayMonthWeekday, t as tpl } from '../../i18n/kk';
@@ -53,7 +54,14 @@ export function CalendarPhone(p: Props) {
     <View style={[styles.root, { paddingTop: insets.top + 8 }]}>
       {/* хедер */}
       <View style={styles.header}>
-        <MenuIcon size={22} />
+        <Pressable
+          onPress={() => router.navigate('/profile' as never)}
+          hitSlop={10}
+          accessibilityRole="button"
+          accessibilityLabel="Мәзір"
+        >
+          <MenuIcon size={22} />
+        </Pressable>
         <View style={styles.monthNav}>
           <Pressable onPress={p.onPrevMonth} hitSlop={10} accessibilityRole="button">
             <ChevronLeftIcon size={16} color={C.ink4} strokeWidth={2.4} />
@@ -65,7 +73,14 @@ export function CalendarPhone(p: Props) {
             <ChevronRightIcon size={16} color={C.ink4} strokeWidth={2.4} />
           </Pressable>
         </View>
-        <FilterIcon size={20} />
+        <Pressable
+          onPress={p.onToggleSeg}
+          hitSlop={10}
+          accessibilityRole="button"
+          accessibilityLabel="Сүзгі / Мерзім"
+        >
+          <FilterIcon size={20} />
+        </Pressable>
       </View>
 
       {/* период ауыстырғышы */}

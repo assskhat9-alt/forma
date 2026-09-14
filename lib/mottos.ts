@@ -20,9 +20,14 @@ export function useMottos() {
     queryKey: KEY,
     queryFn: async () => {
       if (isDemoSessionActive()) return INITIAL_DEMO_MOTTOS;
+      const { data: session } = await supabase.auth.getSession();
+      const userId = session.session?.user.id;
+      if (!userId) return [];
+
       const { data, error } = await supabase
         .from('mottos')
         .select('*')
+        .eq('user_id', userId)
         .order('created_at', { ascending: false });
       if (error) throw error;
       return (data ?? []) as Motto[];
@@ -129,7 +134,15 @@ export function useDeleteMotto() {
 
   return useMutation({
     mutationFn: async (id: string) => {
-      const { error } = await supabase.from('mottos').delete().eq('id', id);
+      const { data: session } = await supabase.auth.getSession();
+      const userId = session.session?.user.id;
+      if (!userId) throw new Error('Сессия жоқ');
+
+      const { error } = await supabase
+        .from('mottos')
+        .delete()
+        .eq('id', id)
+        .eq('user_id', userId);
       if (error) throw error;
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: KEY }),

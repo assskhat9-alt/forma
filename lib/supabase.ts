@@ -14,6 +14,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Platform } from 'react-native';
 import * as Linking from 'expo-linking';
 
+import { queryClient } from './query';
 import type { Database, GoalStats } from './database.types';
 
 const url =
@@ -54,6 +55,7 @@ export async function signInWithEmail(email: string) {
 }
 
 export async function signOut() {
+  queryClient.clear();
   const { error } = await supabase.auth.signOut();
   if (error) throw error;
 }

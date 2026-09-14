@@ -74,9 +74,14 @@ function useSessions(from: Date, to: Date) {
   return useQuery({
     queryKey: ['sessions', from.toISOString(), to.toISOString()],
     queryFn: async () => {
+      const { data: session } = await supabase.auth.getSession();
+      const userId = session.session?.user.id;
+      if (!userId) return [];
+
       const { data, error } = await supabase
         .from('focus_sessions')
         .select('*')
+        .eq('user_id', userId)
         .gte('created_at', from.toISOString())
         .lt('created_at', to.toISOString());
       if (error) throw error;

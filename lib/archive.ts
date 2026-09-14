@@ -38,9 +38,14 @@ export function useReflections() {
   return useQuery({
     queryKey: ['reflections', 'all'],
     queryFn: async () => {
+      const { data: session } = await supabase.auth.getSession();
+      const userId = session.session?.user.id;
+      if (!userId) return [];
+
       const { data, error } = await supabase
         .from('reflections')
         .select('*')
+        .eq('user_id', userId)
         .order('created_at', { ascending: false });
       if (error) throw error;
       return (data ?? []) as Reflection[];

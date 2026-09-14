@@ -16,6 +16,7 @@ import type { Session } from '@supabase/supabase-js';
 import { useRouter, useSegments } from 'expo-router';
 
 import { supabase } from './supabase';
+import { queryClient } from './query';
 
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { DEMO_USER_ID } from './demoData';
@@ -43,14 +44,14 @@ export const DEMO_SESSION: Session = {
   },
 };
 
-export const ADMIN_EMAIL = 'askhat@forma.kz';
-export const ADMIN_USER_ID = 'askhat-user-0000-0000-0000-000000000000';
+export const ADMIN_EMAIL = 'assskhat9@gmail.com';
+export const ADMIN_USER_ID = 'assskhat-admin-0000-0000-0000-000000000000';
 
 export const ADMIN_SESSION: Session = {
-  access_token: 'askhat-admin-token',
+  access_token: 'assskhat-admin-token',
   token_type: 'bearer',
   expires_in: 3600 * 24 * 365,
-  refresh_token: 'askhat-admin-refresh',
+  refresh_token: 'assskhat-admin-refresh',
   user: {
     id: ADMIN_USER_ID,
     app_metadata: { provider: 'admin' },
@@ -119,6 +120,7 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
     });
 
     const { data: sub } = supabase.auth.onAuthStateChange((_event, next) => {
+      queryClient.clear();
       AsyncStorage.getItem(DEMO_STORAGE_KEY).then((val) => {
         if (!alive) return;
         if (val === 'admin') {
@@ -145,6 +147,7 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const enterDemoMode = async () => {
+    queryClient.clear();
     await AsyncStorage.setItem(DEMO_STORAGE_KEY, 'true');
     gDemoActive = true;
     setIsDemo(true);
@@ -152,6 +155,7 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
   };
 
   const enterAdminMode = async () => {
+    queryClient.clear();
     await AsyncStorage.setItem(DEMO_STORAGE_KEY, 'admin');
     gDemoActive = true;
     setIsDemo(true);
@@ -163,17 +167,14 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
     gDemoActive = false;
     setIsDemo(false);
     setSession(null);
+    queryClient.clear();
     await supabase.auth.signOut().catch(() => {});
   };
 
   const isAdmin = useMemo(() => {
     if (!session?.user) return false;
     const em = session.user.email?.toLowerCase();
-    return (
-      em === ADMIN_EMAIL ||
-      em === 'assskhat9@gmail.com' ||
-      session.user.user_metadata?.role === 'admin'
-    );
+    return em === ADMIN_EMAIL;
   }, [session]);
 
   const value = useMemo(
