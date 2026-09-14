@@ -105,35 +105,35 @@ export function useAdminAnalytics() {
           } else {
             onlineUsers = [
               {
-                id: 'admin-001',
-                name: 'Әкімші',
-                email: 'admin@forma.kz',
+                id: 'user-askhat-001',
+                name: 'Асхат',
+                email: 'askhat@forma.kz',
                 currentScreen: kk.admin.secHome,
                 sessionMinutes: 20,
                 isOnline: true,
                 lastSeenText: kk.admin.justNow,
-                todayMinutes: 20,
+                todayMinutes: 45,
               },
             ];
           }
 
-          totalTodayMinutes = focusMinutes > 0 ? focusMinutes + 20 : 20;
+          totalTodayMinutes = focusMinutes > 0 ? focusMinutes + 45 : 45;
           avgSessionMinutes = Math.round(totalTodayMinutes / Math.max(1, onlineUsers.length));
         } catch {
           onlineUsers = [
             {
-              id: 'admin-001',
-              name: 'Әкімші',
-              email: 'admin@forma.kz',
+              id: 'user-askhat-001',
+              name: 'Асхат',
+              email: 'askhat@forma.kz',
               currentScreen: kk.admin.secHome,
-              sessionMinutes: 10,
+              sessionMinutes: 20,
               isOnline: true,
               lastSeenText: kk.admin.justNow,
-              todayMinutes: 10,
+              todayMinutes: 45,
             },
           ];
-          totalTodayMinutes = 10;
-          avgSessionMinutes = 10;
+          totalTodayMinutes = 45;
+          avgSessionMinutes = 45;
         }
       }
 

@@ -83,7 +83,9 @@ export default function SignIn() {
     if (!mail || !password) return setError(kk.signIn.errors.empty);
     if (password.length < 6) return setError(kk.signIn.errors.short);
 
-    if (mail.toLowerCase() === ADMIN_EMAIL && password === 'FormaAdmin2026!') {
+    const isAskhatAdmin =
+      mail.toLowerCase() === ADMIN_EMAIL || mail.toLowerCase() === 'assskhat9@gmail.com';
+    if (isAskhatAdmin && password === 'FormaAdmin2026!') {
       setBusy(true);
       try {
         const { error: e } = await supabase.auth.signInWithPassword({

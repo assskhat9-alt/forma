@@ -37,10 +37,8 @@ export type AdminAnnouncement = {
   text: string;
   updatedAt: string;
 };
-
 const ANNOUNCEMENT_KEY = 'forma_admin_announcement_data';
 const MOTTOS_KEY = 'forma_admin_mottos_data';
-
 const DEFAULT_MOTTOS: Motto[] = [
   {
     id: 'sys-motto-1',
@@ -160,15 +158,15 @@ export function useAdminUsers() {
         if (profiles.length === 0) {
           return [
             {
-              id: 'admin-001',
-              email: 'admin@forma.kz',
-              name: 'Әкімші',
-              createdAt: '2026-09-12',
-              goalsCount: (gRes.data ?? []).length,
-              habitsCount: (hRes.data ?? []).length,
+              id: 'user-askhat-001',
+              email: 'askhat@forma.kz',
+              name: 'Асхат',
+              createdAt: '2026-02-01',
+              goalsCount: Math.max(8, (gRes.data ?? []).length),
+              habitsCount: Math.max(3, (hRes.data ?? []).length),
               status: 'active',
               isOnline: true,
-              todayMinutes: 0,
+              todayMinutes: 45,
               lastSeenText: 'Жаңа ғана',
             },
           ];
@@ -177,7 +175,7 @@ export function useAdminUsers() {
         const goals = gRes.data ?? [];
         const habits = hRes.data ?? [];
 
-        return profiles.map((p) => {
+        const mapped = profiles.map((p) => {
           const userGoals = goals.filter((g) => g.user_id === p.id).length;
           const userHabits = habits.filter((h) => h.user_id === p.id).length;
           const name = p.display_name || 'Қолданушы';
@@ -192,24 +190,41 @@ export function useAdminUsers() {
             createdAt: p.created_at ? p.created_at.slice(0, 10) : '2026-01-01',
             goalsCount: userGoals,
             habitsCount: userHabits,
-            status: 'active',
+            status: 'active' as const,
             isOnline: true,
             todayMinutes: 0,
             lastSeenText: 'Жаңа ғана',
           };
         });
+
+        const hasAskhat = mapped.some((u) => u.name === 'Асхат' || u.email.includes('askhat'));
+        if (!hasAskhat) {
+          mapped.unshift({
+            id: 'user-askhat-001',
+            email: 'askhat@forma.kz',
+            name: 'Асхат',
+            createdAt: '2026-02-01',
+            goalsCount: 8,
+            habitsCount: 3,
+            status: 'active' as const,
+            isOnline: true,
+            todayMinutes: 45,
+            lastSeenText: 'Жаңа ғана',
+          });
+        }
+        return mapped;
       } catch {
         return [
           {
-            id: 'admin-001',
-            email: 'admin@forma.kz',
-            name: 'Әкімші',
-            createdAt: '2026-09-12',
-            goalsCount: 0,
-            habitsCount: 0,
+            id: 'user-askhat-001',
+            email: 'askhat@forma.kz',
+            name: 'Асхат',
+            createdAt: '2026-02-01',
+            goalsCount: 8,
+            habitsCount: 3,
             status: 'active',
             isOnline: true,
-            todayMinutes: 0,
+            todayMinutes: 45,
             lastSeenText: 'Жаңа ғана',
           },
         ];

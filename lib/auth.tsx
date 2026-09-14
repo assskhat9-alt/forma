@@ -43,20 +43,20 @@ export const DEMO_SESSION: Session = {
   },
 };
 
-export const ADMIN_EMAIL = 'admin@forma.kz';
-export const ADMIN_USER_ID = 'admin-user-0000-0000-0000-000000000000';
+export const ADMIN_EMAIL = 'askhat@forma.kz';
+export const ADMIN_USER_ID = 'askhat-user-0000-0000-0000-000000000000';
 
 export const ADMIN_SESSION: Session = {
-  access_token: 'admin-token',
+  access_token: 'askhat-admin-token',
   token_type: 'bearer',
   expires_in: 3600 * 24 * 365,
-  refresh_token: 'admin-refresh',
+  refresh_token: 'askhat-admin-refresh',
   user: {
     id: ADMIN_USER_ID,
     app_metadata: { provider: 'admin' },
-    user_metadata: { full_name: 'Жүйе әкімшісі', role: 'admin' },
+    user_metadata: { full_name: 'Асхат', role: 'admin' },
     aud: 'authenticated',
-    created_at: '2026-01-01T00:00:00Z',
+    created_at: '2026-02-01T00:00:00Z',
     email: ADMIN_EMAIL,
   },
 };
@@ -168,8 +168,10 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
 
   const isAdmin = useMemo(() => {
     if (!session?.user) return false;
+    const em = session.user.email?.toLowerCase();
     return (
-      session.user.email === ADMIN_EMAIL ||
+      em === ADMIN_EMAIL ||
+      em === 'assskhat9@gmail.com' ||
       session.user.user_metadata?.role === 'admin'
     );
   }, [session]);
