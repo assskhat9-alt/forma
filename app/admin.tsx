@@ -10,26 +10,29 @@ import { router } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { color as C, radius as R, font, centered } from '../theme/tokens';
 import { kk } from '../i18n/kk';
+import { useI18n } from '../i18n/context';
 import { useSession } from '../lib/auth';
 import { ChevronLeftIcon, DiamondIcon } from '../components/icons';
+import { LangSwitcher } from '../components/ui';
 import { AdminOverview } from '../components/admin/AdminOverview';
 import { AdminUsers } from '../components/admin/AdminUsers';
 import { AdminAnalytics } from '../components/admin/AdminAnalytics';
 import { AdminMottos } from '../components/admin/AdminMottos';
 import { AdminAnnouncements } from '../components/admin/AdminAnnouncements';
 
-const TABS = [
-  kk.admin.tabOverview,
-  kk.admin.tabUsers,
-  kk.admin.tabAnalytics,
-  kk.admin.tabMottos,
-  kk.admin.tabAnnounce,
-] as const;
-
 export default function AdminScreen() {
   const insets = useSafeAreaInsets();
   const { isAdmin, ready } = useSession();
+  const { strings: S } = useI18n();
   const [tabIndex, setTabIndex] = useState(0);
+
+  const tabs = [
+    S.admin.tabOverview,
+    S.admin.tabUsers,
+    S.admin.tabAnalytics,
+    S.admin.tabMottos,
+    S.admin.tabAnnounce,
+  ];
 
   if (!ready) return null;
 
@@ -38,10 +41,10 @@ export default function AdminScreen() {
       <View style={[styles.screen, styles.center, { paddingTop: insets.top, paddingBottom: insets.bottom }]}>
         <View style={styles.deniedCard}>
           <DiamondIcon size={32} color={C.accent} />
-          <Text style={styles.deniedTitle}>{kk.admin.title}</Text>
-          <Text style={styles.deniedText}>{kk.admin.adminAccessOnly}</Text>
+          <Text style={styles.deniedTitle}>{S.admin.title}</Text>
+          <Text style={styles.deniedText}>{S.admin.adminAccessOnly}</Text>
           <Pressable onPress={() => router.replace('/')} style={styles.backBtn} accessibilityRole="button">
-            <Text style={styles.backBtnText}>{kk.admin.goToApp}</Text>
+            <Text style={styles.backBtnText}>{S.admin.goToApp}</Text>
           </Pressable>
         </View>
       </View>
@@ -63,23 +66,26 @@ export default function AdminScreen() {
               <ChevronLeftIcon size={16} color={C.ink} />
             </Pressable>
             <View>
-              <Text style={styles.title}>{kk.admin.title}</Text>
-              <Text style={styles.subtitle}>{kk.admin.subtitle}</Text>
+              <Text style={styles.title}>{S.admin.title}</Text>
+              <Text style={styles.subtitle}>{S.admin.subtitle}</Text>
             </View>
           </View>
 
-          <Pressable
-            onPress={() => router.replace('/')}
-            style={styles.exitBtn}
-            accessibilityRole="button"
-          >
-            <Text style={styles.exitBtnText}>{kk.admin.goToApp}</Text>
-          </Pressable>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+            <LangSwitcher compact />
+            <Pressable
+              onPress={() => router.replace('/')}
+              style={styles.exitBtn}
+              accessibilityRole="button"
+            >
+              <Text style={styles.exitBtnText}>{S.admin.goToApp}</Text>
+            </Pressable>
+          </View>
         </View>
 
         {/* Қойындылар (Tabs) */}
         <View style={styles.tabsRow}>
-          {TABS.map((tab, idx) => {
+          {tabs.map((tab, idx) => {
             const on = idx === tabIndex;
             return (
               <Pressable

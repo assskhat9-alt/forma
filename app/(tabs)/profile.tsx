@@ -14,8 +14,8 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 
 import { color as C, radius as R, font, gutter, centered } from '../../theme/tokens';
-import { kk } from '../../i18n/kk';
-import { Card, SectionLabel } from '../../components/ui';
+import { useI18n } from '../../i18n/context';
+import { Card, SectionLabel, LangSwitcher } from '../../components/ui';
 import {
   UserIcon, ClockIcon, CheckIcon, BarChartIcon, FilterIcon,
   QuoteIcon, PencilIcon, BookmarkIcon, ChevronRightIcon, ShieldIcon, type IconProps,
@@ -24,18 +24,6 @@ import { useBreakpoint } from '../../lib/breakpoints';
 import { useSession } from '../../lib/auth';
 import { signOut } from '../../lib/supabase';
 
-/** Төменгі жолаққа сыймай қалған бөлімдер — реті панельдегідей */
-const SECTIONS: { name: string; href: string; Icon: (p: IconProps) => React.ReactElement }[] = [
-  { name: kk.nav.focus, href: '/focus', Icon: ClockIcon },
-  { name: kk.nav.habits, href: '/habits', Icon: CheckIcon },
-  { name: kk.nav.time, href: '/time', Icon: BarChartIcon },
-  { name: kk.nav.weekly, href: '/week', Icon: FilterIcon },
-  { name: kk.nav.motivation, href: '/motivation', Icon: QuoteNavIcon },
-  { name: kk.nav.myNotes, href: '/notes', Icon: PencilIcon },
-  { name: kk.nav.archive, href: '/archive', Icon: BookmarkIcon },
-];
-
-/** QuoteIcon-да strokeWidth жоқ — тізімнің типіне келтіреміз */
 function QuoteNavIcon({ size, color }: IconProps) {
   return <QuoteIcon size={size} color={color} />;
 }
@@ -44,7 +32,18 @@ export default function ProfileScreen() {
   const insets = useSafeAreaInsets();
   const phone = useBreakpoint() === 'phone';
   const { session, isDemo, isAdmin, leaveDemoMode } = useSession();
+  const { strings: S, lang } = useI18n();
   const [busy, setBusy] = useState(false);
+
+  const sections: { name: string; href: string; Icon: (p: IconProps) => React.ReactElement }[] = [
+    { name: S.nav.focus, href: '/focus', Icon: ClockIcon },
+    { name: S.nav.habits, href: '/habits', Icon: CheckIcon },
+    { name: S.nav.time, href: '/time', Icon: BarChartIcon },
+    { name: S.nav.weekly, href: '/week', Icon: FilterIcon },
+    { name: S.nav.motivation, href: '/motivation', Icon: QuoteNavIcon },
+    { name: S.nav.myNotes, href: '/notes', Icon: PencilIcon },
+    { name: S.nav.archive, href: '/archive', Icon: BookmarkIcon },
+  ];
 
   const email = isDemo ? 'demo@forma.kz' : (session?.user.email ?? '—');
   const initial = email.charAt(0).toUpperCase();
@@ -72,7 +71,7 @@ export default function ProfileScreen() {
       ]}
       showsVerticalScrollIndicator={false}
     >
-      <SectionLabel>{kk.nav.profile}</SectionLabel>
+      <SectionLabel>{S.nav.profile}</SectionLabel>
 
       <Card style={styles.card}>
         <View style={styles.row}>
@@ -81,7 +80,7 @@ export default function ProfileScreen() {
           </View>
           <View style={{ flexGrow: 1, flexShrink: 1 }}>
             <Text style={styles.email} numberOfLines={1}>{email}</Text>
-            <Text style={styles.sync}>{isAdmin ? kk.nav.admin : isDemo ? kk.signIn.demoModeActive : kk.cascade.syncAll}</Text>
+            <Text style={styles.sync}>{isAdmin ? S.nav.admin : isDemo ? S.signIn.demoModeActive : S.cascade.syncAll}</Text>
           </View>
           <UserIcon size={20} color={C.ink4} />
         </View>
@@ -94,16 +93,31 @@ export default function ProfileScreen() {
           accessibilityRole="button"
         >
           <ShieldIcon size={18} color={C.accent} />
-          <Text style={styles.adminRowText}>{kk.nav.admin}</Text>
+          <Text style={styles.adminRowText}>{S.nav.admin}</Text>
           <ChevronRightIcon size={14} color={C.ink3} />
         </Pressable>
       )}
 
+      <SectionLabel style={{ marginTop: 10 }}>
+        {lang === 'kk' ? 'Тіл / Язык' : 'Язык / Тіл'}
+      </SectionLabel>
+      <Card style={[styles.card, styles.langRow]}>
+        <View style={{ flexGrow: 1, flexShrink: 1, paddingRight: 10 }}>
+          <Text style={styles.langTitle}>
+            {lang === 'kk' ? 'Интерфейс тілі' : 'Язык интерфейса'}
+          </Text>
+          <Text style={styles.langSubtitle}>
+            {lang === 'kk' ? 'Қазақша немесе Орысша' : 'Казахский или Русский'}
+          </Text>
+        </View>
+        <LangSwitcher />
+      </Card>
+
       {phone && (
         <>
-          <SectionLabel style={{ marginTop: 10 }}>{kk.nav.tools}</SectionLabel>
+          <SectionLabel style={{ marginTop: 10 }}>{S.nav.tools}</SectionLabel>
           <Card style={{ paddingVertical: 4 }}>
-            {SECTIONS.map((s, i) => (
+            {sections.map((s, i) => (
               <Pressable
                 key={s.href}
                 onPress={() => router.navigate(s.href as never)}
@@ -128,7 +142,7 @@ export default function ProfileScreen() {
         {busy ? (
           <ActivityIndicator color={C.ink} />
         ) : (
-          <Text style={styles.leaveText}>{kk.nav.signOut}</Text>
+          <Text style={styles.leaveText}>{S.nav.signOut}</Text>
         )}
       </Pressable>
     </ScrollView>
@@ -175,6 +189,24 @@ const styles = StyleSheet.create({
     fontFamily: font.bold,
     fontSize: 14,
     color: C.accent,
+  },
+  langRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: 14,
+    paddingHorizontal: 16,
+  },
+  langTitle: {
+    fontFamily: font.title,
+    fontSize: 14,
+    color: C.ink,
+  },
+  langSubtitle: {
+    fontFamily: font.body,
+    fontSize: 11,
+    color: C.ink3,
+    marginTop: 2,
   },
   leave: {
     alignItems: 'center',

@@ -22,9 +22,11 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { color as C, radius as R, font, centered } from '../../theme/tokens';
 import { kk } from '../../i18n/kk';
+import { useI18n } from '../../i18n/context';
 import { supabase, signInWithApple } from '../../lib/supabase';
 import { useSession, ADMIN_EMAIL } from '../../lib/auth';
 import { Atmosphere } from '../../components/auth/Atmosphere';
+import { LangSwitcher } from '../../components/ui';
 import {
   CascadeMark,
   AppleIcon,
@@ -48,6 +50,7 @@ type Mode = 'hero' | 'email';
 export default function SignIn() {
   const insets = useSafeAreaInsets();
   const { enterDemoMode, enterAdminMode } = useSession();
+  const { strings: S } = useI18n();
   const [mode, setMode] = useState<Mode>('hero');
   const [register, setRegister] = useState(false);
   const [email, setEmail] = useState('');
@@ -138,6 +141,10 @@ export default function SignIn() {
     <View style={styles.root}>
       <Atmosphere />
 
+      <View style={[styles.langWrap, { top: insets.top + 14 }]}>
+        <LangSwitcher />
+      </View>
+
       <KeyboardFrame>
         <ScrollView
           contentContainerStyle={[
@@ -154,12 +161,12 @@ export default function SignIn() {
             <CascadeMark size={mode === 'hero' ? 240 : 120} />
           </View>
 
-          <Text style={styles.wordmark}>{kk.app.name}</Text>
-          <Text style={styles.tagline}>{kk.app.tagline}</Text>
+          <Text style={styles.wordmark}>{S.app.name}</Text>
+          <Text style={styles.tagline}>{S.app.tagline}</Text>
 
           {mode === 'hero' ? (
             <>
-              <Text style={styles.headline}>{kk.signIn.headline}</Text>
+              <Text style={styles.headline}>{S.signIn.headline}</Text>
 
               <View style={styles.chain}>
                 {CHAIN.map((c, i) => {
@@ -190,7 +197,7 @@ export default function SignIn() {
                   ) : (
                     <>
                       <DiamondIcon size={17} color="#FFFFFF" />
-                      <Text style={styles.btnDarkText}>{kk.signIn.demo}</Text>
+                      <Text style={styles.btnDarkText}>{S.signIn.demo}</Text>
                     </>
                   )}
                 </Pressable>
@@ -201,7 +208,7 @@ export default function SignIn() {
                   accessibilityRole="button"
                 >
                   <MailIcon size={17} color={C.ink} />
-                  <Text style={styles.btnLightText}>{kk.signIn.email}</Text>
+                  <Text style={styles.btnLightText}>{S.signIn.email}</Text>
                 </Pressable>
 
                 <Pressable
@@ -215,14 +222,14 @@ export default function SignIn() {
                   ) : (
                     <>
                       <AppleIcon size={17} color="#FFFFFF" />
-                      <Text style={styles.btnDarkText}>{kk.signIn.apple}</Text>
+                      <Text style={styles.btnDarkText}>{S.signIn.apple}</Text>
                     </>
                   )}
                 </Pressable>
 
                 <View style={styles.sync}>
                   <PhoneIcon size={13} color={C.inkFaint} />
-                  <Text style={styles.syncText}>{kk.signIn.sync}</Text>
+                  <Text style={styles.syncText}>{S.signIn.sync}</Text>
                 </View>
               </View>
             </>
@@ -234,14 +241,14 @@ export default function SignIn() {
                 accessibilityRole="button"
               >
                 <ChevronLeftIcon size={15} color={C.inkMuted} />
-                <Text style={styles.backText}>{kk.signIn.back}</Text>
+                <Text style={styles.backText}>{S.signIn.back}</Text>
               </Pressable>
 
-              <Text style={styles.label}>{kk.signIn.emailLabel}</Text>
+              <Text style={styles.label}>{S.signIn.emailLabel}</Text>
               <TextInput
                 value={email}
                 onChangeText={setEmail}
-                placeholder={kk.signIn.emailPlaceholder}
+                placeholder={S.signIn.emailPlaceholder}
                 placeholderTextColor={C.ink4}
                 autoCapitalize="none"
                 autoComplete="email"
@@ -253,12 +260,12 @@ export default function SignIn() {
                 onSubmitEditing={() => passwordRef.current?.focus()}
               />
 
-              <Text style={[styles.label, { marginTop: 14 }]}>{kk.signIn.passwordLabel}</Text>
+              <Text style={[styles.label, { marginTop: 14 }]}>{S.signIn.passwordLabel}</Text>
               <TextInput
                 ref={passwordRef}
                 value={password}
                 onChangeText={setPassword}
-                placeholder={kk.signIn.passwordPlaceholder}
+                placeholder={S.signIn.passwordPlaceholder}
                 placeholderTextColor={C.ink4}
                 autoCapitalize="none"
                 autoComplete={register ? 'new-password' : 'current-password'}
@@ -277,7 +284,7 @@ export default function SignIn() {
                     accessibilityRole="button"
                   >
                     <DiamondIcon size={14} color={C.accentDeep} />
-                    <Text style={styles.demoFallbackText}>{kk.signIn.demo}</Text>
+                    <Text style={styles.demoFallbackText}>{S.signIn.demo}</Text>
                   </Pressable>
                 </View>
               )}
@@ -293,7 +300,7 @@ export default function SignIn() {
                   <ActivityIndicator color="#FFFFFF" />
                 ) : (
                   <Text style={styles.btnDarkText}>
-                    {register ? kk.signIn.register : kk.signIn.enter}
+                    {register ? S.signIn.register : S.signIn.enter}
                   </Text>
                 )}
               </Pressable>
@@ -304,7 +311,7 @@ export default function SignIn() {
                 accessibilityRole="button"
               >
                 <Text style={styles.switchText}>
-                  {register ? kk.signIn.toSignIn : kk.signIn.toRegister}
+                  {register ? S.signIn.toSignIn : S.signIn.toRegister}
                 </Text>
               </Pressable>
             </View>
@@ -486,4 +493,9 @@ const styles = StyleSheet.create({
   },
   switch: { alignItems: 'center', paddingVertical: 14 },
   switchText: { fontFamily: font.bold, fontSize: 12.5, color: C.accentDeep },
+  langWrap: {
+    position: 'absolute',
+    right: 18,
+    zIndex: 50,
+  },
 });

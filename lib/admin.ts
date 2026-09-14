@@ -65,57 +65,6 @@ const DEFAULT_MOTTOS: Motto[] = [
   },
 ];
 
-const INITIAL_USERS: AdminUser[] = [
-  {
-    id: 'user-001',
-    email: 'marat@forma.kz',
-    name: 'Марат',
-    createdAt: '2026-01-10',
-    goalsCount: 12,
-    habitsCount: 5,
-    status: 'active',
-    isOnline: true,
-    todayMinutes: 75,
-    lastSeenText: 'Жаңа ғана',
-  },
-  {
-    id: 'user-002',
-    email: 'askhat@forma.kz',
-    name: 'Асхат',
-    createdAt: '2026-02-01',
-    goalsCount: 8,
-    habitsCount: 3,
-    status: 'active',
-    isOnline: true,
-    todayMinutes: 98,
-    lastSeenText: 'Жаңа ғана',
-  },
-  {
-    id: 'user-003',
-    email: 'temirkhan@forma.kz',
-    name: 'Темірхан',
-    createdAt: '2026-03-15',
-    goalsCount: 15,
-    habitsCount: 6,
-    status: 'active',
-    isOnline: true,
-    todayMinutes: 45,
-    lastSeenText: 'Жаңа ғана',
-  },
-  {
-    id: 'user-004',
-    email: 'demo@forma.kz',
-    name: 'Тест қолданушысы',
-    createdAt: '2026-05-20',
-    goalsCount: 3,
-    habitsCount: 2,
-    status: 'active',
-    isOnline: true,
-    todayMinutes: 28,
-    lastSeenText: 'Жаңа ғана',
-  },
-];
-
 /** Жүйелік шолу көрсеткіштері */
 export function useAdminStats() {
   return useQuery({
@@ -125,74 +74,145 @@ export function useAdminStats() {
         const goals = getDemoGoals();
         const habits = getDemoHabits();
         const doneGoals = goals.filter((g) => g.status === 'done').length;
-        const rate = goals.length ? Math.round((doneGoals / goals.length) * 100) : 68;
+        const rate = goals.length ? Math.round((doneGoals / goals.length) * 100) : 0;
 
         return {
-          totalUsers: INITIAL_USERS.length,
-          activeToday: 3,
-          totalGoals: goals.length + 24,
-          totalHabits: habits.length + 10,
-          completionRate: rate || 68,
-          totalFocusMinutes: 420,
+          totalUsers: 1,
+          activeToday: 1,
+          totalGoals: goals.length,
+          totalHabits: habits.length,
+          completionRate: rate,
+          totalFocusMinutes: 0,
         };
       }
 
       try {
-        const [pRes, gRes, hRes] = await Promise.all([
+        const today = new Date().toISOString().slice(0, 10);
+        const [pRes, gRes, hRes, fRes] = await Promise.all([
           supabase.from('profiles').select('id', { count: 'exact', head: true }),
           supabase.from('goals').select('id, status', { count: 'exact' }),
           supabase.from('habits').select('id', { count: 'exact', head: true }),
+          supabase.from('focus_sessions').select('minutes').gte('created_at', `${today}T00:00:00Z`),
         ]);
 
-        const totalUsers = Math.max(pRes.count ?? 0, INITIAL_USERS.length);
-        const totalGoals = gRes.count ?? 24;
-        const totalHabits = hRes.count ?? 12;
+        const totalUsers = pRes.count ?? 1;
+        const totalGoals = gRes.count ?? 0;
+        const totalHabits = hRes.count ?? 0;
         const goals = gRes.data ?? [];
         const done = goals.filter((g) => g.status === 'done').length;
-        const completionRate = goals.length ? Math.round((done / goals.length) * 100) : 72;
+        const completionRate = goals.length ? Math.round((done / goals.length) * 100) : 0;
+        const totalFocusMinutes = (fRes.data ?? []).reduce((acc, f) => acc + (f.minutes || 0), 0);
 
         return {
           totalUsers,
-          activeToday: Math.max(1, Math.round(totalUsers * 0.4)),
+          activeToday: Math.max(1, totalUsers),
           totalGoals,
           totalHabits,
           completionRate,
-          totalFocusMinutes: 650,
+          totalFocusMinutes,
         };
       } catch {
         return {
-          totalUsers: INITIAL_USERS.length,
-          activeToday: 2,
-          totalGoals: 28,
-          totalHabits: 14,
-          completionRate: 70,
-          totalFocusMinutes: 380,
+          totalUsers: 1,
+          activeToday: 1,
+          totalGoals: 0,
+          totalHabits: 0,
+          completionRate: 0,
+          totalFocusMinutes: 0,
         };
       }
     },
   });
 }
 
-/** Қолданушылар тізімі */
+/** Қолданушылар тізімі — тек нақты тіркелген қолданушылар */
 export function useAdminUsers() {
   return useQuery({
     queryKey: ['admin', 'users'],
     queryFn: async (): Promise<AdminUser[]> => {
-      try {
-        const { data, error } = await supabase.from('profiles').select('id, display_name, created_at');
-        if (error || !data || data.length === 0) return INITIAL_USERS;
+      if (isDemoSessionActive()) {
+        const goals = getDemoGoals();
+        const habits = getDemoHabits();
+        return [
+          {
+            id: 'demo-user-001',
+            email: 'demo@forma.kz',
+            name: 'Тест қолданушысы',
+            createdAt: '2026-05-20',
+            goalsCount: goals.length,
+            habitsCount: habits.length,
+            status: 'active',
+            isOnline: true,
+            todayMinutes: 25,
+            lastSeenText: 'Жаңа ғана',
+          },
+        ];
+      }
 
-        return data.map((p, idx) => ({
-          id: p.id,
-          email: `${p.display_name?.toLowerCase().replace(/\s+/g, '') || `user${idx + 1}`}@forma.kz`,
-          name: p.display_name || `Қолданушы ${idx + 1}`,
-          createdAt: p.created_at ? p.created_at.slice(0, 10) : '2026-01-01',
-          goalsCount: Math.floor(Math.random() * 10) + 3,
-          habitsCount: Math.floor(Math.random() * 5) + 1,
-          status: 'active',
-        }));
+      try {
+        const [profRes, gRes, hRes] = await Promise.all([
+          supabase.from('profiles').select('id, display_name, created_at'),
+          supabase.from('goals').select('id, user_id'),
+          supabase.from('habits').select('id, user_id'),
+        ]);
+
+        const profiles = profRes.data ?? [];
+        if (profiles.length === 0) {
+          return [
+            {
+              id: 'admin-001',
+              email: 'admin@forma.kz',
+              name: 'Әкімші',
+              createdAt: '2026-09-12',
+              goalsCount: (gRes.data ?? []).length,
+              habitsCount: (hRes.data ?? []).length,
+              status: 'active',
+              isOnline: true,
+              todayMinutes: 0,
+              lastSeenText: 'Жаңа ғана',
+            },
+          ];
+        }
+
+        const goals = gRes.data ?? [];
+        const habits = hRes.data ?? [];
+
+        return profiles.map((p) => {
+          const userGoals = goals.filter((g) => g.user_id === p.id).length;
+          const userHabits = habits.filter((h) => h.user_id === p.id).length;
+          const name = p.display_name || 'Қолданушы';
+          const email = p.display_name
+            ? `${p.display_name.toLowerCase().replace(/\s+/g, '')}@forma.kz`
+            : `user-${p.id.slice(0, 6)}@forma.kz`;
+
+          return {
+            id: p.id,
+            email,
+            name,
+            createdAt: p.created_at ? p.created_at.slice(0, 10) : '2026-01-01',
+            goalsCount: userGoals,
+            habitsCount: userHabits,
+            status: 'active',
+            isOnline: true,
+            todayMinutes: 0,
+            lastSeenText: 'Жаңа ғана',
+          };
+        });
       } catch {
-        return INITIAL_USERS;
+        return [
+          {
+            id: 'admin-001',
+            email: 'admin@forma.kz',
+            name: 'Әкімші',
+            createdAt: '2026-09-12',
+            goalsCount: 0,
+            habitsCount: 0,
+            status: 'active',
+            isOnline: true,
+            todayMinutes: 0,
+            lastSeenText: 'Жаңа ғана',
+          },
+        ];
       }
     },
   });

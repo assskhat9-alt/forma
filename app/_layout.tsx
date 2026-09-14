@@ -22,6 +22,7 @@ import {
 import { Caveat_600SemiBold, Caveat_700Bold } from '@expo-google-fonts/caveat';
 
 import { queryClient } from '../lib/query';
+import { I18nProvider } from '../i18n/context';
 import { SessionProvider, useSession, useProtectedRoute } from '../lib/auth';
 import { color as C } from '../theme/tokens';
 import { useBreakpoint } from '../lib/breakpoints';
@@ -57,10 +58,12 @@ export default function RootLayout() {
     <GestureHandlerRootView style={{ flex: 1, backgroundColor: C.bg }}>
       <SafeAreaProvider>
         <QueryClientProvider client={queryClient}>
-          <SessionProvider>
-            <StatusBar style="dark" />
-            <RootNavigator />
-          </SessionProvider>
+          <I18nProvider>
+            <SessionProvider>
+              <StatusBar style="dark" />
+              <RootNavigator />
+            </SessionProvider>
+          </I18nProvider>
         </QueryClientProvider>
       </SafeAreaProvider>
     </GestureHandlerRootView>

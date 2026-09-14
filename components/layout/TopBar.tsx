@@ -17,6 +17,7 @@ import { router } from 'expo-router';
 import { color as C, radius as R, font } from '../../theme/tokens';
 import { useSession } from '../../lib/auth';
 import { SearchIcon } from '../icons';
+import { LangSwitcher } from '../ui';
 
 export function TopBar({
   title,
@@ -62,6 +63,8 @@ export function TopBar({
         ) : null}
 
         {actions}
+
+        <LangSwitcher compact />
 
         <Pressable
           onPress={() => router.navigate('/profile' as never)}

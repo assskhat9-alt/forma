@@ -19,6 +19,8 @@ import { color as C, radius as R, font } from '../../theme/tokens';
 import { kk } from '../../i18n/kk';
 import { signOut } from '../../lib/supabase';
 import { useSession } from '../../lib/auth';
+import { useI18n } from '../../i18n/context';
+import { LangSwitcher } from '../ui';
 import {
   DiamondIcon,
   QuoteIcon,
@@ -43,54 +45,45 @@ type Item = {
   Icon: (p: IconProps) => React.ReactElement;
 };
 
-/** Бір жолдың биіктігі */
 const ITEM_H = 40;
 const ITEM_GAP = 2;
-
-/** Топтан тыс, ең жоғарғы жол — панельдің кіреберісі */
-const HOME: Item = { name: kk.nav.home, href: '/', Icon: HomeIcon };
-
-/**
- * ⚠ Мұнда пайыз КӨРСЕТІЛМЕЙДІ. Макетте сандар тұрған, бірақ олар
- * иллюстрация еді. Бүйір мәзір — навигация, есеп тақтасы емес:
- * жалған сан көрсеткеннен ештеңе көрсетпеген артық.
- */
-const GROUPS: { label: string; items: Item[] }[] = [
-  {
-    // Жоспар — не істеймін деген сұрақ
-    label: kk.nav.plans,
-    items: [
-      { name: kk.nav.year, href: '/goals', Icon: DiamondIcon },
-      { name: kk.nav.calendar, href: '/calendar', Icon: CalendarIcon },
-      { name: kk.nav.weekly, href: '/week', Icon: FilterIcon },
-    ],
-  },
-  {
-    // Құрал — қалай істеймін деген сұрақ
-    label: kk.nav.tools,
-    items: [
-      { name: kk.nav.focus, href: '/focus', Icon: ClockIcon },
-      { name: kk.nav.habits, href: '/habits', Icon: CheckIcon },
-      { name: kk.nav.time, href: '/time', Icon: BarChartIcon },
-      { name: kk.nav.motivation, href: '/motivation', Icon: QuoteNav },
-      { name: kk.nav.myNotes, href: '/notes', Icon: PencilIcon },
-      { name: kk.nav.archive, href: '/archive', Icon: BookmarkIcon },
-    ],
-  },
-];
-
-/** Төменгі тұрақты топ — навигация емес, аккаунт */
-const FOOT_ITEMS: Item[] = [
-  { name: kk.nav.profile, href: '/profile', Icon: UserIcon },
-];
 
 export function Sidebar({ width = 232, motto }: { width?: number; motto?: string }) {
   const insets = useSafeAreaInsets();
   const pathname = usePathname();
   const { isAdmin } = useSession();
+  const { strings: S } = useI18n();
 
   const isOn = (href: string) =>
     href === '/' ? pathname === '/' : pathname.startsWith(href);
+
+  const homeItem: Item = { name: S.nav.home, href: '/', Icon: HomeIcon };
+
+  const groups: { label: string; items: Item[] }[] = [
+    {
+      label: S.nav.plans,
+      items: [
+        { name: S.nav.year, href: '/goals', Icon: DiamondIcon },
+        { name: S.nav.calendar, href: '/calendar', Icon: CalendarIcon },
+        { name: S.nav.weekly, href: '/week', Icon: FilterIcon },
+      ],
+    },
+    {
+      label: S.nav.tools,
+      items: [
+        { name: S.nav.focus, href: '/focus', Icon: ClockIcon },
+        { name: S.nav.habits, href: '/habits', Icon: CheckIcon },
+        { name: S.nav.time, href: '/time', Icon: BarChartIcon },
+        { name: S.nav.motivation, href: '/motivation', Icon: QuoteNav },
+        { name: S.nav.myNotes, href: '/notes', Icon: PencilIcon },
+        { name: S.nav.archive, href: '/archive', Icon: BookmarkIcon },
+      ],
+    },
+  ];
+
+  const footItems: Item[] = [
+    { name: S.nav.profile, href: '/profile', Icon: UserIcon },
+  ];
 
   return (
     <View
@@ -101,19 +94,14 @@ export function Sidebar({ width = 232, motto }: { width?: number; motto?: string
     >
       <View style={styles.brand}>
         <DiamondIcon size={24} color={C.accent} />
-        <Text style={styles.wordmark}>{kk.app.name}</Text>
+        <Text style={styles.wordmark}>{S.app.name}</Text>
       </View>
 
       <View style={styles.home}>
-        <NavRow item={HOME} active={isOn(HOME.href)} />
+        <NavRow item={homeItem} active={isOn(homeItem.href)} />
       </View>
 
-      {/*
-        ⚠ Топтар ЖИНАЛМАЙДЫ. Бұрын жиналатын, бірақ ішінде бір ғана жол
-        болатын — жинаудың да, ашудың да мәні жоқ еді. Енді әр топта
-        бірнеше жол бар да, олар әрқашан көрініп тұрады.
-      */}
-      {GROUPS.map((g) => (
+      {groups.map((g) => (
         <View key={g.label}>
           <Text style={styles.groupLabel}>{g.label}</Text>
           <View style={styles.groupBody}>
@@ -129,25 +117,27 @@ export function Sidebar({ width = 232, motto }: { width?: number; motto?: string
       {motto ? (
         <View style={styles.motto}>
           <QuoteIcon size={16} color={C.accent2} />
-          <Text style={styles.mottoLabel}>{kk.today.motto}</Text>
+          <Text style={styles.mottoLabel}>{S.today.motto}</Text>
           <Text style={styles.mottoText} numberOfLines={3}>
             {motto}
           </Text>
         </View>
       ) : null}
 
-      {/* ── Аккаунт — навигациядан сызықпен бөлінген ── */}
       <View style={styles.divider} />
 
       <View style={styles.foot}>
+        <View style={{ marginBottom: 10, alignItems: 'flex-start' }}>
+          <LangSwitcher compact />
+        </View>
         {isAdmin ? (
           <NavRow
-            item={{ name: kk.nav.admin, href: '/admin', Icon: ShieldIcon }}
+            item={{ name: S.nav.admin, href: '/admin', Icon: ShieldIcon }}
             active={isOn('/admin')}
             muted
           />
         ) : null}
-        {FOOT_ITEMS.map((it) => (
+        {footItems.map((it) => (
           <NavRow key={it.href} item={it} active={isOn(it.href)} muted />
         ))}
 
@@ -157,7 +147,7 @@ export function Sidebar({ width = 232, motto }: { width?: number; motto?: string
           accessibilityRole="button"
         >
           <LogOutIcon size={18} color={C.ink3} strokeWidth={2} />
-          <Text style={[styles.itemText, { color: C.ink3 }]}>{kk.nav.signOut}</Text>
+          <Text style={[styles.itemText, { color: C.ink3 }]}>{S.nav.signOut}</Text>
         </Pressable>
       </View>
     </View>
