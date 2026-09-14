@@ -26,9 +26,8 @@ import { useI18n } from '../../i18n/context';
 import { supabase, signInWithApple } from '../../lib/supabase';
 import { useSession, ADMIN_EMAIL } from '../../lib/auth';
 import { Atmosphere } from '../../components/auth/Atmosphere';
-import { LangSwitcher } from '../../components/ui';
+import { LangSwitcher, FormaLogo } from '../../components/ui';
 import {
-  CascadeMark,
   AppleIcon,
   MailIcon,
   PhoneIcon,
@@ -157,12 +156,11 @@ export default function SignIn() {
           keyboardDismissMode="on-drag"
           showsVerticalScrollIndicator={false}
         >
-          {/* каскад белгісі */}
+          {/* ресми FORMA логотипі */}
           <View style={styles.hero}>
-            <CascadeMark size={mode === 'hero' ? 240 : 120} />
+            <FormaLogo variant="full" height={mode === 'hero' ? 44 : 34} />
           </View>
 
-          <Text style={styles.wordmark}>{S.app.name}</Text>
           <Text style={styles.tagline}>{S.app.tagline}</Text>
 
           {mode === 'hero' ? (

@@ -9,7 +9,7 @@ import { color as C, radius as R, font } from '../../theme/tokens';
 import { signOut } from '../../lib/supabase';
 import { useSession } from '../../lib/auth';
 import { useI18n } from '../../i18n/context';
-import { LangSwitcher } from '../ui';
+import { LangSwitcher, FormaLogo } from '../ui';
 import {
   DiamondIcon, QuoteIcon, HomeIcon, CalendarIcon, ClockIcon,
   BarChartIcon, CheckIcon, FilterIcon, BookmarkIcon,
@@ -71,10 +71,7 @@ export function Sidebar({ width = 232, motto }: { width?: number; motto?: string
       ]}
     >
       <View style={styles.brand}>
-        <View style={styles.brandIconBox}>
-          <DiamondIcon size={18} color="#FFFFFF" />
-        </View>
-        <Text style={styles.wordmark}>{S.app.name}</Text>
+        <FormaLogo variant="full" height={26} />
       </View>
 
       <View style={styles.home}>
@@ -179,16 +176,7 @@ const styles = StyleSheet.create({
     borderRightColor: C.line,
     paddingHorizontal: 14,
   },
-  brand: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingHorizontal: 6 },
-  brandIconBox: {
-    width: 32,
-    height: 32,
-    borderRadius: 10,
-    backgroundColor: C.accent,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  wordmark: { fontFamily: font.display, fontSize: 16, letterSpacing: 1.5, color: C.ink },
+  brand: { paddingHorizontal: 6, paddingVertical: 4, marginBottom: 8 },
 
   groupLabel: {
     marginTop: 14,

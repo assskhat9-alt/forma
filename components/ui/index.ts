@@ -11,4 +11,5 @@ export { DateField } from './DatePicker';
 export { BottomNav, type TabBarProps } from './BottomNav';
 export { AddButton } from './AddButton';
 export { LangSwitcher } from './LangSwitcher';
+export { FormaLogo } from './FormaLogo';
 

@@ -11,77 +11,91 @@
 
 export const color = {
   // ── Фон және беттер ───────────────────────────────────────────
-  bg: '#F6F7FA',
+  bg: '#F5F6FA',
   card: '#FFFFFF',
-  cardSoft: '#FBFBFD', // input фоны, әдеттің бос ұяшығы
+  cardSoft: '#FAFBFD', // input фоны, әдеттің бос ұяшығы
 
   // ── Мәтін: қоюдан ашыққа қарай ────────────────────────────────
-  ink: '#1A1D26',
-  inkProse: '#3A3A52', // ұзын мәтін, рефлексия
-  inkBody: '#43435A', // тізім мәтіні, деңгей атауы
-  ink2: '#5A5A70',
-  inkSoft: '#7A7A92',
-  inkSeg: '#7C7C92', // сегмент — белсенді емес
-  inkMuted: '#8A8A9E', // subtitle, қосалқы мәтін
-  ink3: '#9A9AAE', // .lbl бөлім тақырыбы
-  inkFaint: '#A6A6B8', // орындалған тапсырма мәтіні
-  ink4: '#B4B4C6',
-  inkIcon: '#C4C4D4', // chevron, өшірілген иконка
-  inkOut: '#CFCFDC', // көрші айдың күндері
+  ink: '#1A1D2B',
+  inkProse: '#2E3346', // ұзын мәтін, рефлексия
+  inkBody: '#474D66', // тізім мәтіні, деңгей атауы
+  ink2: '#5A607F',
+  inkSoft: '#717796',
+  inkSeg: '#7A809E', // сегмент — белсенді емес
+  inkMuted: '#8D93AC', // subtitle, қосалқы мәтін
+  ink3: '#9DA2B8', // .lbl бөлім тақырыбы
+  inkFaint: '#B0B5CB', // орындалған тапсырма мәтіні
+  ink4: '#C2C7DB',
+  inkIcon: '#D0D4E4', // chevron, өшірілген иконка
+  inkOut: '#DCE0EE', // көрші айдың күндері
 
   // ── Жиектер мен бөлгіштер ─────────────────────────────────────
-  line: '#ECEEF2',
-  lineSoft: '#F4F5F9',
-  lineFaint: '#F7F8FB',
-  lineField: '#E6E8EF', // ақ түйменің жиегі
-  lineBox: '#DEDEE9', // чекбокс жиегі
-  lineSwitch: '#E2E2EC', // свитч өшірулі, drag handle
-  lineDash: '#DEDAF8', // әдеттер блогының үзік сызығы
+  line: '#EBEEF5',
+  lineSoft: '#F3F5FA',
+  lineFaint: '#F8F9FC',
+  lineField: '#E4E7F0', // ақ түйменің жиегі
+  lineBox: '#D8DCE8', // чекбокс жиегі
+  lineSwitch: '#E0E3EC', // свитч өшірулі, drag handle
+  lineDash: '#D6D8F8', // әдеттер блогының үзік сызығы
 
   // ── Тректер (прогресс, сегмент, чип) ──────────────────────────
-  track: '#F0F0F6',
-  trackSeg: '#E7E7F0', // сегмент ауыстырғышының трегі
-  trackChip: '#F2F2F8', // бейтарап чип фоны
-  trackHabit: '#F5F5FA', // әдеттің орындалмаған ұяшығы
+  track: '#ECEEF5',
+  trackSeg: '#E5E8F2', // сегмент ауыстырғышының трегі
+  trackChip: '#F0F2F8', // бейтарап чип фоны
+  trackHabit: '#F3F5FA', // әдеттің орындалмаған ұяшығы
 
-  // ── Акцент шкаласы ────────────────────────────────────────────
-  accent: '#7C5CFC',
-  accent2: '#855DF6',
-  accent3: '#9A8DF5',
-  accent4: '#AA9EF7',
-  accent5: '#BDB4FA',
-  accentDeep: '#6C48F5',
-  accentOnDark: '#A79BF8', // қара фондағы акцент (Фокус, Мақсат hero)
-  accentSoft: '#C6BEFB', // диаграмманың екінші деңгейі
-  accentGlow: '#C9C0FB', // кіру экранының атмосфералық дағы
-  accentLine: '#DCD6FB', // жеңіл күлгін жиек, нүкте
-  accentLine2: '#D8D1FB',
-  accentLine3: '#E4E0FC',
+  // ── Акцент шкаласы (Image 1 бойынша #5D65F6 Royal Indigo) ─────
+  accent: '#5D65F6',
+  accent2: '#6870F8',
+  accent3: '#7B82F9',
+  accent4: '#949BFA',
+  accent5: '#B0B5FC',
+  accentDeep: '#4A51E6',
+  accentOnDark: '#8E94FA', // қара фондағы акцент (Фокус, Мақсат hero)
+  accentSoft: '#C6C9FC', // диаграмманың екінші деңгейі
+  accentGlow: '#D8DAFD', // атмосфералық дақ
+  accentLine: '#E1E4FD', // жеңіл күлгін-көк жиек, нүкте
+  accentLine2: '#E8EAFD',
+  accentLine3: '#F0F1FE',
 
-  // ── Тінттер (ашық күлгін фондар) ──────────────────────────────
-  tint: '#EFEDFE',
-  tintSoft: '#F7F6FF',
-  tintLine: '#EAE6FD',
-  tintChip: '#EDEAFE', // күн белгісінің чипі
-  tintRow: '#F4F2FE', // таңдалған жол, планшет навигациясы
-  tintToday: '#F1EFFE', // календарьдағы бүгінгі күн
-  tintRing: '#F0EEFE', // кіші сақинаның трегі
-  tintRing2: '#F1F0FE',
-  tintBar: '#F0EFFA', // таймлайн жолағының бос бөлігі
-  tintImpact: '#E8E5FB', // рефлексиядағы әсер жолағы
+  // ── Тінттер (ашық индиго фондар) ──────────────────────────────
+  tint: '#EEF0FE',
+  tintSoft: '#F6F7FE',
+  tintLine: '#E2E5FD',
+  tintChip: '#EBEAFD', // күн белгісінің чипі
+  tintRow: '#F3F4FE', // таңдалған жол, планшет навигациясы
+  tintToday: '#EFF1FE', // календарьдағы бүгінгі күн
+  tintRing: '#ECEEFE', // кіші сақинаның трегі
+  tintRing2: '#EFF0FE',
+  tintBar: '#EDEFFD', // таймлайн жолағының бос бөлігі
+  tintImpact: '#E5E7FD', // рефлексиядағы әсер жолағы
+
+  // ── Пастель түстері (Image 1 карточкалары мен тегтері) ─────────
+  pastelLavender: '#EFE6FD',
+  pastelLavenderText: '#7C3AED',
+  pastelMint: '#E0F8EC',
+  pastelMintText: '#15803D',
+  pastelButter: '#FEF7CD',
+  pastelButterText: '#D97706',
+  pastelCoral: '#FDDDE4',
+  pastelCoralText: '#BE123C',
+  pastelSky: '#E1EDFC',
+  pastelSkyText: '#0284C7',
+  pastelPeach: '#FDEBD8',
+  pastelPeachText: '#C2410C',
 
   // ── Қара тақырып ──────────────────────────────────────────────
-  darkBg: '#14141B', // қара карточка (мотивация, серия, hero)
-  darkBg0: '#0F0F16', // ⚠ Фокус экранының фоны — darkBg-дан бір саты қою
-  darkCard: '#1A1A24',
-  darkCard2: '#1C1C26', // Фокус басқару түймесі
-  darkLine: '#26262F',
-  darkLine2: '#191921',
-  darkLine3: '#3A3A48', // радио жиегі (Таймлайн)
-  darkTrack: '#2A2A38', // прогресс трегі қараңғыда
-  darkInk2: '#8F8FA8',
-  darkInk3: '#6E6E86',
-  lockGrad: '#2A2740', // құлып экраны градиентінің басы
+  darkBg: '#131520', // қара карточка (мотивация, серия, hero)
+  darkBg0: '#0E1018', // ⚠ Фокус экранының фоны — darkBg-дан бір саты қою
+  darkCard: '#181A28',
+  darkCard2: '#1C1F30', // Фокус басқару түймесі
+  darkLine: '#24273C',
+  darkLine2: '#1B1D2C',
+  darkLine3: '#363B55', // радио жиегі (Таймлайн)
+  darkTrack: '#262940', // прогресс трегі қараңғыда
+  darkInk2: '#8E94B5',
+  darkInk3: '#6B7092',
+  lockGrad: '#252844', // құлып экраны градиентінің басы
 } as const;
 
 /**
